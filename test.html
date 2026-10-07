@@ -1,361 +1,323 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Menetlevél Admin Teszt</title>
-    <!-- Tailwind CSS CDN -->
+    <title>Menetlevél Rendszer (Teszt)</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- jsPDF Library -->
+    <!-- jsPDF & AutoTable -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
-<body class="bg-gray-100 text-gray-800 font-sans min-h-screen p-4 md:p-8">
+<body class="bg-gray-100 text-gray-800 font-sans min-h-screen pb-12">
 
-    <div class="max-w-6xl mx-auto space-y-6">
-        
-        <!-- Header -->
-        <header class="flex justify-between items-center bg-white p-6 rounded-xl shadow-md">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-900">Menetlevél Rendszer (Teszt)</h1>
-                <p id="user-info" class="text-sm text-gray-500 mt-1">Betöltés...</p>
-            </div>
-            <button id="logout-btn" onclick="logout()" class="hidden bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-lg transition">
-                Kijelentkezés
-            </button>
-        </header>
+    <!-- Navigáció / Fejléc -->
+    <header class="bg-blue-600 text-white shadow-md p-4 mb-6 flex justify-between items-center">
+        <h1 class="text-xl font-bold">Menetlevél Rendszer <span class="text-xs bg-yellow-400 text-gray-900 px-2 py-1 rounded ml-2">TESZT</span></h1>
+        <div id="userInfo" class="hidden flex items-center gap-4">
+            <span id="userEmailDisplay" class="text-sm font-medium"></span>
+            <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-1.5 rounded transition">Kijelentkezés</button>
+        </div>
+    </header>
 
-        <!-- Auth Section -->
-        <section id="auth-section" class="bg-white p-6 rounded-xl shadow-md max-w-md mx-auto">
-            <h2 class="text-xl font-semibold mb-4 text-center">Bejelentkezés</h2>
-            <form id="login-form" onsubmit="login(event)" class="space-y-4">
+    <div class="container mx-auto px-4 max-w-4xl">
+
+        <!-- AUTH SECTION -->
+        <div id="authSection" class="bg-white p-6 rounded-xl shadow-md max-w-md mx-auto">
+            <h2 class="text-2xl font-bold mb-4 text-center text-gray-700">Bejelentkezés</h2>
+            <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">E-mail cím</label>
-                    <input type="email" id="login-email" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2 focus:ring-blue-500 focus:border-blue-500">
+                    <label class="block text-sm font-medium text-gray-700">Email cím</label>
+                    <input type="email" id="loginEmail" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Jelszó</label>
-                    <input type="password" id="login-password" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2 focus:ring-blue-500 focus:border-blue-500">
+                    <input type="password" id="loginPassword" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2">
                 </div>
-                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md font-medium transition">
-                    Bejelentkezés
-                </button>
+                <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 font-semibold transition">Bejelentkezés</button>
             </form>
-            <p id="auth-error" class="text-red-500 text-sm mt-3 text-center hidden"></p>
-        </section>
+        </div>
 
-        <!-- Main Dashboard (Admin Panel) -->
-        <main id="app-section" class="hidden space-y-6">
-            
-            <!-- Unified Shift Inspection & PDF Container -->
-            <section class="bg-white p-6 rounded-xl shadow-md">
-                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-gray-200">
+        <!-- MAIN APP CONTENT -->
+        <div id="appContent" class="hidden space-y-6">
+
+            <!-- TAB NAVIGÁCIÓ (SOFŐR / ADMIN) -->
+            <div class="flex border-b border-gray-200 bg-white rounded-t-xl overflow-hidden shadow-sm">
+                <button id="tabDriverBtn" onclick="switchTab('driver')" class="flex-1 py-3 font-semibold text-center bg-blue-600 text-white">Sofőr Nézet</button>
+                <button id="tabAdminBtn" onclick="switchTab('admin')" class="flex-1 py-3 font-semibold text-center bg-gray-100 text-gray-600 hover:bg-gray-200">Admin Panel</button>
+            </div>
+
+            <!-- SOFŐR PANEL -->
+            <div id="driverPanel" class="bg-white p-6 rounded-b-xl shadow-md">
+                <h2 class="text-xl font-bold mb-4 text-gray-800">Műszak Rögzítése</h2>
+                <form id="shiftForm" onsubmit="saveShift(event)" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium">Sofőr Neve</label>
+                            <input type="text" id="driverName" required class="mt-1 w-full border rounded p-2">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium">Rendszám</label>
+                            <input type="text" id="plateNumber" required class="mt-1 w-full border rounded p-2">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium">Kezdő KM</label>
+                            <input type="number" id="startKm" required class="mt-1 w-full border rounded p-2">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium">Záró KM</label>
+                            <input type="number" id="endKm" required class="mt-1 w-full border rounded p-2">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-green-600 text-white py-2 rounded-md font-bold hover:bg-green-700 transition">Műszak Mentése</button>
+                </form>
+            </div>
+
+            <!-- EGYESÍTETT ADMIN PANEL -->
+            <div id="adminPanel" class="hidden bg-white p-6 rounded-b-xl shadow-md space-y-6">
+                <h2 class="text-xl font-bold text-gray-800 border-b pb-2">Adminisztrációs Panel</h2>
+
+                <!-- SZŰRŐK & VÁLASZTÓK -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg border">
                     <div>
-                        <h2 class="text-xl font-bold text-gray-800">Műszakok Megtekintése & Exportálása</h2>
-                        <p class="text-sm text-gray-500">Válassz sofőrt és műszakot a megtekintéshez és a PDF megnyitásához.</p>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Sofőr kiválasztása:</label>
+                        <select id="adminDriverSelect" onchange="onDriverSelected()" class="w-full border border-gray-300 rounded-md p-2 bg-white">
+                            <option value="">-- Válassz sofőrt --</option>
+                        </select>
                     </div>
-
-                    <!-- Controls: Driver Select & Shift Date Select -->
-                    <div class="flex flex-wrap items-center gap-3">
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Sofőr</label>
-                            <select id="driver-select" onchange="onDriverChange()" class="border border-gray-300 rounded-lg p-2 text-sm bg-gray-50 focus:ring-blue-500 focus:border-blue-500">
-                                <option value="">Sofőr kiválasztása...</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Műszak Dátuma</label>
-                            <select id="shift-select" onchange="renderSelectedShift()" class="border border-gray-300 rounded-lg p-2 text-sm bg-gray-50 focus:ring-blue-500 focus:border-blue-500" disabled>
-                                <option value="">Előbb válassz sofőrt...</option>
-                            </select>
-                        </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Műszak dátuma (alapértelmezett: legfrissebb):</label>
+                        <select id="adminShiftDateSelect" onchange="renderSelectedShift()" class="w-full border border-gray-300 rounded-md p-2 bg-white" disabled>
+                            <option value="">-- Előbb válassz sofőrt --</option>
+                        </select>
                     </div>
                 </div>
 
-                <!-- Shift Details View Area -->
-                <div id="shift-detail-container" class="mt-6 hidden">
-                    <div class="flex justify-between items-center mb-4 bg-gray-50 p-4 rounded-lg">
-                        <div>
-                            <h3 id="shift-title" class="font-bold text-lg text-gray-800"></h3>
-                            <span id="shift-status-badge" class="inline-block px-2 py-1 text-xs font-semibold rounded mt-1"></span>
-                        </div>
-                        <div class="flex gap-2">
-                            <button id="pdf-btn" onclick="openShiftPdf()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-1">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-                                Megnyitás PDF-ben
-                            </button>
-                            <button id="delete-shift-btn" onclick="deleteCurrentShift()" class="bg-red-100 text-red-600 hover:bg-red-200 px-3 py-2 rounded-lg text-sm font-medium transition">
-                                Műszak Törlése
-                            </button>
-                        </div>
+                <!-- MŰSZAK RÉSZLETEK & KIMENET -->
+                <div id="shiftDetailsContainer" class="hidden space-y-4">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h3 class="font-bold text-blue-900 mb-2">Műszak Részletei</h3>
+                        <div id="shiftDetailsContent" class="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm"></div>
                     </div>
 
-                    <!-- Entries Table -->
-                    <div class="overflow-x-auto border border-gray-200 rounded-lg">
-                        <table class="min-w-full divide-y divide-gray-200 text-sm">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-4 py-3 text-left font-medium text-gray-500">Idő</th>
-                                    <th class="px-4 py-3 text-left font-medium text-gray-500">Honnan</th>
-                                    <th class="px-4 py-3 text-left font-medium text-gray-500">Hova</th>
-                                    <th class="px-4 py-3 text-left font-medium text-gray-500">KM</th>
-                                    <th class="px-4 py-3 text-left font-medium text-gray-500">Utas / Megjegyzés</th>
-                                </tr>
-                            </thead>
-                            <tbody id="entries-table-body" class="divide-y divide-gray-200 bg-white">
-                                <!-- Dynamic rows -->
-                            </tbody>
-                        </table>
+                    <div class="flex gap-4">
+                        <button onclick="previewPDF()" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-md transition flex items-center justify-center gap-2">
+                            <span>📄</span> PDF Megtekintése Új Lapodon
+                        </button>
+                        <button onclick="deleteCurrentShift()" class="bg-gray-200 hover:bg-red-100 text-red-600 font-semibold px-4 py-2.5 rounded-md border border-red-300 transition">
+                            Műszak Törlése
+                        </button>
                     </div>
                 </div>
 
-                <!-- Empty State -->
-                <div id="shift-empty-state" class="text-center py-12 text-gray-400">
-                    Válassz ki egy sofőrt a műszakok betöltéséhez.
+                <div id="noShiftMessage" class="text-center py-8 text-gray-500 italic">
+                    Válassz ki egy sofőrt a műszakok megtekintéséhez!
                 </div>
-            </section>
+            </div>
 
-        </main>
+        </div>
     </div>
 
-    <!-- Firebase Init & Application Logic -->
+    <!-- JAVASCRIPT LOGIKA -->
     <script>
-        // 1. Firebase inicializálás a megadott adatokkal
+        // FIREBASE INITIALIZATION
         const firebaseConfig = {
             apiKey: "AIzaSyCzpvcJSd08o2mpLOibQKEv6tLes0BixFM",
             authDomain: "menetlevel-3563a.firebaseapp.com",
             projectId: "menetlevel-3563a",
             storageBucket: "menetlevel-3563a.firebasestorage.app",
-            messagingSenderId: "306355505023",
-            appId: "1:306355505023:web:fdd44585f7946d6fddfc4a",
+            messagingSenderId: "3063555023",
+            appId: "1:3063555023:web:fdd44585f7946d6fddfc4a",
             measurementId: "G-9NNKD3N84H"
         };
 
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
-
+        firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
 
+        let allShifts = [];
         let currentDriverShifts = [];
         let selectedShiftData = null;
 
-        // Auth figyelő
+        // AUTH LISTENERS
         auth.onAuthStateChanged(user => {
             if (user) {
-                document.getElementById('auth-section').classList.add('hidden');
-                document.getElementById('app-section').classList.remove('hidden');
-                document.getElementById('logout-btn').classList.remove('hidden');
-                document.getElementById('user-info').innerText = `Bejelentkezve: ${user.email}`;
-                loadDrivers();
+                document.getElementById('authSection').classList.add('hidden');
+                document.getElementById('appContent').classList.remove('hidden');
+                document.getElementById('userInfo').classList.remove('hidden');
+                document.getElementById('userEmailDisplay').innerText = user.email;
+                loadAllShifts();
             } else {
-                document.getElementById('auth-section').classList.remove('hidden');
-                document.getElementById('app-section').classList.add('hidden');
-                document.getElementById('logout-btn').classList.add('hidden');
+                document.getElementById('authSection').classList.remove('hidden');
+                document.getElementById('appContent').classList.add('hidden');
+                document.getElementById('userInfo').classList.add('hidden');
             }
         });
 
-        // Bejelentkezés
-        function login(e) {
+        function handleLogin(e) {
             e.preventDefault();
-            const email = document.getElementById('login-email').value;
-            const pass = document.getElementById('login-password').value;
-            const errEl = document.getElementById('auth-error');
-
-            auth.signInWithEmailAndPassword(email, pass)
-                .catch(err => {
-                    errEl.innerText = "Sikeretlen bejelentkezés: " + err.message;
-                    errEl.classList.remove('hidden');
-                });
+            const email = document.getElementById('loginEmail').value;
+            const pass = document.getElementById('loginPassword').value;
+            auth.signInWithEmailAndPassword(email, pass).catch(err => alert("Hiba a bejelentkezésnél: " + err.message));
         }
 
-        // Kijelentkezés
         function logout() {
             auth.signOut();
         }
 
-        // Sofőrök betöltése
-        async function loadDrivers() {
-            const select = document.getElementById('driver-select');
-            select.innerHTML = '<option value="">Sofőr kiválasztása...</option>';
-            
-            try {
-                const snapshot = await db.collection('users').get();
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    const opt = document.createElement('option');
-                    opt.value = doc.id;
-                    opt.innerText = data.name || data.email || doc.id;
-                    select.appendChild(opt);
-                });
-            } catch (err) {
-                console.error("Hiba a sofőrök betöltésekor:", err);
-            }
-        }
+        // TAB SWITCHING
+        function switchTab(tab) {
+            const driverPanel = document.getElementById('driverPanel');
+            const adminPanel = document.getElementById('adminPanel');
+            const tabDriverBtn = document.getElementById('tabDriverBtn');
+            const tabAdminBtn = document.getElementById('tabAdminBtn');
 
-        // Sofőr váltás
-        async function onDriverChange() {
-            const driverId = document.getElementById('driver-select').value;
-            const shiftSelect = document.getElementById('shift-select');
-            const detailContainer = document.getElementById('shift-detail-container');
-            const emptyState = document.getElementById('shift-empty-state');
-
-            shiftSelect.innerHTML = '';
-            shiftSelect.disabled = true;
-            detailContainer.classList.add('hidden');
-            emptyState.classList.remove('hidden');
-            selectedShiftData = null;
-
-            if (!driverId) return;
-
-            try {
-                const snapshot = await db.collection('shifts')
-                    .where('userId', '==', driverId)
-                    .orderBy('startTime', 'desc')
-                    .get();
-
-                currentDriverShifts = [];
-                snapshot.forEach(doc => {
-                    currentDriverShifts.push({ id: doc.id, ...doc.data() });
-                });
-
-                if (currentDriverShifts.length === 0) {
-                    emptyState.innerText = "Ennek a sofőrnek nincsenek rögzített műszakai.";
-                    return;
-                }
-
-                shiftSelect.disabled = false;
-                currentDriverShifts.forEach((shift, index) => {
-                    const opt = document.createElement('option');
-                    opt.value = shift.id;
-                    const dateStr = shift.startTime ? new Date(shift.startTime.toDate()).toLocaleString('hu-HU') : 'Ismeretlen dátum';
-                    opt.innerText = `${dateStr} (${shift.status === 'closed' ? 'Zárt' : 'Nyitott'})`;
-                    shiftSelect.appendChild(opt);
-                });
-
-                // Alapértelmezetten a legújabbat jelenítjük meg
-                shiftSelect.selectedIndex = 0;
-                renderSelectedShift();
-
-            } catch (err) {
-                console.error("Hiba a műszakok lekérésekor:", err);
-            }
-        }
-
-        // Kiválasztott műszak megjelenítése
-        function renderSelectedShift() {
-            const shiftId = document.getElementById('shift-select').value;
-            const detailContainer = document.getElementById('shift-detail-container');
-            const emptyState = document.getElementById('shift-empty-state');
-            const tbody = document.getElementById('entries-table-body');
-
-            selectedShiftData = currentDriverShifts.find(s => s.id === shiftId);
-
-            if (!selectedShiftData) {
-                detailContainer.classList.add('hidden');
-                emptyState.classList.remove('hidden');
-                return;
-            }
-
-            emptyState.classList.add('hidden');
-            detailContainer.classList.remove('hidden');
-
-            const startDate = selectedShiftData.startTime ? new Date(selectedShiftData.startTime.toDate()).toLocaleString('hu-HU') : '-';
-            document.getElementById('shift-title').innerText = `Műszak: ${startDate}`;
-            
-            const badge = document.getElementById('shift-status-badge');
-            if (selectedShiftData.status === 'closed') {
-                badge.innerText = 'Lezárt műszak';
-                badge.className = 'inline-block px-2 py-1 text-xs font-semibold rounded mt-1 bg-green-100 text-green-800';
+            if (tab === 'driver') {
+                driverPanel.classList.remove('hidden');
+                adminPanel.classList.add('hidden');
+                tabDriverBtn.className = "flex-1 py-3 font-semibold text-center bg-blue-600 text-white";
+                tabAdminBtn.className = "flex-1 py-3 font-semibold text-center bg-gray-100 text-gray-600 hover:bg-gray-200";
             } else {
-                badge.innerText = 'Aktív / Nyitott műszak';
-                badge.className = 'inline-block px-2 py-1 text-xs font-semibold rounded mt-1 bg-yellow-100 text-yellow-800';
+                driverPanel.classList.add('hidden');
+                adminPanel.classList.remove('hidden');
+                tabAdminBtn.className = "flex-1 py-3 font-semibold text-center bg-blue-600 text-white";
+                tabDriverBtn.className = "flex-1 py-3 font-semibold text-center bg-gray-100 text-gray-600 hover:bg-gray-200";
             }
+        }
 
-            tbody.innerHTML = '';
-            const entries = selectedShiftData.entries || [];
+        // SAVE SHIFT
+        function saveShift(e) {
+            e.preventDefault();
+            const shift = {
+                driverName: document.getElementById('driverName').value,
+                plateNumber: document.getElementById('plateNumber').value,
+                startKm: Number(document.getElementById('startKm').value),
+                endKm: Number(document.getElementById('endKm').value),
+                date: new Date().toISOString().split('T')[0],
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            };
 
-            if (entries.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-3 text-center text-gray-400">Nincsenek bejegyzések ebben a műszakban.</td></tr>`;
-                return;
-            }
+            db.collection('shifts').add(shift).then(() => {
+                alert("Műszak sikeresen rögzítve!");
+                document.getElementById('shiftForm').reset();
+                loadAllShifts();
+            }).catch(err => alert("Hiba mentéskor: " + err.message));
+        }
 
-            entries.forEach(entry => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="px-4 py-3 font-mono">${entry.time || '-'}</td>
-                    <td class="px-4 py-3">${entry.from || '-'}</td>
-                    <td class="px-4 py-3">${entry.to || '-'}</td>
-                    <td class="px-4 py-3 font-semibold">${entry.km || 0} km</td>
-                    <td class="px-4 py-3 text-gray-600">${entry.note || '-'}</td>
-                `;
-                tbody.appendChild(tr);
+        // LOAD SHIFTS FOR ADMIN
+        function loadAllShifts() {
+            db.collection('shifts').orderBy('timestamp', 'desc').onSnapshot(snapshot => {
+                allShifts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                populateDriverSelect();
             });
         }
 
-        // Műszak törlése
-        async function deleteCurrentShift() {
-            if (!selectedShiftData) return;
-            if (!confirm("Biztosan törölni szeretnéd ezt a műszakot? Ez a művelet nem visszavonható!")) return;
-
-            try {
-                await db.collection('shifts').doc(selectedShiftData.id).delete();
-                alert("Műszak sikeresen törölve.");
-                onDriverChange(); // Lista frissítése
-            } catch (err) {
-                alert("Hiba történt a törlés során: " + err.message);
-            }
+        function populateDriverSelect() {
+            const select = document.getElementById('adminDriverSelect');
+            const drivers = [...new Set(allShifts.map(s => s.driverName))];
+            
+            select.innerHTML = '<option value="">-- Válassz sofőrt --</option>';
+            drivers.forEach(driver => {
+                const opt = document.createElement('option');
+                opt.value = driver;
+                opt.textContent = driver;
+                select.appendChild(opt);
+            });
         }
 
-        // PDF Generálás és Megnyitás új ablakban (In-browser preview)
-        function openShiftPdf() {
+        function onDriverSelected() {
+            const driverName = document.getElementById('adminDriverSelect').value;
+            const dateSelect = document.getElementById('adminShiftDateSelect');
+            
+            if (!driverName) {
+                dateSelect.innerHTML = '<option value="">-- Előbb válassz sofőrt --</option>';
+                dateSelect.disabled = true;
+                document.getElementById('shiftDetailsContainer').classList.add('hidden');
+                document.getElementById('noShiftMessage').classList.remove('hidden');
+                return;
+            }
+
+            currentDriverShifts = allShifts.filter(s => s.driverName === driverName);
+            dateSelect.disabled = false;
+            dateSelect.innerHTML = '';
+
+            currentDriverShifts.forEach((shift, index) => {
+                const opt = document.createElement('option');
+                opt.value = shift.id;
+                opt.textContent = `${shift.date} ${index === 0 ? '(Legfrissebb)' : ''}`;
+                dateSelect.appendChild(opt);
+            });
+
+            // Auto-select latest
+            dateSelect.selectedIndex = 0;
+            renderSelectedShift();
+        }
+
+        function renderSelectedShift() {
+            const shiftId = document.getElementById('adminShiftDateSelect').value;
+            selectedShiftData = currentDriverShifts.find(s => s.id === shiftId);
+
+            if (!selectedShiftData) return;
+
+            document.getElementById('noShiftMessage').classList.add('hidden');
+            document.getElementById('shiftDetailsContainer').classList.remove('hidden');
+
+            const content = document.getElementById('shiftDetailsContent');
+            content.innerHTML = `
+                <div><span class="text-gray-500 block">Sofőr:</span> <strong>${selectedShiftData.driverName}</strong></div>
+                <div><span class="text-gray-500 block">Rendszám:</span> <strong>${selectedShiftData.plateNumber}</strong></div>
+                <div><span class="text-gray-500 block">Kezdő KM:</span> <strong>${selectedShiftData.startKm} km</strong></div>
+                <div><span class="text-gray-500 block">Záró KM:</span> <strong>${selectedShiftData.endKm} km</strong></div>
+                <div><span class="text-gray-500 block">Megtett KM:</span> <strong>${selectedShiftData.endKm - selectedShiftData.startKm} km</strong></div>
+                <div><span class="text-gray-500 block">Dátum:</span> <strong>${selectedShiftData.date}</strong></div>
+            `;
+        }
+
+        // PDF IN NEW TAB (BLOB URL)
+        function previewPDF() {
             if (!selectedShiftData) return;
 
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
 
-            const driverName = document.getElementById('driver-select').selectedOptions[0].text;
-            const startDate = selectedShiftData.startTime ? new Date(selectedShiftData.startTime.toDate()).toLocaleString('hu-HU') : '-';
-
-            // Cím fejléc
             doc.setFontSize(18);
-            doc.text("MENETLEVÉL ÖSSZESÍTŐ", 14, 20);
+            doc.text("MENETLEVÉL IGAZOLÁS", 14, 20);
 
             doc.setFontSize(11);
-            doc.text(`Sofőr: ${driverName}`, 14, 30);
-            doc.text(`Műszak kezdete: ${startDate}`, 14, 36);
-            doc.text(`Státusz: ${selectedShiftData.status === 'closed' ? 'Lezárt' : 'Nyitott'}`, 14, 42);
-
-            // Táblázat oszlopok & adatok
-            const tableColumn = ["Idő", "Honnan", "Hova", "KM", "Megjegyzés / Utas"];
-            const tableRows = [];
-
-            (selectedShiftData.entries || []).forEach(entry => {
-                tableRows.push([
-                    entry.time || '',
-                    entry.from || '',
-                    entry.to || '',
-                    `${entry.km || 0} km`,
-                    entry.note || ''
-                ]);
-            });
+            doc.text(`Kiállítás dátuma: ${new Date().toLocaleDateString('hu-HU')}`, 14, 28);
 
             doc.autoTable({
-                head: [tableColumn],
-                body: tableRows,
-                startY: 50,
-                theme: 'grid',
-                headStyles: { fillColor: [41, 128, 185] }
+                startY: 35,
+                head: [['Mező', 'Érték']],
+                body: [
+                    ['Sofőr neve', selectedShiftData.driverName],
+                    ['Gépjármű rendszáma', selectedShiftData.plateNumber],
+                    ['Dátum', selectedShiftData.date],
+                    ['Kezdő kilométeróra állás', `${selectedShiftData.startKm} km`],
+                    ['Záró kilométeróra állás', `${selectedShiftData.endKm} km`],
+                    ['Összesen megtett távolság', `${selectedShiftData.endKm - selectedShiftData.startKm} km`]
+                ],
+                theme: 'grid'
             });
 
-            // Megnyitás új böngészőlapon letöltés helyett
-            const pdfBlobUrl = doc.output('bloburl');
-            window.open(pdfBlobUrl, '_blank');
+            // Open in new tab via Blob URL
+            const blob = doc.output('bloburl');
+            window.open(blob, '_blank');
+        }
+
+        function deleteCurrentShift() {
+            if (!selectedShiftData) return;
+            if (confirm("Biztosan törölni szeretnéd ezt a műszakot?")) {
+                db.collection('shifts').doc(selectedShiftData.id).delete().then(() => {
+                    alert("Műszak törölve.");
+                    onDriverSelected();
+                });
+            }
         }
     </script>
 </body>
