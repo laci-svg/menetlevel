@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="hu" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menetlevél Rendszer</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#fff7ed',
+                            100: '#ffedd5',
+                            500: '#f97316',
+                            600: '#ea580c',
+                            700: '#c2410c',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <!-- jsPDF & autoTable -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
+        .input-field { background-color: #1e293b; border: 1px solid #334155; color: #f8fafc; border-radius: 0.5rem; padding: 0.625rem; width: 100%; }
+        .input-field:focus { outline: none; border-color: #ea580c; ring: 2px solid #ea580c; }
+        .btn-primary { background-color: #ea580c; color: white; font-weight: 600; padding: 0.625rem 1.25rem; border-radius: 0.5rem; transition: all 0.2s; }
+        .btn-primary:hover { background-color: #c2410c; }
+    </style>
+</head>
+<body class="min-h-screen pb-12">
+
+    <!-- NAV BAR -->
+    <nav class="bg-slate-900 border-b border-slate-800 p-4 sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid font-bold text-orange-500 fa-car-side text-2xl"></i>
+                <span class="font-bold text-xl tracking-wide text-white">Menetlevél</span>
+            </div>
+            <div id="userInfo" class="hidden flex items-center gap-3">
+                <span id="userEmail" class="text-sm text-slate-400 hidden sm:inline"></span>
+                <span id="adminBadge" class="hidden text-xs bg-orange-500/20 text-orange-400 px-2 py-1 rounded border border-orange-500/30">Admin</span>
+                <button onclick="logout()" class="text-slate-400 hover:text-white p-2" title="Kijelentkezés">
+                    <i class="fa-solid fa-right-from-bracket text-lg"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-4xl mx-auto p-4 space-y-6">
+
+        <!-- AUTH CONTAINER -->
+        <div id="authSection" class="bg-slate-800/80 p-6 rounded-xl border border-slate-700 shadow-xl max-w-md mx-auto mt-10">
+            <h2 class="text-2xl font-bold mb-6 text-center text-orange-500">Bejelentkezés</h2>
+            <form onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs uppercase font-bold text-slate-400 mb-1">E-mail</label>
+                    <input type="email" id="loginEmail" required class="input-field" placeholder="sofor@ceg.hu">
+                </div>
+                <div>
+                    <label class="block text-xs uppercase font-bold text-slate-400 mb-1">Jelszó</label>
+                    <input type="password" id="loginPassword" required class="input-field" placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn-primary w-full mt-2">Belépés</button>
+            </form>
+        </div>
+
+        <!-- APP CONTENT (REDACTED UNTIL LOGIN) -->
+        <div id="appSection" class="hidden space-y-6">
+
+            <!-- DRIVER SHIFT MANAGEMENT SECTION -->
+            <div id="driverShiftSection" class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-md">
+                <h2 class="text-lg font-bold text-slate-200 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-key text-orange-500"></i> Aktív Műszak Kezelés
+                </h2>
+                
+                <div id="noActiveShiftView" class="space-y-4">
+                    <p class="text-slate-400 text-sm">Nincs nyitott műszakod. Válassz egy szabad járművet a műszak indításához:</p>
+                    <div class="flex gap-2">
+                        <select id="carSelect" class="input-field flex-1"></select>
+                        <button onclick="startShift()" class="btn-primary flex items-center gap-2 whitespace-nowrap">
+                            <i class="fa-solid fa-play"></i> Műszak Indítása
+                        </button>
+                    </div>
+                </div>
+
+                <div id="activeShiftView" class="hidden space-y-4">
+                    <div class="p-4 bg-slate-900/80 rounded-lg border border-orange-500/30 flex justify-between items-center flex-wrap gap-2">
+                        <div>
+                            <span class="text-xs text-slate-400 uppercase font-semibold block">Lefoglalt Jármű</span>
+                            <span id="activeCarPlate" class="text-xl font-bold text-orange-400"></span>
+                        </div>
+                        <div>
+                            <span class="text-xs text-slate-400 uppercase font-semibold block">Műszak Kezdete</span>
+                            <span id="activeShiftStart" class="text-sm font-medium text-slate-200"></span>
+                        </div>
+                        <button onclick="closeShift()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition flex items-center gap-2">
+                            <i class="fa-solid fa-stop"></i> Műszak Zárása
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TRIP FORM (ONLY ACTIVE WHEN SHIFT IS OPEN) -->
+            <div id="tripFormSection" class="hidden bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-md">
+                <h2 class="text-lg font-bold text-slate-200 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-route text-orange-500"></i> Új Út Rögzítése
+                </h2>
+                <form onsubmit="saveTrip(event)" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Út Típusa</label>
+                            <select id="tripType" onchange="toggleTripTypeStyle()" class="input-field font-semibold">
+                                <option value="work">🏢 Munkavégzés</option>
+                                <option value="private">🏠 Magánút</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Partner / Cél</label>
+                            <input type="text" id="tripPartner" required class="input-field" placeholder="Cégnév / Célállomás">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Indulási Hely</label>
+                            <input type="text" id="tripStartLoc" required class="input-field" placeholder="Telephely / Cím">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Érkezési Hely</label>
+                            <input type="text" id="tripEndLoc" required class="input-field" placeholder="Célcímet add meg">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Kezdő km</label>
+                            <input type="number" id="tripStartKm" required oninput="autoFillEndKm()" class="input-field" placeholder="0">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Záró km</label>
+                            <input type="number" id="tripEndKm" required oninput="checkDistanceAlert()" class="input-field" placeholder="0">
+                        </div>
+                    </div>
+
+                    <div id="distanceAlert" class="hidden bg-amber-500/10 border border-amber-500/40 text-amber-400 p-3 rounded-lg text-xs flex items-center gap-2">
+                        <i class="fa-solid fa-triangle-exclamation text-base"></i>
+                        <span>Figyelem: A megadott út meghaladja a 250 km-es távolságot!</span>
+                    </div>
+
+                    <button type="submit" class="btn-primary w-full flex justify-center items-center gap-2">
+                        <i class="fa-solid fa-plus"></i> Út Hozzáadása a Műszakhoz
+                    </button>
+                </form>
+            </div>
+
+            <!-- CURRENT SHIFT TRIPS TABLE -->
+            <div id="currentTripsSection" class="hidden bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-md">
+                <h3 class="text-md font-bold text-slate-300 mb-3 flex items-center justify-between">
+                    <span><i class="fa-solid fa-list-check text-orange-500"></i> Aktuális Műszak Útjai</span>
+                    <span id="shiftKmSummary" class="text-xs bg-slate-700 px-2.5 py-1 rounded-full text-orange-400 font-mono">0 km</span>
+                </h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-300">
+                        <thead class="text-xs uppercase bg-slate-900 text-slate-400">
+                            <tr>
+                                <th class="p-2">Típus</th>
+                                <th class="p-2">Útvonal</th>
+                                <th class="p-2">Partner</th>
+                                <th class="p-2 text-right">km</th>
+                                <th class="p-2 text-center">Művelet</th>
+                            </tr>
+                        </thead>
+                        <tbody id="currentTripsTable" class="divide-y divide-slate-700"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ADMIN SECTION -->
+            <div id="adminSection" class="hidden space-y-6 pt-4 border-t border-slate-700">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-bold text-orange-500 flex items-center gap-2">
+                        <i class="fa-solid fa-user-shield"></i> Adminisztrációs Panel
+                    </h2>
+                </div>
+
+                <!-- CAR MANAGEMENT & FORCE RELEASE -->
+                <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-md">
+                    <h3 class="text-md font-bold text-slate-200 mb-3">Járművek & Zárolások Kezelése</h3>
+                    <div id="adminCarsList" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+                </div>
+
+                <!-- INTEGRATED DRIVER SHIFT & PDF EXPORT SECTION -->
+                <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-md space-y-4">
+                    <h3 class="text-md font-bold text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-file-pdf text-orange-500"></i> Sofőrök Műszakai & PDF Export
+                    </h3>
+
+                    <!-- DRIVER SELECTION & DROPDOWN FILTER -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Sofőr Kiválasztása</label>
+                            <select id="adminDriverSelect" onchange="loadAdminDriverShifts()" class="input-field">
+                                <option value="">-- Válassz Sofőrt --</option>
+                            </select>
+                        </div>
+                        <div id="shiftDropdownContainer" class="hidden">
+                            <label class="block text-xs text-slate-400 mb-1">Válassz korábbi műszakot (Dátum szerint)</label>
+                            <select id="adminShiftSelect" onchange="displaySelectedAdminShift()" class="input-field">
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- SELECTED SHIFT DISPLAY CONTAINER -->
+                    <div id="adminShiftDisplay" class="hidden space-y-4 pt-2">
+                        <!-- SHIFT SUMMARY CARD -->
+                        <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 space-y-3">
+                            <div class="flex justify-between items-start flex-wrap gap-2">
+                                <div>
+                                    <span id="adminShiftBadge" class="text-xs px-2 py-0.5 rounded font-bold uppercase"></span>
+                                    <h4 id="adminShiftTitle" class="text-lg font-bold text-slate-100 mt-1"></h4>
+                                    <p id="adminShiftMeta" class="text-xs text-slate-400"></p>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button onclick="previewPDF()" class="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5" title="PDF Megtekintése">
+                                        <i class="fa-solid fa-file-pdf"></i> PDF Megtekintése
+                                    </button>
+                                    <button onclick="deleteCurrentAdminShift()" class="bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white border border-red-500/30 p-2 rounded-lg transition" title="Műszak Törlése">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- MILEAGE BREAKDOWN BOXES -->
+                            <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800 text-center">
+                                <div class="bg-slate-800/80 p-2 rounded">
+                                    <span class="block text-[10px] text-slate-400 uppercase font-bold">Munkavégzés</span>
+                                    <span id="adminWorkKm" class="text-sm font-bold text-slate-200">0 km</span>
+                                </div>
+                                <div class="bg-amber-500/10 p-2 rounded border border-amber-500/20">
+                                    <span class="block text-[10px] text-amber-400 uppercase font-bold">Magánút</span>
+                                    <span id="adminPrivateKm" class="text-sm font-bold text-amber-300">0 km</span>
+                                </div>
+                                <div class="bg-orange-500/10 p-2 rounded border border-orange-500/20">
+                                    <span class="block text-[10px] text-orange-400 uppercase font-bold">Összesen</span>
+                                    <span id="adminTotalKm" class="text-sm font-bold text-orange-400">0 km</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SHIFT TRIPS LIST -->
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm text-slate-300">
+                                <thead class="text-xs uppercase bg-slate-900 text-slate-400">
+                                    <tr>
+                                        <th class="p-2">Típus</th>
+                                        <th class="p-2">Indulás - Érkezés</th>
+                                        <th class="p-2">Partner</th>
+                                        <th class="p-2 text-right">Táv (km)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminShiftTripsTable" class="divide-y divide-slate-700"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="adminNoShiftsMsg" class="hidden text-center text-slate-500 py-6 text-sm">
+                        A kiválasztott sofőrhöz nem található lezárt műszak.
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // FIREBASE CONFIGURATION (Placeholder - replaces with user's initialized firebase instance)
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // GLOBAL STATE
+        let currentUser = null;
+        let currentUserData = null;
+        let activeShift = null;
+        let loadedDriverShifts = [];
+        let currentAdminShift = null;
+
+        // AUTHENTICATION LISTENER
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                currentUser = user;
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                currentUserData = userDoc.exists ? userDoc.data() : { email: user.email, role: 'driver' };
+                
+                document.getElementById('authSection').classList.add('hidden');
+                document.getElementById('appSection').classList.remove('hidden');
+                document.getElementById('userInfo').classList.remove('hidden');
+                document.getElementById('userEmail').innerText = user.email;
+
+                if (currentUserData.role === 'admin') {
+                    document.getElementById('adminBadge').classList.remove('hidden');
+                    document.getElementById('adminSection').classList.remove('hidden');
+                    loadAdminData();
+                } else {
+                    document.getElementById('adminBadge').classList.add('hidden');
+                    document.getElementById('adminSection').classList.add('hidden');
+                }
+
+                checkActiveShift();
+                loadCarsSelect();
+            } else {
+                currentUser = null;
+                currentUserData = null;
+                document.getElementById('authSection').classList.remove('hidden');
+                document.getElementById('appSection').classList.add('hidden');
+                document.getElementById('userInfo').classList.add('hidden');
+            }
+        });
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+            } catch (err) {
+                alert('Sikertelen bejelentkezés: ' + err.message);
+            }
+        }
+
+        function logout() {
+            auth.signOut();
+        }
+
+        // CAR & SHIFT MANAGEMENT
+        async function loadCarsSelect() {
+            const select = document.getElementById('carSelect');
+            select.innerHTML = '';
+            const snap = await db.collection('cars').get();
+            snap.forEach(doc => {
+                const car = doc.data();
+                const option = document.createElement('option');
+                option.value = doc.id;
+                option.innerText = `${car.plate} (${car.type}) ${car.isLocked ? '- LAKATOLVA' : ''}`;
+                if (car.isLocked) option.disabled = true;
+                select.appendChild(option);
+            });
+        }
+
+        async function checkActiveShift() {
+            const snap = await db.collection('shifts')
+                .where('userId', '==', currentUser.uid)
+                .where('status', '==', 'open')
+                .limit(1)
+                .get();
+
+            if (!snap.empty) {
+                const doc = snap.docs[0];
+                activeShift = { id: doc.id, ...doc.data() };
+                
+                document.getElementById('noActiveShiftView').classList.add('hidden');
+                document.getElementById('activeShiftView').classList.remove('hidden');
+                document.getElementById('tripFormSection').classList.remove('hidden');
+                document.getElementById('currentTripsSection').classList.remove('hidden');
+
+                const carDoc = await db.collection('cars').doc(activeShift.carId).get();
+                const carData = carDoc.data();
+                document.getElementById('activeCarPlate').innerText = carData ? `${carData.plate} (${carData.type})` : activeShift.carId;
+                document.getElementById('activeShiftStart').innerText = new Date(activeShift.startTime.toDate()).toLocaleString('hu-HU');
+
+                loadCurrentShiftTrips();
+            } else {
+                activeShift = null;
+                document.getElementById('noActiveShiftView').classList.remove('hidden');
+                document.getElementById('activeShiftView').classList.add('hidden');
+                document.getElementById('tripFormSection').classList.add('hidden');
+                document.getElementById('currentTripsSection').classList.add('hidden');
+            }
+        }
+
+        async function startShift() {
+            const carId = document.getElementById('carSelect').value;
+            if (!carId) return alert('Válassz járművet!');
+
+            const carRef = db.collection('cars').doc(carId);
+            const carDoc = await carRef.get();
+            if (carDoc.data().isLocked) return alert('Ez a jármű jelenleg más által zárolva van!');
+
+            // Lock car and create shift
+            await carRef.update({ isLocked: true, lockedBy: currentUser.uid });
+            await db.collection('shifts').add({
+                userId: currentUser.uid,
+                userEmail: currentUser.email,
+                carId: carId,
+                startTime: firebase.firestore.FieldValue.serverTimestamp(),
+                status: 'open'
+            });
+
+            checkActiveShift();
+            loadCarsSelect();
+        }
+
+        async function closeShift() {
+            if (!activeShift) return;
+            if (!confirm('Biztosan zárod a műszakot?')) return;
+
+            await db.collection('shifts').doc(activeShift.id).update({
+                endTime: firebase.firestore.FieldValue.serverTimestamp(),
+                status: 'closed'
+            });
+
+            await db.collection('cars').doc(activeShift.carId).update({
+                isLocked: false,
+                lockedBy: null
+            });
+
+            activeShift = null;
+            checkActiveShift();
+            loadCarsSelect();
+            if (currentUserData.role === 'admin') loadAdminData();
+        }
+
+        // TRIP MANAGEMENT
+        async function saveTrip(e) {
+            e.preventDefault();
+            if (!activeShift) return alert('Nincs aktív műszakod!');
+
+            const type = document.getElementById('tripType').value;
+            const partner = document.getElementById('tripPartner').value;
+            const startLoc = document.getElementById('tripStartLoc').value;
+            const endLoc = document.getElementById('tripEndLoc').value;
+            const startKm = parseInt(document.getElementById('tripStartKm').value);
+            const endKm = parseInt(document.getElementById('tripEndKm').value);
+
+            if (endKm <= startKm) return alert('A záró km-nek nagyobbnak kell lennie, mint a kezdő km!');
+
+            await db.collection('trips').add({
+                shiftId: activeShift.id,
+                userId: currentUser.uid,
+                carId: activeShift.carId,
+                type,
+                partner,
+                startLoc,
+                endLoc,
+                startKm,
+                endKm,
+                distance: endKm - startKm,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            // Reset Form inputs
+            document.getElementById('tripPartner').value = '';
+            document.getElementById('tripStartLoc').value = endLoc; // Auto populate next start location
+            document.getElementById('tripEndLoc').value = '';
+            document.getElementById('tripStartKm').value = endKm; // Auto populate next start km
+            document.getElementById('tripEndKm').value = endKm;
+            document.getElementById('distanceAlert').classList.add('hidden');
+
+            loadCurrentShiftTrips();
+        }
+
+        function autoFillEndKm() {
+            const startKm = document.getElementById('tripStartKm').value;
+            document.getElementById('tripEndKm').value = startKm;
+            checkDistanceAlert();
+        }
+
+        function checkDistanceAlert() {
+            const startKm = parseInt(document.getElementById('tripStartKm').value) || 0;
+            const endKm = parseInt(document.getElementById('tripEndKm').value) || 0;
+            const alertBox = document.getElementById('distanceAlert');
+            if (endKm - startKm > 250) {
+                alertBox.classList.remove('hidden');
+            } else {
+                alertBox.classList.add('hidden');
+            }
+        }
+
+        function toggleTripTypeStyle() {
+            const type = document.getElementById('tripType').value;
+            const selectEl = document.getElementById('tripType');
+            if (type === 'private') {
+                selectEl.className = "input-field font-semibold bg-amber-500/20 text-amber-300 border-amber-500/40";
+            } else {
+                selectEl.className = "input-field font-semibold";
+            }
+        }
+
+        async function loadCurrentShiftTrips() {
+            if (!activeShift) return;
+            const snap = await db.collection('trips')
+                .where('shiftId', '==', activeShift.id)
+                .orderBy('createdAt', 'asc')
+                .get();
+
+            const tbody = document.getElementById('currentTripsTable');
+            tbody.innerHTML = '';
+            let totalKm = 0;
+
+            snap.forEach(doc => {
+                const trip = doc.data();
+                totalKm += trip.distance;
+                const tr = document.createElement('tr');
+                tr.className = trip.type === 'private' ? 'bg-amber-500/10 text-amber-200' : 'hover:bg-slate-700/50';
+                tr.innerHTML = `
+                    <td class="p-2 font-semibold text-xs">${trip.type === 'private' ? '🏠 Magán' : '🏢 Munkavégzés'}</td>
+                    <td class="p-2">${trip.startLoc} ➔ ${trip.endLoc}</td>
+                    <td class="p-2">${trip.partner}</td>
+                    <td class="p-2 text-right font-mono font-bold">${trip.distance} km</td>
+                    <td class="p-2 text-center">
+                        <button onclick="deleteTrip('${doc.id}')" class="text-red-400 hover:text-red-300 p-1">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('shiftKmSummary').innerText = `Összesen: ${totalKm} km`;
+        }
+
+        async function deleteTrip(tripId) {
+            if (!confirm('Törlöd ezt az utat?')) return;
+            await db.collection('trips').doc(tripId).delete();
+            loadCurrentShiftTrips();
+        }
+
+        // ADMIN FUNCTIONS
+        async function loadAdminData() {
+            loadAdminCars();
+            loadAdminDriversSelect();
+        }
+
+        async function loadAdminCars() {
+            const container = document.getElementById('adminCarsList');
+            container.innerHTML = '';
+            const snap = await db.collection('cars').get();
+
+            snap.forEach(doc => {
+                const car = doc.data();
+                const div = document.createElement('div');
+                div.className = "bg-slate-900 p-3 rounded-lg border border-slate-700 flex justify-between items-center";
+                div.innerHTML = `
+                    <div>
+                        <span class="font-bold text-slate-200">${car.plate}</span>
+                        <span class="text-xs text-slate-400 ml-2">(${car.type})</span>
+                        <div class="text-xs mt-1">
+                            ${car.isLocked ? '<span class="text-red-400 font-semibold"><i class="fa-solid fa-lock"></i> Zárolva</span>' : '<span class="text-emerald-400 font-semibold"><i class="fa-solid fa-lock-open"></i> Szabad</span>'}
+                        </div>
+                    </div>
+                    ${car.isLocked ? `<button onclick="forceReleaseCar('${doc.id}')" class="bg-red-600/20 text-red-400 border border-red-500/30 hover:bg-red-600 hover:text-white px-2.5 py-1 rounded text-xs transition">Felszabadít</button>` : ''}
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        async function forceReleaseCar(carId) {
+            if (!confirm('Biztosan erőlteted a jármű felszabadítását?')) return;
+            await db.collection('cars').doc(carId).update({ isLocked: false, lockedBy: null });
+            loadAdminCars();
+            loadCarsSelect();
+        }
+
+        async function loadAdminDriversSelect() {
+            const select = document.getElementById('adminDriverSelect');
+            select.innerHTML = '<option value="">-- Válassz Sofőrt --</option>';
+            const snap = await db.collection('users').get();
+            snap.forEach(doc => {
+                const u = doc.data();
+                const opt = document.createElement('option');
+                opt.value = doc.id;
+                opt.innerText = `${u.email} (${u.role || 'driver'})`;
+                select.appendChild(opt);
+            });
+        }
+
+        // CONSOLIDATED ADMIN DRIVER SHIFT & PDF FUNCTIONALITY
+        async function loadAdminDriverShifts() {
+            const userId = document.getElementById('adminDriverSelect').value;
+            const dropdownContainer = document.getElementById('shiftDropdownContainer');
+            const shiftSelect = document.getElementById('adminShiftSelect');
+            const displayArea = document.getElementById('adminShiftDisplay');
+            const noShiftsMsg = document.getElementById('adminNoShiftsMsg');
+
+            displayArea.classList.add('hidden');
+            noShiftsMsg.classList.add('hidden');
+            dropdownContainer.classList.add('hidden');
+            shiftSelect.innerHTML = '';
+            loadedDriverShifts = [];
+
+            if (!userId) return;
+
+            // Fetch closed shifts for selected driver, newest first
+            const snap = await db.collection('shifts')
+                .where('userId', '==', userId)
+                .where('status', '==', 'closed')
+                .get();
+
+            if (snap.empty) {
+                noShiftsMsg.classList.remove('hidden');
+                return;
+            }
+
+            snap.forEach(doc => {
+                loadedDriverShifts.push({ id: doc.id, ...doc.data() });
+            });
+
+            // Sort manually client-side by startTime descending
+            loadedDriverShifts.sort((a, b) => b.startTime.toDate() - a.startTime.toDate());
+
+            // Populate Dropdown for previous shifts
+            loadedDriverShifts.forEach((shift, idx) => {
+                const dateStr = new Date(shift.startTime.toDate()).toLocaleDateString('hu-HU', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+                const opt = document.createElement('option');
+                opt.value = shift.id;
+                opt.innerText = `${idx === 0 ? '★ Legutolsó: ' : ''}${dateStr} (${shift.carId})`;
+                shiftSelect.appendChild(opt);
+            });
+
+            dropdownContainer.classList.remove('hidden');
+            // Select newest by default
+            shiftSelect.selectedIndex = 0;
+            displaySelectedAdminShift();
+        }
+
+        async function displaySelectedAdminShift() {
+            const shiftId = document.getElementById('adminShiftSelect').value;
+            currentAdminShift = loadedDriverShifts.find(s => s.id === shiftId);
+            if (!currentAdminShift) return;
+
+            const displayArea = document.getElementById('adminShiftDisplay');
+            displayArea.classList.remove('hidden');
+
+            const startDate = new Date(currentAdminShift.startTime.toDate()).toLocaleString('hu-HU');
+            const endDate = currentAdminShift.endTime ? new Date(currentAdminShift.endTime.toDate()).toLocaleString('hu-HU') : 'Folyamatban';
+
+            // Load Car Details
+            const carDoc = await db.collection('cars').doc(currentAdminShift.carId).get();
+            const carData = carDoc.exists ? carDoc.data() : { plate: currentAdminShift.carId, type: '' };
+
+            document.getElementById('adminShiftTitle').innerText = `${carData.plate} ${carData.type ? '(' + carData.type + ')' : ''}`;
+            document.getElementById('adminShiftMeta').innerText = `Műszak: ${startDate} ➔ ${endDate}`;
+            
+            const badge = document.getElementById('adminShiftBadge');
+            badge.innerText = "Lezárt Műszak";
+            badge.className = "text-xs px-2 py-0.5 rounded font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+
+            // Load Shift Trips
+            const tripsSnap = await db.collection('trips')
+                .where('shiftId', '==', currentAdminShift.id)
+                .orderBy('createdAt', 'asc')
+                .get();
+
+            let workKm = 0;
+            let privateKm = 0;
+            const tbody = document.getElementById('adminShiftTripsTable');
+            tbody.innerHTML = '';
+
+            currentAdminShift.trips = []; // Store for PDF
+
+            tripsSnap.forEach(doc => {
+                const trip = doc.data();
+                currentAdminShift.trips.push(trip);
+                if (trip.type === 'private') {
+                    privateKm += trip.distance;
+                } else {
+                    workKm += trip.distance;
+                }
+
+                const tr = document.createElement('tr');
+                tr.className = trip.type === 'private' ? 'bg-amber-500/10 text-amber-200' : 'hover:bg-slate-700/50';
+                tr.innerHTML = `
+                    <td class="p-2 font-semibold text-xs">${trip.type === 'private' ? '🏠 Magán' : '🏢 Munkavégzés'}</td>
+                    <td class="p-2">${trip.startLoc} ➔ ${trip.endLoc}</td>
+                    <td class="p-2">${trip.partner}</td>
+                    <td class="p-2 text-right font-mono font-bold">${trip.distance} km</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('adminWorkKm').innerText = `${workKm} km`;
+            document.getElementById('adminPrivateKm').innerText = `${privateKm} km`;
+            document.getElementById('adminTotalKm').innerText = `${workKm + privateKm} km`;
+
+            currentAdminShift.workKm = workKm;
+            currentAdminShift.privateKm = privateKm;
+            currentAdminShift.carPlate = carData.plate;
+        }
+
+        async function deleteCurrentAdminShift() {
+            if (!currentAdminShift) return;
+            if (!confirm(`Biztosan törlöd ezt a műszakot (${currentAdminShift.carPlate}) és a hozzá tartozó összes utat?`)) return;
+
+            // Delete associated trips
+            const tripsSnap = await db.collection('trips').where('shiftId', '==', currentAdminShift.id).get();
+            const batch = db.batch();
+            tripsSnap.forEach(doc => batch.delete(doc.ref));
+            
+            // Delete shift doc
+            batch.delete(db.collection('shifts').doc(currentAdminShift.id));
+            await batch.commit();
+
+            // Unlock car if stuck
+            await db.collection('cars').doc(currentAdminShift.carId).update({ isLocked: false, lockedBy: null });
+
+            alert('Műszak sikeresen törölve.');
+            loadAdminDriverShifts();
+            loadCarsSelect();
+        }
+
+        // PDF PREVIEW FUNCTION (OPENS IN NEW TAB INSTEAD OF DIRECT DOWNLOAD)
+        function previewPDF() {
+            if (!currentAdminShift || !currentAdminShift.trips) return alert('Nincs megjeleníthető adat!');
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // Header
+            doc.setFontSize(18);
+            doc.text("MENETLEVELEZESI JELENTÈS", 14, 20);
+
+            doc.setFontSize(10);
+            doc.text(`Sofor: ${currentAdminShift.userEmail}`, 14, 28);
+            doc.text(`Jarmu rendszam: ${currentAdminShift.carPlate}`, 14, 34);
+            const startStr = new Date(currentAdminShift.startTime.toDate()).toLocaleString('hu-HU');
+            doc.text(`Muszak kezdete: ${startStr}`, 14, 40);
+
+            // Table Rows
+            const tableData = currentAdminShift.trips.map(t => [
+                t.type === 'private' ? 'Magan' : 'Munkavegzes',
+                `${t.startLoc} -> ${t.endLoc}`,
+                t.partner || '-',
+                `${t.startKm} km`,
+                `${t.endKm} km`,
+                `${t.distance} km`
+            ]);
+
+            doc.autoTable({
+                startY: 46,
+                head: [['Tipus', 'Utvonal', 'Partner', 'Kezdo km', 'Zaro km', 'Tav']],
+                body: tableData,
+                theme: 'striped',
+                headStyles: { fillColor: [234, 88, 12] }
+            });
+
+            const finalY = doc.lastAutoTable.finalY + 10;
+            doc.setFontSize(11);
+            doc.text(`Munkavegzes osszesen: ${currentAdminShift.workKm} km`, 14, finalY);
+            doc.text(`Maganut osszesen: ${currentAdminShift.privateKm} km`, 14, finalY + 6);
+            doc.text(`Mindosszesen: ${currentAdminShift.workKm + currentAdminShift.privateKm} km`, 14, finalY + 12);
+
+            // Open PDF in a new browser tab instead of saving directly
+            const blobUrl = doc.output('bloburl');
+            window.open(blobUrl, '_blank');
+        }
+    </script>
+</body>
+</html>
