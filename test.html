@@ -783,11 +783,19 @@
     return;
   }
 
-  // --- RENDEZÉS KEZDŐ KM SZERINT NÖVEKVŐBEN (vagy időpont szerint) ---
+  // --- RENDEZÉS KEZDŐ KM SZERINT NÖVEKVŐBEN (másodlagosan ZÁRÓ KM szerint) ---
   displayTrips.sort((a, b) => {
-    const kmA = Number(a.startKm || a.kezdokm || a.start_km || 0);
-    const kmB = Number(b.startKm || b.kezdokm || b.start_km || 0);
-    if (kmA !== kmB) return kmA - kmB;
+    const kmA_start = Number(a.startKm !== undefined ? a.startKm : (a.kezdokm || a.start_km || 0));
+    const kmB_start = Number(b.startKm !== undefined ? b.startKm : (b.kezdokm || b.start_km || 0));
+    
+    if (kmA_start !== kmB_start) return kmA_start - kmB_start;
+    
+    // Ha a kezdő KM megegyezik (pl. 10140 mindkettő), a kisebb záró KM / kevesebb megtett km kerül előre
+    const kmA_end = Number(a.endKm !== undefined ? a.endKm : (a.zarokm || a.end_km || kmA_start));
+    const kmB_end = Number(b.endKm !== undefined ? b.endKm : (b.zarokm || b.end_km || kmB_start));
+    
+    if (kmA_end !== kmB_end) return kmA_end - kmB_end;
+
     return (a.time || '').localeCompare(b.time || '');
   });
 
