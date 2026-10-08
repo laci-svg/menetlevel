@@ -242,39 +242,31 @@
         </form>
       </div>
 
-      <!-- SOFŐRÖK MŰSZAKAI ÉS ELŐZMÉNYEI -->
+      <!-- SOFŐR AKTUÁLIS MŰSZAKJÁNAK ÚTJAI -->
     <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-md space-y-4">
-      
-      <!-- 1. LEGUTOLSÓ / AKTUÁLIS MŰSZAK -->
       <div class="border-b border-slate-800 pb-3">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-          <div>
-            <h3 class="text-base font-bold text-amber-400 flex items-center gap-2">
-              <span>👤</span> Aktuális / Legutolsó Műszak Útjai
-            </h3>
-            <p class="text-[10px] text-slate-400">A legutóbb rögzített műszak adatai és útjai nyomtatható formában.</p>
-          </div>
-          <button onclick="window.print()" class="text-xs bg-amber-600 hover:bg-amber-500 text-white font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition">
-            🖨️ Nyomtatás / PDF
-          </button>
-        </div>
-
-        <div class="overflow-x-auto rounded-xl border border-slate-800">
-          <table class="w-full text-left text-xs">
-            <thead class="bg-slate-950 text-slate-400 border-b border-slate-800">
-              <tr>
-                <th class="p-2.5">#</th>
-                <th class="p-2.5">Időpont</th>
-                <th class="p-2.5">Útvonal (Címek)</th>
-                <th id="thStartEndKmDriver" class="p-2.5 text-right hidden">Km Állás</th>
-                <th class="p-2.5 text-right">Megtett</th>
-                <th class="p-2.5 text-center">Művelet</th>
-              </tr>
-            </thead>
-            <tbody id="tripsTableBody" class="divide-y divide-slate-800"></tbody>
-          </table>
-        </div>
+        <h3 class="text-base font-bold text-orange-400 flex items-center gap-2">
+          <span>🚗</span> Aktuális Műszak Útjai
+        </h3>
+        <p class="text-[10px] text-slate-400">Kizárólag a jelenleg nyitott műszakban rögzített utak.</p>
       </div>
+
+      <div class="overflow-x-auto rounded-xl border border-slate-800">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-slate-950 text-slate-400 border-b border-slate-800">
+            <tr>
+              <th class="p-2.5">#</th>
+              <th class="p-2.5">Időpont</th>
+              <th class="p-2.5">Útvonal (Címek)</th>
+              <th id="thStartEndKmDriver" class="p-2.5 text-right hidden">Km Állás</th>
+              <th class="p-2.5 text-right">Megtett</th>
+              <th class="p-2.5 text-center">Művelet</th>
+            </tr>
+          </thead>
+          <tbody id="tripsTableBody" class="divide-y divide-slate-800"></tbody>
+        </table>
+      </div>
+    </div>
 
       <!-- 2. KORÁBBI MŰSZAKOK (LEGÖRDÜLŐ MENÜ) -->
       <div>
