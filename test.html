@@ -757,60 +757,46 @@
     };
 
     window.renderTripsTable = function() {
-      const viewMode = document.getElementById('viewModeSelect')?.value || 'workOnly';
-      const tbody = document.getElementById('tripsTableBody');
-      const thKm = document.getElementById('thStartEndKmDriver');
-      if (!tbody) return;
+  const viewMode = document.getElementById('viewModeSelect')?.value || 'workOnly';
+  const tbody = document.getElementById('tripsTableBody');
+  const thKm = document.getElementById('thStartEndKmDriver');
+  if (!tbody) return;
 
-      tbody.innerHTML = '';
+  if (thKm) {
+    if (viewMode === 'mixed') {
+      thKm.classList.remove('hidden');
+    } else {
+      thKm.classList.add('hidden');
+    }
+  }
 
-      if (!activeShift) {
-        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500 font-medium">Nincs aktív műszak. Indíts műszakot az út rögzítéséhez!</td></tr>';
-        return;
-      }
+  if (!activeShift) {
+    tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-500">Nincs aktív műszak.</td></tr>`;
+    return;
+  }
 
-      let tripsToShow = allTrips.filter(t => t.shiftId === activeShift.id);
+  const currentTrips = allTrips.filter(t => t.shiftId === activeShift.id);
+  const displayTrips = viewMode === 'workOnly' ? currentTrips.filter(t => !t.isPrivate) : currentTrips;
 
-      if (viewMode === 'workOnly') {
-        tripsToShow = tripsToShow.filter(t => t.type === 'work');
-        if (thKm) thKm.classList.add('hidden');
-      } else {
-        if (thKm) thKm.classList.remove('hidden');
-      }
+  if (displayTrips.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-500">Még nincs rögzített út ebben a műszakban.</td></tr>`;
+    return;
+  }
 
-      tripsToShow.sort((a, b) => new Date(a.date + ' ' + (a.time || '00:00')) - new Date(b.date + ' ' + (b.time || '00:00')));
-
-      if (tripsToShow.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="p-3 text-center text-slate-500">Még nincs rögzített út ebben a műszakban.</td></tr>';
-        return;
-      }
-
-      tripsToShow.forEach(trip => {
-        const isPrivate = trip.type === 'private';
-        const rowStyle = isPrivate 
-          ? "bg-gradient-to-r from-orange-950/60 to-red-950/60 border-l-4 border-l-orange-500 text-orange-200" 
-          : "hover:bg-slate-850 text-slate-200";
-
-        tbody.innerHTML += `
-          <tr class="${rowStyle} transition">
-            <td class="p-2.5 font-semibold text-slate-300">${trip.time || '-'}</td>
-            <td class="p-2.5">
-              <div class="font-medium">${trip.startLocation || '-'}</div>
-              <div class="text-[10px] text-slate-400">→ ${trip.endLocation || '-'}</div>
-            </td>
-            ${viewMode === 'mixed' ? '<td class="p-2.5 text-right font-mono text-[11px] text-slate-300">' + (trip.startKm || 0) + ' - ' + (trip.endKm || 0) + '</td>' : ''}
-            <td class="p-2.5 text-right font-bold ${isPrivate ? 'text-orange-300' : 'text-slate-100'}">
-              ${trip.workKm} km
-              ${isPrivate ? '<div class="text-[9px] font-normal text-red-400">(Privát)</div>' : ''}
-            </td>
-            <td class="p-2.5 text-center">
-              <button onclick="editTrip('${trip.id}')" class="text-blue-400 hover:text-blue-300 text-[11px] bg-blue-500/10 p-1 rounded border border-blue-500/20">✏</button>
-            </td>
-          </tr>
-        `;
-      });
-    };
-
+  tbody.innerHTML = displayTrips.map((t, index) => `
+    <tr class="border-b border-slate-800 hover:bg-slate-800/50">
+      <td class="p-2.5 font-bold text-slate-400">${index + 1}.</td>
+      <td class="p-2.5 font-mono text-slate-300">${t.time || ''}</td>
+      <td class="p-2.5 font-medium text-slate-200">${t.startAddress} &gt; ${t.endAddress}</td>
+      <td class="${viewMode === 'workOnly' ? 'hidden' : ''} p-2.5 text-right font-mono text-slate-400">${t.startKm} - ${t.endKm}</td>
+      <td class="p-2.5 text-right font-mono text-slate-300">${t.distance} km</td>
+      <td class="p-2.5 text-center">
+        <button onclick="editTrip('${t.id}')" class="text-xs bg-slate-800 hover:bg-slate-700 p-1 px-2 rounded border border-slate-700 mr-1" title="Szerkesztés">✏️</button>
+        <button onclick="deleteTrip('${t.id}')" class="text-xs bg-slate-800 hover:bg-red-900/50 text-red-400 p-1 px-2 rounded border border-slate-700" title="Törlés">🗑️</button>
+      </td>
+    </tr>
+  `).join('');
+};
     function populatePdfDriverDropdown() {
       const select = document.getElementById('pdfDriverSelect');
       if (!select) return;
