@@ -499,17 +499,38 @@
       alert(`🚀 Műszak sikeresen elindítva! (${selectedCar.plateNumber} - ${startTimeStr})`);
     };
 
-    window.endShift = async function() {
+   window.endShift = async function() {
       if (!activeShift) return;
 
+      // Megkeressük a műszakban eddig rögzített legutolsó utat
+      const currentShiftTrips = allTrips.filter(t => t.shiftId === activeShift.id);
+      
+      let minAllowedKm = activeShift.startKm || 0;
+
+      // Ha vannak már utak a műszakban, a legmagasabb záró KM az elvárt minimum
+      if (currentShiftTrips.length > 0) {
+        const maxTripKm = Math.max(...currentShiftTrips.map(t => Number(t.endKm) || 0));
+        if (maxTripKm > minAllowedKm) {
+          minAllowedKm = maxTripKm;
+        }
+      }
+
       const activeCar = allCars.find(c => c.plateNumber === activeShift.carPlate);
-      const endKmInput = prompt(`Műszak lezárása (${activeShift.carPlate}).\nKérlek add meg a záró kilométeróra állást:`, activeCar ? activeCar.lastKm : activeShift.startKm);
+      const defaultSuggestKm = activeCar && activeCar.lastKm > minAllowedKm ? activeCar.lastKm : minAllowedKm;
+
+      const endKmInput = prompt(
+        `Műszak lezárása (${activeShift.carPlate}).\n` +
+        `Legutolsó rögzített óraállás: ${minAllowedKm} km.\n` +
+        `Kérlek add meg a végső kilométeróra állást (min. ${minAllowedKm} km):`, 
+        defaultSuggestKm
+      );
       
       if (endKmInput === null) return;
       const endKm = Number(endKmInput);
 
-      if (isNaN(endKm) || endKm < activeShift.startKm) {
-        return alert("Érvénytelen kilométeróra állás!");
+      // SZIGORÚ ELLENŐRZÉS: Nem lehet kisebb, mint az utolsó rögzített út záró km-e!
+      if (isNaN(endKm) || endKm < minAllowedKm) {
+        return alert(`Hibás kilométeróra állás! A záró km nem lehet kisebb, mint az utolsó rögzített út óraállása (${minAllowedKm} km).`);
       }
 
       const now = new Date();
