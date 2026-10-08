@@ -757,17 +757,13 @@
     };
 
    window.renderTripsTable = function() {
-  const viewMode = document.getElementById('viewModeSelect')?.value || 'workOnly';
+  const viewMode = 'mixed';
   const tbody = document.getElementById('tripsTableBody');
   const thKm = document.getElementById('thStartEndKmDriver');
   if (!tbody) return;
 
   if (thKm) {
-    if (viewMode === 'mixed') {
-      thKm.classList.remove('hidden');
-    } else {
-      thKm.classList.add('hidden');
-    }
+    thKm.classList.remove('hidden');
   }
 
   if (!activeShift) {
@@ -775,13 +771,8 @@
     return;
   }
 
-  const currentTrips = allTrips.filter(t => t.shiftId === activeShift.id);
-  const displayTrips = viewMode === 'workOnly' ? currentTrips.filter(t => !t.isPrivate) : currentTrips;
-
-  if (displayTrips.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-500">Még nincs rögzített út ebben a műszakban.</td></tr>`;
-    return;
-  }
+  // Összes út betöltése (munka + privát egyben)
+  let displayTrips = [...allTrips];
 
   // --- RENDEZÉS KEZDŐ KM SZERINT NÖVEKVŐBEN (másodlagosan ZÁRÓ KM szerint) ---
   displayTrips.sort((a, b) => {
@@ -790,7 +781,6 @@
     
     if (kmA_start !== kmB_start) return kmA_start - kmB_start;
     
-    // Ha a kezdő KM megegyezik (pl. 10140 mindkettő), a kisebb záró KM / kevesebb megtett km kerül előre
     const kmA_end = Number(a.endKm !== undefined ? a.endKm : (a.zarokm || a.end_km || kmA_start));
     const kmB_end = Number(b.endKm !== undefined ? b.endKm : (b.zarokm || b.end_km || kmB_start));
     
@@ -800,31 +790,33 @@
   });
 
   tbody.innerHTML = displayTrips.map((t, index) => {
-    // Címek kiolvasása minden lehetséges mezőnévből
     const startAddr = t.startLocation || t.startAddress || t.honnan || '';
     const endAddr = t.endLocation || t.endAddress || t.hova || '';
-    
-    // Kezdő és záró Km biztonságos kiolvasása
+
     const sKm = t.startKm !== undefined ? t.startKm : (t.kezdokm !== undefined ? t.kezdokm : (t.start_km || 0));
     const eKm = t.endKm !== undefined ? t.endKm : (t.zarokm !== undefined ? t.zarokm : (t.end_km || 0));
-    
-    // Megtett távolság
     const dist = t.distance !== undefined ? t.distance : (t.megtettKm !== undefined ? t.megtettKm : (eKm - sKm || 0));
 
+    // Privát út ellenőrzése és színezése
+    const isPrivate = (t.type === 'private' || t.type === 'privat');
+    const rowClass = isPrivate 
+      ? "border-b border-amber-900/40 bg-amber-950/30 hover:bg-amber-900/40 text-amber-200" 
+      : "border-b border-slate-800 hover:bg-slate-800/50";
+
     return `
-      <tr class="border-b border-slate-800 hover:bg-slate-800/50">
-        <td class="p-2.5 font-bold text-slate-400">${index + 1}.</td>
-        <td class="p-2.5 font-mono text-slate-300">${t.time || ''}</td>
-        <td class="p-2.5 font-medium text-slate-200">${startAddr} &gt; ${endAddr}</td>
-        <td class="${viewMode === 'workOnly' ? 'hidden' : ''} p-2.5 text-right font-mono text-slate-400">${sKm} - ${eKm}</td>
-        <td class="p-2.5 text-right font-mono text-slate-300">${dist} km</td>
+      <tr class="${rowClass}">
+        <td class="p-2.5 font-bold ${isPrivate ? 'text-amber-400' : 'text-slate-400'}">${index + 1}.</td>
+        <td class="p-2.5 font-mono">${t.time || ''}</td>
+        <td class="p-2.5 font-medium">${startAddr} &gt; ${endAddr} ${isPrivate ? '<span class="text-xs bg-amber-900/60 text-amber-300 px-1.5 py-0.5 rounded ml-2 font-normal">Privát</span>' : ''}</td>
+        <td class="hidden p-2.5 text-right font-mono text-slate-400">${sKm} - ${eKm}</td>
+        <td class="p-2.5 text-right font-mono font-semibold">${dist} km</td>
         <td class="p-2.5 text-center">
-          <button onclick="editTrip('${t.id}')" class="text-xs bg-slate-800 hover:bg-slate-700 p-1 px-2 rounded border border-slate-700" title="Szerkesztés">✏️</button>
+          <button onclick="editTrip('${t.id}')" class="text-xs bg-slate-800 hover:bg-slate-700 p-1 px-2 rounded border border-slate-700 text-slate-200" title="Szerkesztés">✏️</button>
         </td>
       </tr>
     `;
   }).join('');
-}; 
+};
 
     window.deleteShift = async function(shiftId) {
       if (!confirm("Biztosan törölni szeretnéd ezt a műszakot és a hozzá tartozó összes utat?")) return;
