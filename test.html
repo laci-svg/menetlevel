@@ -777,30 +777,22 @@
   const thKm = document.getElementById('thStartEndKmDriver');
   if (!tbody) return;
 
-  if (thKm) {
-    thKm.classList.remove('hidden');
-  }
+  if (thKm) thKm.classList.remove('hidden');
 
+  // Ha nincs nyitott műszak, kiürítjük
   if (!activeShift) {
     tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-500">Nincs aktív műszak.</td></tr>`;
     return;
   }
 
-  // Összes út betöltése az aktuális műszakhoz
-  let displayTrips = [...allTrips];
+  // CSUPÁN AZ AKTUÁLIS MŰSZAKHOZ TARTOZÓ UTAK SZŰRÉSE
+  let displayTrips = allTrips.filter(t => t.shiftId === activeShift.id);
 
-  // Rendezés: Kezdő KM -> Záró KM -> Időpont
+  // Rendezés km/idő szerint
   displayTrips.sort((a, b) => {
-    const kmA_start = Number(a.startKm !== undefined ? a.startKm : (a.kezdokm || a.start_km || 0));
-    const kmB_start = Number(b.startKm !== undefined ? b.startKm : (b.kezdokm || b.start_km || 0));
-    
-    if (kmA_start !== kmB_start) return kmA_start - kmB_start;
-    
-    const kmA_end = Number(a.endKm !== undefined ? a.endKm : (a.zarokm || a.end_km || kmA_start));
-    const kmB_end = Number(b.endKm !== undefined ? b.endKm : (b.zarokm || b.end_km || kmB_start));
-    
-    if (kmA_end !== kmB_end) return kmA_end - kmB_end;
-
+    const kmA = Number(a.startKm !== undefined ? a.startKm : (a.kezdokm || 0));
+    const kmB = Number(b.startKm !== undefined ? b.startKm : (b.kezdokm || 0));
+    if (kmA !== kmB) return kmA - kmB;
     return (a.time || '').localeCompare(b.time || '');
   });
 
@@ -809,14 +801,12 @@
     return;
   }
 
-  // Táblázat kirajzolása
   tbody.innerHTML = displayTrips.map((t, index) => {
     const startAddr = t.startLocation || t.startAddress || t.honnan || '';
     const endAddr = t.endLocation || t.endAddress || t.hova || '';
-
-    const sKm = t.startKm !== undefined ? t.startKm : (t.kezdokm !== undefined ? t.kezdokm : (t.start_km || 0));
-    const eKm = t.endKm !== undefined ? t.endKm : (t.zarokm !== undefined ? t.zarokm : (t.end_km || 0));
-    const dist = t.distance !== undefined ? t.distance : (t.megtettKm !== undefined ? t.megtettKm : (eKm - sKm || 0));
+    const sKm = t.startKm !== undefined ? t.startKm : (t.kezdokm || 0);
+    const eKm = t.endKm !== undefined ? t.endKm : (t.zarokm || 0);
+    const dist = t.distance !== undefined ? t.distance : (t.megtettKm || (eKm - sKm));
 
     const isPrivate = (t.type === 'private' || t.type === 'privat');
     const rowClass = isPrivate 
