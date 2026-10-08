@@ -793,8 +793,8 @@
 
   tbody.innerHTML = displayTrips.map((t, index) => {
     // Címek kiolvasása minden lehetséges mezőnévből
-    const startAddr = t.startAddress || t.honnan || t.from || t.start || t.start_address || '';
-    const endAddr = t.endAddress || t.hova || t.to || t.destination || t.end_address || '';
+    const startAddr = t.startLocation || t.startAddress || t.honnan || '';
+    const endAddr = t.endLocation || t.endAddress || t.hova || '';
     
     // Kezdő és záró Km biztonságos kiolvasása
     const sKm = t.startKm !== undefined ? t.startKm : (t.kezdokm !== undefined ? t.kezdokm : (t.start_km || 0));
