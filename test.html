@@ -9,12 +9,29 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
   <style>
-    body {
-      -webkit-tap-highlight-color: transparent;
+  body {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  @media print {
+    body * {
+      visibility: hidden;
     }
-  </style>
-</head>
-<body class="bg-slate-950 min-h-screen text-slate-100 font-sans pb-10">
+    #tripsTableBody, #tripsTableBody *, table, table * {
+      visibility: visible;
+      color: black !important;
+    }
+    table {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+    }
+    button {
+      display: none !important;
+    }
+  }
+</style>
 
   <!-- BEJELENTKEZÉSI KÉPERNYŐ -->
   <div id="authScreen" class="max-w-md mx-auto min-h-screen flex flex-col justify-center p-4">
@@ -755,22 +772,71 @@
       resetTripForm();
     });
 
-    window.resetTripForm = function() {
-      document.getElementById('tripForm').reset();
-      document.getElementById('editingTripId').value = '';
-      document.getElementById('formTitle').textContent = 'Új Út Rögzítése';
-      document.getElementById('saveTripBtn').textContent = 'Mentés';
-      document.getElementById('cancelEditBtn').classList.add('hidden');
-      calculateCalculatedKm();
+    window.renderTripsTable = function() {
+  const tbody = document.getElementById('tripsTableBody');
+  const thKm = document.getElementById('thStartEndKmDriver');
+  if (!tbody) return;
 
-      const activeCar = allCars.find(c => c.plateNumber === activeShift?.carPlate);
-      if (activeCar) {
-        document.getElementById('tripStartKm').value = activeCar.lastKm || 0;
-        document.getElementById('tripEndKm').value = activeCar.lastKm || 0;
-        document.getElementById('tripStartLocation').value = activeCar.lastLocation || '';
-        calculateCalculatedKm();
-      }
-    };
+  if (thKm) {
+    thKm.classList.remove('hidden');
+  }
+
+  if (!activeShift) {
+    tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-500">Nincs aktív műszak.</td></tr>`;
+    return;
+  }
+
+  // Összes út betöltése az aktuális műszakhoz
+  let displayTrips = [...allTrips];
+
+  // Rendezés: Kezdő KM -> Záró KM -> Időpont
+  displayTrips.sort((a, b) => {
+    const kmA_start = Number(a.startKm !== undefined ? a.startKm : (a.kezdokm || a.start_km || 0));
+    const kmB_start = Number(b.startKm !== undefined ? b.startKm : (b.kezdokm || b.start_km || 0));
+    
+    if (kmA_start !== kmB_start) return kmA_start - kmB_start;
+    
+    const kmA_end = Number(a.endKm !== undefined ? a.endKm : (a.zarokm || a.end_km || kmA_start));
+    const kmB_end = Number(b.endKm !== undefined ? b.endKm : (b.zarokm || b.end_km || kmB_start));
+    
+    if (kmA_end !== kmB_end) return kmA_end - kmB_end;
+
+    return (a.time || '').localeCompare(b.time || '');
+  });
+
+  if (displayTrips.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-500">Még nincsenek rögzített utak ebben a műszakban.</td></tr>`;
+    return;
+  }
+
+  // Táblázat kirajzolása
+  tbody.innerHTML = displayTrips.map((t, index) => {
+    const startAddr = t.startLocation || t.startAddress || t.honnan || '';
+    const endAddr = t.endLocation || t.endAddress || t.hova || '';
+
+    const sKm = t.startKm !== undefined ? t.startKm : (t.kezdokm !== undefined ? t.kezdokm : (t.start_km || 0));
+    const eKm = t.endKm !== undefined ? t.endKm : (t.zarokm !== undefined ? t.zarokm : (t.end_km || 0));
+    const dist = t.distance !== undefined ? t.distance : (t.megtettKm !== undefined ? t.megtettKm : (eKm - sKm || 0));
+
+    const isPrivate = (t.type === 'private' || t.type === 'privat');
+    const rowClass = isPrivate 
+      ? "border-b border-amber-900/40 bg-amber-950/30 text-amber-200" 
+      : "border-b border-slate-800 hover:bg-slate-800/50";
+
+    return `
+      <tr class="${rowClass}">
+        <td class="p-2.5 font-bold ${isPrivate ? 'text-amber-400' : 'text-slate-400'}">${index + 1}.</td>
+        <td class="p-2.5 font-mono">${t.time || ''}</td>
+        <td class="p-2.5 font-medium">${startAddr} &rarr; ${endAddr} ${isPrivate ? '<span class="text-xs bg-amber-900/60 text-amber-300 px-1.5 py-0.5 rounded ml-2 font-normal">Privát</span>' : ''}</td>
+        <td class="p-2.5 text-right font-mono text-slate-400">${sKm} - ${eKm}</td>
+        <td class="p-2.5 text-right font-mono font-semibold ${isPrivate ? 'text-amber-400' : ''}">${dist} km</td>
+        <td class="p-2.5 text-center">
+          <button onclick="editTrip('${t.id}')" class="text-xs bg-slate-800 hover:bg-slate-700 p-1 px-2 rounded border border-slate-700 text-slate-200" title="Szerkesztés">✏️</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+};
 
    window.renderTripsTable = function() {
   const viewMode = 'mixed';
