@@ -53,7 +53,7 @@
           <h2 class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-red-500">Menetlevél</h2>
           <p class="text-xs text-slate-400">Jelentkezz be a folytatáshoz</p>
         </div>
-        <form id="loginForm" class="space-y-4">
+        <form id="loginForm" onsubmit="handleLoginSubmit(event)" class="space-y-4">
           <div>
             <label class="block text-xs font-semibold text-slate-300 mb-1">Email cím</label>
             <input type="email" id="loginEmail" required class="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none">
@@ -62,9 +62,9 @@
             <label class="block text-xs font-semibold text-slate-300 mb-1">Jelszó</label>
             <input type="password" id="loginPassword" required class="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none">
           </div>
-          <button type="submit" class="w-full bg-gradient-to-r from-orange-500 to-red-600 text-white py-3.5 rounded-xl font-bold hover:opacity-90 active:scale-[0.98] transition">Bejelentkezés</button>
+          <button type="submit" id="loginBtn" class="w-full bg-gradient-to-r from-orange-500 to-red-600 text-white py-3.5 rounded-xl font-bold hover:opacity-90 active:scale-[0.98] transition">Bejelentkezés</button>
         </form>
-        <p id="authError" class="text-red-400 text-sm text-center hidden bg-red-950/50 border border-red-800/50 p-2 rounded-xl"></p>
+        <p id="authError" class="text-red-400 text-sm text-center hidden bg-red-950/50 border border-red-800/50 p-2 rounded-xl break-words"></p>
       </div>
     </div>
 
@@ -412,6 +412,30 @@
     let isAdminMode = false;
     let selectedCarForModal = null;
 
+    // GLOBÁLIS BEJELENTKEZÉSI KEZELŐ
+    window.handleLoginSubmit = async function(e) {
+      if (e) e.preventDefault();
+      const email = document.getElementById('loginEmail').value.trim();
+      const pass = document.getElementById('loginPassword').value;
+      const errEl = document.getElementById('authError');
+      const btn = document.getElementById('loginBtn');
+      
+      errEl.classList.add('hidden');
+      btn.disabled = true;
+      btn.textContent = 'Bejelentkezés...';
+
+      try {
+        await signInWithEmailAndPassword(auth, email, pass);
+      } catch (err) {
+        console.error("Bejelentkezési hiba:", err);
+        errEl.textContent = `Hiba (${err.code}): ${err.message}`;
+        errEl.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Bejelentkezés';
+      }
+    };
+
     function sanitizeText(str) {
       if (!str) return '';
       return String(str)
@@ -421,7 +445,6 @@
         .replace(/—/g, '-');
     }
 
-    // UTÁK SZIGORÚ SEGÉDFÜGGVÉNYE A NÖVEKVŐ KM ÁLLÁS SZERINTI RENDEZÉSHEZ
     function sortTripsByKmAscending(trips) {
       return [...trips].sort((a, b) => {
         const kmA = Number(a.startKm !== undefined ? a.startKm : 0);
@@ -513,22 +536,6 @@
 
       renderTripsTable();
     }
-
-    document.getElementById('loginForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const email = document.getElementById('loginEmail').value.trim();
-      const pass = document.getElementById('loginPassword').value;
-      const errEl = document.getElementById('authError');
-      errEl.classList.add('hidden');
-
-      try {
-        await signInWithEmailAndPassword(auth, email, pass);
-      } catch (err) {
-        console.error("Bejelentkezési hiba:", err);
-        errEl.textContent = `Hiba (${err.code}): ${err.message}`;
-        errEl.classList.remove('hidden');
-      }
-    });
 
     window.logout = function() {
       signOut(auth);
@@ -962,7 +969,6 @@
       renderDriverCarSelection();
     };
 
-    // SOFŐR FELÜLET: CSUPÁN AZ AKTUÁLIS MŰSZAK UTJAI NÖVEKVŐ KM SZERINT
     window.renderTripsTable = function() {
       const tbody = document.getElementById('tripsTableBody');
       const thKm = document.getElementById('thStartEndKmDriver');
@@ -991,7 +997,501 @@
         }
       }
 
-      // SZIGORÚ RENDEZÉS KM SZERINT
       displayTrips = sortTripsByKmAscending(displayTrips);
 
-      if
+      if (displayTrips.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-500">Még nincsenek rögzített utak ebben a műszakban.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = displayTrips.map((t, index) => {
+        const startAddr = t.startLocation || '';
+        const endAddr = t.endLocation || '';
+        const sKm = t.startKm !== undefined ? t.startKm : 0;
+        const eKm = t.endKm !== undefined ? t.endKm : 0;
+        const dist = t.workKm !== undefined ? t.workKm : (eKm - sKm);
+
+        const isPrivate = (t.type === 'private' || t.type === 'privat');
+        const rowClass = isPrivate 
+          ? "border-b border-amber-900/40 bg-amber-950/30 text-amber-200" 
+          : "border-b border-slate-800 hover:bg-slate-800/50";
+
+        return `
+          <tr class="${rowClass}">
+            <td class="p-2.5 font-bold ${isPrivate ? 'text-amber-400' : 'text-slate-400'}">${index + 1}.</td>
+            <td class="p-2.5 font-mono">${t.time || ''}</td>
+            <td class="p-2.5 font-medium">${index + 1}. ${startAddr} &rarr; ${endAddr} ${isPrivate ? '<span class="text-xs bg-amber-900/60 text-amber-300 px-1.5 py-0.5 rounded ml-2 font-normal">Privát</span>' : ''}</td>
+            <td class="p-2.5 text-right font-mono text-slate-400">${sKm} - ${eKm}</td>
+            <td class="p-2.5 text-right font-mono font-semibold ${isPrivate ? 'text-amber-400' : ''}">${dist} km</td>
+            <td class="p-2.5 text-center">
+              <button onclick="editTrip('${t.id}')" class="text-xs bg-slate-800 hover:bg-slate-700 p-1 px-2 rounded border border-slate-700 text-slate-200" title="Szerkesztés">✏️</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    };
+
+    window.renderAdminShifts = function() {
+      const closedContainer = document.getElementById('adminClosedShiftsContainer');
+      const activeContainer = document.getElementById('adminActiveShiftsContainer');
+      if (!closedContainer || !activeContainer) return;
+
+      const closedShifts = allShifts.filter(s => s.status === 'closed');
+      const activeShifts = allShifts.filter(s => s.status === 'active');
+
+      if (activeShifts.length === 0) {
+        activeContainer.innerHTML = `<p class="text-xs text-slate-500 text-center p-4 bg-slate-950/80 rounded-xl">Jelenleg nincs egyetlen nyitott műszak sem.</p>`;
+      } else {
+        activeContainer.innerHTML = activeShifts.map((shift) => {
+          let shiftTrips = allTrips.filter(t => t.shiftId === shift.id);
+          shiftTrips = sortTripsByKmAscending(shiftTrips);
+
+          const totalKm = shiftTrips.reduce((sum, t) => sum + Number(t.workKm || 0), 0);
+
+          return `
+            <details class="group border border-emerald-500/40 bg-slate-950/90 rounded-xl overflow-hidden shadow-md">
+              <summary class="flex items-center justify-between p-3 cursor-pointer hover:bg-slate-800/50 transition select-none">
+                <div>
+                  <div class="text-xs font-bold text-slate-200">${shift.driverEmail || 'Sofőr'}</div>
+                  <div class="text-[10px] text-emerald-400 font-semibold">${shift.carPlate || 'Rendszám'} • Kezdve: ${shift.startTime || '-'}</div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-mono font-bold text-orange-400">${totalKm} km</span>
+                  <span class="text-xs text-slate-500 group-open:rotate-180 transition-transform">▼</span>
+                </div>
+              </summary>
+              <div class="p-2 border-t border-slate-800 bg-slate-900/60 text-xs space-y-1">
+                ${shiftTrips.length === 0 
+                  ? '<p class="text-[11px] text-slate-500 italic text-center">Még nincs rögzített út.</p>'
+                  : shiftTrips.map((t, idx) => `
+                    <div class="flex justify-between text-[11px] border-b border-slate-800/50 pb-1">
+                      <span>${idx+1}.${t.startLocation} &rarr; ${t.endLocation}${t.type === 'private' ? '<span class="text-[9px] text-amber-400 bg-amber-950 px-1 rounded ml-1">Privát</span>' : ''}</span>
+                      <span class="font-mono text-orange-400 font-bold">${t.workKm} km</span>
+                    </div>
+                  `).join('')
+                }
+              </div>
+            </details>
+          `;
+        }).join('');
+      }
+
+      if (closedShifts.length === 0) {
+        closedContainer.innerHTML = `<p class="text-xs text-slate-500 text-center p-4 bg-slate-950/80 rounded-xl">Nincsenek korábbi lezárt műszakok.</p>`;
+        return;
+      }
+
+      const driverGroups = {};
+      closedShifts.forEach(shift => {
+        const email = shift.driverEmail || 'Ismeretlen Sofőr';
+        if (!driverGroups[email]) driverGroups[email] = [];
+        driverGroups[email].push(shift);
+      });
+
+      closedContainer.innerHTML = Object.keys(driverGroups).map((driverEmail) => {
+        const driverShifts = driverGroups[driverEmail];
+        const driverTotalKm = driverShifts.reduce((sum, s) => {
+          const sTrips = allTrips.filter(t => t.shiftId === s.id);
+          return sum + sTrips.reduce((tSum, t) => tSum + Number(t.workKm || 0), 0);
+        }, 0);
+
+        const dateGroups = {};
+        driverShifts.forEach(shift => {
+          const date = shift.startDate || 'Ismeretlen Dátum';
+          if (!dateGroups[date]) dateGroups[date] = [];
+          dateGroups[date].push(shift);
+        });
+
+        const sortedDates = Object.keys(dateGroups).sort((a, b) => new Date(b) - new Date(a));
+
+        return `
+          <details class="group border border-slate-800 bg-slate-950/90 rounded-xl overflow-hidden mb-3">
+            <summary class="flex items-center justify-between p-3 cursor-pointer hover:bg-slate-900/80 transition select-none">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-slate-200">👤 ${driverEmail}</span>
+                <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full border border-slate-700">${driverShifts.length} műszak</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-mono font-bold text-orange-400">${driverTotalKm} km total</span>
+                <span class="text-xs text-slate-500 group-open:rotate-180 transition-transform">▼</span>
+              </div>
+            </summary>
+
+            <div class="p-3 border-t border-slate-800 bg-slate-900/30 space-y-3">
+              ${sortedDates.map((date) => {
+                const dayShifts = dateGroups[date];
+
+                return `
+                  <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3 space-y-2">
+                    <div class="flex justify-between items-center border-b border-slate-800/80 pb-1.5">
+                      <span class="text-xs font-extrabold text-orange-400">📅 ${date}</span>
+                      <span class="text-[10px] text-slate-500 font-semibold">${dayShifts.length} Műszak ezen a napon</span>
+                    </div>
+
+                    <div class="space-y-2">
+                      ${dayShifts.map((shift, shiftIdx) => {
+                        let shiftTrips = allTrips.filter(t => t.shiftId === shift.id);
+                        shiftTrips = sortTripsByKmAscending(shiftTrips);
+
+                        const workKmTotal = shiftTrips
+                          .filter(t => t.type === 'work')
+                          .reduce((sum, t) => sum + Number(t.workKm || 0), 0);
+
+                        const totalCombinedKm = shiftTrips.reduce((sum, t) => sum + Number(t.workKm || 0), 0);
+                        const isLimitExceeded = (workKmTotal >= 250);
+
+                        return `
+                          <details class="group/shift border ${isLimitExceeded ? 'border-red-500/80 bg-red-950/20' : 'border-slate-800/80 bg-slate-950'} rounded-lg p-2.5">
+                            <summary class="flex items-center justify-between cursor-pointer select-none">
+                              <div>
+                                <div class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                                  <span>${dayShifts.length > 1 ? (shiftIdx + 1) + '. Műszak: ' : ''}<span class="text-orange-300 font-semibold">${shift.carPlate || 'Autó'}</span></span>
+                                  <span class="text-[10px] text-slate-400">(${shift.startTime || '-'} &rarr; ${shift.endTime || '-'})</span>
+                                  ${isLimitExceeded ? '<span class="bg-red-600 text-white text-[9px] font-extrabold px-1.5 py-0.2 rounded">⚠️ 250+ KM</span>' : ''}
+                                </div>
+                              </div>
+                              <div class="flex items-center gap-1.5">
+                                <span class="text-xs font-mono font-bold text-slate-300 mr-1">${totalCombinedKm} km</span>
+                                <button onclick="exportShiftPDF('${shift.id}', 'work')" title="Munkakilométer PDF" class="text-[9px] bg-emerald-700 hover:bg-emerald-600 text-white px-2 py-1 rounded border border-emerald-600 transition">Munka PDF</button>
+                                <button onclick="exportShiftPDF('${shift.id}', 'all')" title="Összesített PDF" class="text-[9px] bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded border border-amber-500 transition">Összes PDF</button>
+                                <button onclick="exportShiftPDF('${shift.id}', 'private')" title="Privát PDF" class="text-[9px] bg-purple-700 hover:bg-purple-600 text-white px-2 py-1 rounded border border-purple-600 transition">Privát PDF</button>
+                                <button onclick="deleteShift('${shift.id}')" class="text-[9px] bg-red-900/50 hover:bg-red-800 text-red-300 px-1.5 py-1 rounded border border-red-800 transition">🗑️</button>
+                                <span class="text-xs text-slate-500 group-open/shift:rotate-180 transition-transform">▼</span>
+                              </div>
+                            </summary>
+
+                            <div class="mt-2 pt-2 border-t border-slate-800/60 bg-slate-900/60 rounded p-2">
+                              ${shiftTrips.length === 0 
+                                ? '<p class="text-[11px] text-slate-500 italic text-center">Ebben a műszakban nem rögzítettek utat.</p>' 
+                                : `
+                                <table class="w-full text-left text-xs">
+                                  <thead class="text-slate-500 border-b border-slate-800">
+                                    <tr>
+                                      <th class="p-1">#</th>
+                                      <th class="p-1">Idő</th>
+                                      <th class="p-1">Útvonal</th>
+                                      <th class="p-1 text-right">Km</th>
+                                      <th class="p-1 text-right">Megtett</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody class="divide-y divide-slate-800/50">
+                                    ${shiftTrips.map((t, tIdx) => `
+                                      <tr>
+                                        <td class="p-1 font-bold text-slate-500">${tIdx + 1}.</td>
+                                        <td class="p-1 font-mono text-slate-400">${t.time || ''}</td>
+                                        <td class="p-1">${tIdx + 1}. ${t.startLocation || ''} &rarr; ${t.endLocation || ''} ${t.type === 'private' ? '<span class="text-[9px] text-amber-400 bg-amber-950 px-1 rounded">Privát</span>' : ''}</td>
+                                        <td class="p-1 text-right font-mono text-slate-400">${t.startKm || 0} - ${t.endKm || 0}</td>
+                                        <td class="p-1 text-right font-mono font-semibold text-orange-400">${t.workKm || 0} km</td>
+                                      </tr>
+                                    `).join('')}
+                                  </tbody>
+                                </table>
+                              `}
+                            </div>
+                          </details>
+                        `;
+                      }).join('')}
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </details>
+        `;
+      }).join('');
+    };
+
+    window.deleteShift = async function(shiftId) {
+      if (!confirm("Biztosan törölni szeretnéd ezt a műszakot és a hozzá tartozó összes utat?")) return;
+
+      const shift = allShifts.find(s => s.id === shiftId);
+      if (shift && shift.status === 'active') {
+        const car = allCars.find(c => c.plateNumber === shift.carPlate);
+        if (car) {
+          await updateDoc(doc(db, "cars", car.id), {
+            currentDriverUid: null,
+            currentDriverEmail: null
+          });
+        }
+      }
+
+      const shiftTrips = allTrips.filter(t => t.shiftId === shiftId);
+      for (const trip of shiftTrips) {
+        await deleteDoc(doc(db, "trips", trip.id));
+      }
+
+      await deleteDoc(doc(db, "shifts", shiftId));
+      alert("Műszak és a hozzá tartozó utak törölve!");
+    };
+
+    window.editTrip = function(tripId) {
+      const trip = allTrips.find(t => t.id === tripId);
+      if (!trip) return;
+
+      document.getElementById('editingTripId').value = trip.id;
+      document.getElementById('editingTripTime').value = trip.time || '';
+      document.getElementById('tripType').value = trip.type;
+      document.getElementById('tripStartLocation').value = trip.startLocation || '';
+      document.getElementById('tripEndLocation').value = trip.endLocation || '';
+      document.getElementById('tripStartKm').value = trip.startKm || 0;
+      document.getElementById('tripEndKm').value = trip.endKm || 0;
+      document.getElementById('tripPassengers').value = trip.passengerCount || 0;
+
+      calculateCalculatedKm();
+
+      document.getElementById('formTitle').textContent = 'Út Módosítása';
+      document.getElementById('saveTripBtn').textContent = 'Frissítés';
+      document.getElementById('cancelEditBtn').classList.remove('hidden');
+    };
+
+    window.toggleCustomPdfDates = function() {
+      const period = document.getElementById('pdfPeriodSelect').value;
+      const container = document.getElementById('pdfCustomDateContainer');
+      if (period === 'custom') {
+        container.classList.remove('hidden');
+      } else {
+        container.classList.add('hidden');
+      }
+    };
+
+    window.exportShiftPDF = function(shiftId, pdfType) {
+      const shift = allShifts.find(s => s.id === shiftId);
+      if (!shift) return alert("Műszak nem található!");
+
+      let shiftTrips = allTrips.filter(t => t.shiftId === shiftId);
+
+      if (pdfType === 'work') {
+        shiftTrips = shiftTrips.filter(t => t.type === 'work');
+      } else if (pdfType === 'private') {
+        shiftTrips = shiftTrips.filter(t => t.type === 'private');
+      }
+
+      if (shiftTrips.length === 0) return alert("Nincs ilyen típusú út ebben a műszakban!");
+
+      const typeTitle = pdfType === 'work' 
+        ? 'Munkakilométer Menetlevél' 
+        : (pdfType === 'private' ? 'Privát Menetlevél' : 'Összesített Menetlevél');
+
+      const shiftDateStr = shift.startDate || (shiftTrips.length > 0 ? shiftTrips[0].date : '');
+      const fileName = `menetlevel_${pdfType}_${(shift.driverEmail || 'sofor').split('@')[0]}_${shiftDateStr}.pdf`;
+
+      shiftTrips = sortTripsByKmAscending(shiftTrips);
+      const firstTripTime = shiftTrips.length > 0 ? shiftTrips[0].time : '-';
+
+      generatePDFForTrips(
+        shiftTrips, 
+        typeTitle, 
+        `Sofőr: ${shift.driverEmail} | Jármű: ${shift.carPlate || '-'} | Dátum: ${shiftDateStr} | Kezdő időpont: ${firstTripTime}`, 
+        fileName, 
+        pdfType
+      );
+    };
+
+    function generatePDFForTrips(tripsArray, title, subtitle, filename, pdfType = 'all') {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      tripsArray = sortTripsByKmAscending(tripsArray);
+
+      const safeTitle = sanitizeText(title);
+      const safeSubtitle = sanitizeText(subtitle);
+
+      doc.setFontSize(16);
+      doc.setFont(undefined, 'bold');
+      doc.text(safeTitle, 14, 15);
+      
+      doc.setFontSize(9);
+      doc.setFont(undefined, 'normal');
+      doc.setTextColor(70, 70, 70);
+      doc.text(safeSubtitle, 14, 21);
+      
+      doc.setFontSize(8);
+      doc.setTextColor(120, 120, 120);
+      doc.text(sanitizeText(`Generálva: ${new Date().toLocaleDateString('hu-HU')} ${new Date().toLocaleTimeString('hu-HU')}`), 14, 26);
+
+      let totalWorkKm = 0;
+      let totalPrivateKm = 0;
+      let totalPassengers = 0;
+
+      tripsArray.forEach(t => {
+        const km = Number(t.workKm) || 0;
+        const p = Number(t.passengerCount) || 0;
+        totalPassengers += p;
+
+        if (t.type === 'private') {
+          totalPrivateKm += km;
+        } else {
+          totalWorkKm += km;
+        }
+      });
+
+      const totalCombinedKm = totalWorkKm + totalPrivateKm;
+
+      let rawHeaders = [];
+      if (pdfType === 'work') {
+        rawHeaders = ['#', 'Időpont', 'Autó', 'Útvonal (Sorszámozott Címek)', 'Megtett Km', 'Utasok'];
+      } else if (pdfType === 'private') {
+        rawHeaders = ['#', 'Időpont', 'Autó', 'Útvonal (Sorszámozott Címek)', 'Km Állás', 'Megtett Km'];
+      } else {
+        rawHeaders = ['#', 'Időpont', 'Autó', 'Útvonal (Sorszámozott Címek)', 'Km Állás', 'Megtett Km', 'Utasok'];
+      }
+
+      const headers = rawHeaders.map(h => sanitizeText(h));
+
+      const rows = tripsArray.map((t, idx) => {
+        const routeNum = `${idx + 1}. ${t.startLocation || '-'} > ${t.endLocation || '-'}`;
+        const route = sanitizeText(routeNum);
+        const kmText = sanitizeText(`${t.workKm} km${t.type === 'private' ? ' (Privát)' : ''}`);
+        const passText = sanitizeText(`${t.passengerCount || 0} fő`);
+
+        if (pdfType === 'work') {
+          return [
+            `${idx + 1}.`,
+            t.time || '-',
+            t.carPlate || '-',
+            route,
+            kmText,
+            passText
+          ];
+        } else if (pdfType === 'private') {
+          return [
+            `${idx + 1}.`,
+            t.time || '-',
+            t.carPlate || '-',
+            route,
+            `${t.startKm || 0} - ${t.endKm || 0}`,
+            kmText
+          ];
+        } else {
+          return [
+            `${idx + 1}.`,
+            t.time || '-',
+            t.carPlate || '-',
+            route,
+            `${t.startKm || 0} - ${t.endKm || 0}`,
+            kmText,
+            passText
+          ];
+        }
+      });
+
+      doc.autoTable({
+        startY: 30,
+        head: [headers],
+        body: rows,
+        styles: { fontSize: 8.5, cellPadding: 2.5 },
+        headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' },
+        didParseCell: function(data) {
+          if (data.section === 'body') {
+            const trip = tripsArray[data.row.index];
+            if (trip && trip.type === 'private') {
+              data.cell.styles.fillColor = [254, 243, 199];
+              data.cell.styles.fontStyle = 'bold';
+            }
+          }
+        }
+      });
+
+      const finalY = doc.lastAutoTable.finalY + 8;
+      let boxHeight = pdfType === 'all' ? 36 : 30;
+      if (totalWorkKm >= 250 && pdfType !== 'private') boxHeight += 8;
+
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.roundedRect(14, finalY, 182, boxHeight, 2, 2, 'FD');
+
+      doc.setFontSize(9.5);
+      doc.setFont(undefined, 'bold');
+      doc.setTextColor(30, 41, 59);
+      doc.text("ÖSSZESÍTÉS", 18, finalY + 6);
+
+      doc.setFontSize(8.5);
+      doc.setFont(undefined, 'normal');
+      let currentY = finalY + 12;
+
+      if (pdfType === 'work') {
+        doc.text(sanitizeText(`Összesen megtett munkakilométer: ${totalWorkKm} km`), 18, currentY);
+        currentY += 5;
+        doc.text(sanitizeText(`Összesített utasszám: ${totalPassengers} fő`), 18, currentY);
+        currentY += 5;
+      } else if (pdfType === 'private') {
+        doc.text(sanitizeText(`Összesen megtett privát kilométer: ${totalPrivateKm} km`), 18, currentY);
+        currentY += 5;
+      } else {
+        doc.text(sanitizeText(`Összes munkakilométer: ${totalWorkKm} km`), 18, currentY);
+        currentY += 5;
+        doc.text(sanitizeText(`Összes privát kilométer: ${totalPrivateKm} km`), 18, currentY);
+        currentY += 5;
+        
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(15, 23, 42);
+        doc.text(sanitizeText(`ÖSSZESEN MEGTETT KILOMÉTER (Munka + Privát): ${totalCombinedKm} km`), 18, currentY);
+        doc.setFont(undefined, 'normal');
+        doc.setTextColor(30, 41, 59);
+        currentY += 5;
+
+        doc.text(sanitizeText(`Összesített utasszám: ${totalPassengers} fő`), 18, currentY);
+        currentY += 5;
+      }
+
+      if (totalWorkKm >= 250 && pdfType !== 'private') {
+        doc.setTextColor(220, 38, 38);
+        doc.setFont(undefined, 'bold');
+        doc.setFontSize(8);
+        doc.text(sanitizeText(`FIGYELEM: A műszak munkakilométere meghaladja a 250 km-es limitet! (${totalWorkKm} km)`), 18, currentY + 1);
+      }
+
+      doc.save(filename);
+    }
+
+    window.generateAdminPDF = function() {
+      const driver = document.getElementById('pdfDriverSelect').value;
+      const type = document.getElementById('pdfTypeSelect').value;
+      const period = document.getElementById('pdfPeriodSelect').value;
+
+      let filtered = [...allTrips];
+
+      if (driver !== 'all') {
+        filtered = filtered.filter(t => t.driverEmail === driver);
+      }
+
+      if (type === 'work') {
+        filtered = filtered.filter(t => t.type === 'work');
+      } else if (type === 'private') {
+        filtered = filtered.filter(t => t.type === 'private');
+      }
+
+      const now = new Date();
+      if (period === 'daily') {
+        const todayStr = now.toISOString().slice(0, 10);
+        filtered = filtered.filter(t => t.date === todayStr);
+      } else if (period === 'weekly') {
+        const past7Days = new Date(now.setDate(now.getDate() - 7));
+        filtered = filtered.filter(t => new Date(t.date) >= past7Days);
+      } else if (period === 'monthly') {
+        const currentMonth = new Date().toISOString().slice(0, 7);
+        filtered = filtered.filter(t => t.date.startsWith(currentMonth));
+      } else if (period === 'yearly') {
+        const currentYear = new Date().getFullYear().toString();
+        filtered = filtered.filter(t => t.date.startsWith(currentYear));
+      } else if (period === 'custom') {
+        const start = document.getElementById('pdfStartDate').value;
+        const end = document.getElementById('pdfEndDate').value;
+        if (start && end) {
+          filtered = filtered.filter(t => t.date >= start && t.date <= end);
+        }
+      }
+
+      if (filtered.length === 0) {
+        return alert("A megadott feltételekkel nem található egyetlen menetlevél bejegyzés sem!");
+      }
+
+      const driverText = driver === 'all' ? 'Összes sofőr' : driver;
+      const typeText = type === 'all' ? 'Összesített' : (type === 'work' ? 'Munkakilométer' : 'Privát');
+      const filename = `menetlevel_${driver === 'all' ? 'osszes' : driver.split('@')[0]}_${type}_${new Date().toISOString().slice(0,10)}.pdf`;
+
+      generatePDFForTrips(filtered, `Menetlevél Kimutatás`, `Sofőr: ${driverText} | Típus: ${typeText} | Időszak: ${period.toUpperCase()}`, filename, type);
+    };
+  </script>
+</body>
+</html>
