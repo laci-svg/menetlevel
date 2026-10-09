@@ -234,7 +234,7 @@
         
         <!-- MŰSZAK ÉS JÁRMŰ KEZELÉSE -->
         <div id="driverCarSection" class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl shadow-md space-y-3 backdrop-blur-md">
-          <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Műszak és Jármű Kezelése</h3>
+          <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Műszak és JármŰ Kezelése</h3>
           
           <!-- 1. Műszak Indítása -->
           <div id="carSelectContainer" class="space-y-3">
@@ -431,6 +431,9 @@
     let activeShift = null;
     let isAdminMode = false;
     let selectedCarForModal = null;
+
+    // CSAK A TÚLFUTÁSI NÉZETBŐL ELREJTETT MŰSZAKOK AZONOSÍTÓI
+    let dismissedOverlimits = JSON.parse(localStorage.getItem('dismissedOverlimits') || '[]');
 
     // BEJELENTKEZÉS
     window.handleLoginSubmit = async function(e) {
@@ -1055,7 +1058,7 @@
       }).join('');
     };
 
-    // ÚJ: KILOMÉTER TÚLFUTÁSOK RENDERELÉSE
+    // KILOMÉTER TÚLFUTÁSOK RENDERELÉSE (ELREJTÉSI LEHETŐSÉGGEL)
     function renderOverlimitShifts() {
       const container = document.getElementById('overlimitShiftsContainer');
       const badge = document.getElementById('overlimitCountBadge');
@@ -1064,6 +1067,9 @@
       const overlimitList = [];
 
       allShifts.forEach(shift => {
+        // Szűrés: ha bekerült az elrejtettek közé, ide nem rajzoljuk ki!
+        if (dismissedOverlimits.includes(shift.id)) return;
+
         const shiftTrips = allTrips.filter(t => t.shiftId === shift.id);
         const workKmTotal = shiftTrips
           .filter(t => t.type === 'work')
@@ -1083,7 +1089,7 @@
       if (badge) badge.textContent = `${overlimitList.length} eset`;
 
       if (overlimitList.length === 0) {
-        container.innerHTML = `<p class="text-xs text-slate-500 text-center p-3 bg-slate-950/60 rounded-lg">Nincs rögzített 250 km feletti műszak.</p>`;
+        container.innerHTML = `<p class="text-xs text-slate-500 text-center p-3 bg-slate-950/60 rounded-lg">Nincs rögzített 250 km feletti műszak ebben a nézetben.</p>`;
         return;
       }
 
@@ -1095,18 +1101,30 @@
               <div class="font-bold text-slate-200">${shift.driverEmail || 'Ismeretlen'}</div>
               <div class="text-[10px] text-slate-400">📅 ${shift.startDate || '-'} • <span class="text-orange-300 font-semibold">${shift.carPlate || '-'}</span></div>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1.5">
               <span class="text-xs font-mono font-bold text-red-400 bg-red-950/80 border border-red-800/80 px-2 py-0.5 rounded-md">
                 ${workKmTotal} km
               </span>
               <button onclick="exportShiftPDF('${shift.id}', 'work')" title="Munka PDF Letöltése" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-200 px-2 py-1 rounded border border-red-700 transition">
                 📄 PDF
               </button>
+              <button onclick="dismissOverlimitShift('${shift.id}')" title="Törlés csak ebből a riasztási nézetből" class="text-[10px] bg-slate-800 hover:bg-red-900/60 text-slate-400 hover:text-red-200 px-2 py-1 rounded border border-slate-700 hover:border-red-700 transition">
+                🗑️
+              </button>
             </div>
           </div>
         `;
       }).join('');
     }
+
+    // ELREJTÉS CSAK A TÚLFUTÁSI ABOLAKBÓL
+    window.dismissOverlimitShift = function(shiftId) {
+      if (!dismissedOverlimits.includes(shiftId)) {
+        dismissedOverlimits.push(shiftId);
+        localStorage.setItem('dismissedOverlimits', JSON.stringify(dismissedOverlimits));
+        renderOverlimitShifts();
+      }
+    };
 
     window.renderAdminShifts = function() {
       const closedContainer = document.getElementById('adminClosedShiftsContainer');
