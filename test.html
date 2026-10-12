@@ -1296,6 +1296,42 @@
       }
     };
 
+    /* ÚJ: ADMINISZTRÁTORI ÚT MÓDOSÍTÁS ÉS TÖRLESE */
+    window.adminEditTripPrompt = async function(tripId) {
+      const trip = allTrips.find(t => t.id === tripId);
+      if (!trip) return alert("Az út nem található!");
+
+      const newStartKmStr = prompt("Út módosítása (" + trip.startLocation + " -> " + trip.endLocation + ")\n\nÚj KEZDŐ kilométeróra-állás:", trip.startKm || 0);
+      if (newStartKmStr === null) return;
+
+      const newEndKmStr = prompt("Új ZÁRÓ kilométeróra-állás:", trip.endKm || 0);
+      if (newEndKmStr === null) return;
+
+      const newStartKm = Number(newStartKmStr);
+      const newEndKm = Number(newEndKmStr);
+
+      if (isNaN(newStartKm) || isNaN(newEndKm) || newEndKm < newStartKm) {
+        return alert("Hibás adatok! A záró kilométer nem lehet kisebb a kezdőnél.");
+      }
+
+      const calculatedKm = newEndKm - newStartKm;
+
+      await updateDoc(doc(db, "trips", tripId), {
+        startKm: newStartKm,
+        endKm: newEndKm,
+        workKm: calculatedKm
+      });
+
+      alert("Út kilométeróra-állása sikeresen frissítve!");
+    };
+
+    window.adminDeleteTripPrompt = async function(tripId) {
+      if (confirm("Biztosan törölni szeretnéd ezt az utat a műszakból?")) {
+        await deleteDoc(doc(db, "trips", tripId));
+        alert("Út törölve!");
+      }
+    };
+
     window.renderAdminShifts = function() {
       const closedContainer = document.getElementById('adminClosedShiftsContainer');
       const activeContainer = document.getElementById('adminActiveShiftsContainer');
@@ -1321,9 +1357,12 @@
                     '<span>' + (idx+1) + '. ' + t.startLocation + ' &rarr; ' + t.endLocation + (t.type === 'private' ? ' <span class="text-[9px] text-amber-400 bg-amber-950 px-1 rounded ml-1">Privát</span>' : '') + '</span>' +
                     '<span class="font-mono text-orange-400 font-bold ml-2">' + t.workKm + ' km</span>' +
                   '</div>' +
-                  '<div class="text-[10px] font-mono text-slate-400 flex justify-between">' +
-                    '<span>Óraállás:</span>' +
-                    '<span>' + (t.startKm || 0) + ' km &rarr; ' + (t.endKm || 0) + ' km</span>' +
+                  '<div class="text-[10px] font-mono text-slate-400 flex justify-between items-center">' +
+                    '<span>Óraállás: ' + (t.startKm || 0) + ' km &rarr; ' + (t.endKm || 0) + ' km</span>' +
+                    '<div class="flex gap-1">' +
+                      '<button onclick="adminEditTripPrompt(\'' + t.id + '\')" class="text-[9px] bg-slate-800 hover:bg-slate-700 p-0.5 px-1.5 rounded text-slate-300" title="Szerkesztés">✏️ Javít</button>' +
+                      '<button onclick="adminDeleteTripPrompt(\'' + t.id + '\')" class="text-[9px] bg-red-900/40 hover:bg-red-800 p-0.5 px-1.5 rounded text-red-300" title="Törlés">🗑️</button>' +
+                    '</div>' +
                   '</div>' +
                 '</div>'
               ).join('');
@@ -1388,7 +1427,7 @@
 
             const tripsTableHtml = shiftTrips.length === 0 
               ? '<p class="text-[11px] text-slate-500 italic text-center">Ebben a műszakban nem rögzítettek utat.</p>' 
-              : '<table class="w-full text-left text-xs"><thead class="text-slate-500 border-b border-slate-800"><tr><th class="p-1">#</th><th class="p-1">Idő</th><th class="p-1">Útvonal</th><th class="p-1 text-right">Km</th><th class="p-1 text-right">Megtett</th></tr></thead><tbody class="divide-y divide-slate-800/50">' +
+              : '<table class="w-full text-left text-xs"><thead class="text-slate-500 border-b border-slate-800"><tr><th class="p-1">#</th><th class="p-1">Idő</th><th class="p-1">Útvonal</th><th class="p-1 text-right">Km</th><th class="p-1 text-right">Megtett</th><th class="p-1 text-center">Művelet</th></tr></thead><tbody class="divide-y divide-slate-800/50">' +
                 shiftTrips.map((t, tIdx) => 
                   '<tr>' +
                     '<td class="p-1 font-bold text-slate-500">' + (tIdx + 1) + '.</td>' +
@@ -1396,6 +1435,10 @@
                     '<td class="p-1">' + (tIdx + 1) + '. ' + (t.startLocation || '') + ' &rarr; ' + (t.endLocation || '') + (t.type === 'private' ? ' <span class="text-[9px] text-amber-400 bg-amber-950 px-1 rounded">Privát</span>' : '') + '</td>' +
                     '<td class="p-1 text-right font-mono text-slate-400">' + (t.startKm || 0) + ' - ' + (t.endKm || 0) + '</td>' +
                     '<td class="p-1 text-right font-mono font-semibold text-orange-400">' + (t.workKm || 0) + ' km</td>' +
+                    '<td class="p-1 text-center whitespace-nowrap">' +
+                      '<button onclick="adminEditTripPrompt(\'' + t.id + '\')" class="text-[9px] bg-slate-800 hover:bg-slate-700 p-0.5 px-1.5 rounded text-slate-300 mr-1" title="Szerkesztés">✏️ Javít</button>' +
+                      '<button onclick="adminDeleteTripPrompt(\'' + t.id + '\')" class="text-[9px] bg-red-900/40 hover:bg-red-800 p-0.5 px-1.5 rounded text-red-300" title="Törlés">🗑️</button>' +
+                    '</td>' +
                   '</tr>'
                 ).join('') +
                 '</tbody></table>';
@@ -1414,7 +1457,7 @@
                   '<button onclick="exportShiftPDF(\'' + shift.id + '\', \'work\')" title="Munkakilométer PDF" class="text-[9px] bg-emerald-700 hover:bg-emerald-600 text-white px-2 py-1 rounded border border-emerald-600 transition">Munka PDF</button>' +
                   '<button onclick="exportShiftPDF(\'' + shift.id + '\', \'all\')" title="Összesített PDF" class="text-[9px] bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded border border-amber-500 transition">Összes PDF</button>' +
                   '<button onclick="exportShiftPDF(\'' + shift.id + '\', \'private\')" title="Privát PDF" class="text-[9px] bg-purple-700 hover:bg-purple-600 text-white px-2 py-1 rounded border border-purple-600 transition">Privát PDF</button>' +
-                  '<button onclick="deleteShift(\'' + shift.id + '\')" class="text-[9px] bg-red-900/50 hover:bg-red-800 text-red-300 px-1.5 py-1 rounded border border-red-800 transition">🗑️</button>' +
+                  '<button onclick="deleteShift(\'' + shift.id + '\')" class="text-[9px] bg-red-900/50 hover:bg-red-800 text-red-300 px-1.5 py-1 rounded border border-red-800 transition">🗑️ Műszak törlése</button>' +
                   '<span class="text-xs text-slate-500 group-open/shift:rotate-180 transition-transform">▼</span>' +
                 '</div>' +
               '</summary>' +
