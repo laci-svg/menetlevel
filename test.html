@@ -234,7 +234,7 @@
         
         <!-- MŰSZAK ÉS JÁRMŰ KEZELÉSE -->
         <div id="driverCarSection" class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl shadow-md space-y-3 backdrop-blur-md">
-          <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Műszak és JármŰ Kezelése</h3>
+          <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Műszak és Jármű Kezelése</h3>
           
           <!-- 1. Műszak Indítása -->
           <div id="carSelectContainer" class="space-y-3">
@@ -432,8 +432,8 @@
     let isAdminMode = false;
     let selectedCarForModal = null;
 
-    // CSAK A TÚLFUTÁSI NÉZETBŐL ELREJTETT MŰSZAKOK AZONOSÍTÓI
     let dismissedOverlimits = JSON.parse(localStorage.getItem('dismissedOverlimits') || '[]');
+    let lastWarnedKmValue = null; // 100 km-es figyelmeztetés azonosításához
 
     // BEJELENTKEZÉS
     window.handleLoginSubmit = async function(e) {
@@ -696,17 +696,42 @@
       alert(`🚀 Műszak sikeresen elindítva! (${selectedCarForModal.plateNumber} - ${confirmedKm} km)`);
     };
 
+    // RÉSZLETES MŰSZAKZÁRÁSI LOGIKA
     window.endShift = async function() {
       if (!activeShift) return;
 
-      const currentShiftTrips = allTrips.filter(t => t.shiftId === activeShift.id);
+      let currentShiftTrips = allTrips.filter(t => t.shiftId === activeShift.id);
+      currentShiftTrips = sortTripsByKmAscending(currentShiftTrips);
+
       let minAllowedKm = activeShift.startKm || 0;
 
-      if (currentShiftTrips.length > 0) {
-        const maxTripKm = Math.max(...currentShiftTrips.map(t => Number(t.endKm) || 0));
-        if (maxTripKm > minAllowedKm) {
-          minAllowedKm = maxTripKm;
+      // KIUGRÓAN MAGAS VAGY ELÜTÖTT KM VIZSGÁLATA A MŰSZAK UTJAIBAN
+      let faultyTrip = null;
+      let faultyIndex = -1;
+
+      for (let i = 0; i < currentShiftTrips.length; i++) {
+        const t = currentShiftTrips[i];
+        const prevKm = i === 0 ? activeShift.startKm : currentShiftTrips[i - 1].endKm;
+        const tripDist = Number(t.endKm) - Number(t.startKm);
+
+        // Ha egyetlen út több mint 1000 km-t ugrott (egyértelmű elütés), leállítjuk a műszakzárást!
+        if (tripDist > 1000 || Number(t.endKm) > (prevKm + 1000)) {
+          faultyTrip = t;
+          faultyIndex = i + 1;
+          break;
         }
+
+        if (Number(t.endKm) > minAllowedKm) {
+          minAllowedKm = Number(t.endKm);
+        }
+      }
+
+      if (faultyTrip) {
+        return alert(
+          `⚠️ Hibás kilométeróra állás a műszakban!\n\n` +
+          `A(z) ${faultyIndex}. útnál kiugróan magas záró kilométer szerepel (${faultyTrip.endKm} km).\n\n` +
+          `Kérlek kattints a táblázatban a ${faultyIndex}. út melletti ✏️ (szerkesztés) gombra, és javítsd a helyes kilométeróra-állásra a műszak lezárása előtt!`
+        );
       }
 
       const activeCar = allCars.find(c => c.plateNumber === activeShift.carPlate);
@@ -929,6 +954,7 @@
       });
     }
 
+    // ÚT RÖGZÍTÉSE 100 KM-ES ELLENŐRZÉSSEL
     document.getElementById('tripForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       
@@ -948,8 +974,22 @@
       }
 
       const calculatedKm = endKm - startKm;
-      const tripType = document.getElementById('tripType').value;
 
+      // 100 KM-ES KORLÁT VIZSGÁLATA
+      if (calculatedKm > 100 && lastWarnedKmValue !== `${startKm}_${endKm}`) {
+        lastWarnedKmValue = `${startKm}_${endKm}`;
+        alert(
+          `⚠️ Figyelem!\n\n` +
+          `A beírt út több mint 100 km (${calculatedKm} km).\n` +
+          `Kérlek ellenőrizd, hogy nem gépeltél-e el egy számjegyet a kezdő vagy záró kilométernél!\n\n` +
+          `Ha az adatok helyesek, kattints még egyszer a Mentés gombra.`
+        );
+        return; // Megállítjuk a mentést az első alkalommal!
+      }
+
+      lastWarnedKmValue = null; // Visszaállítás sikeres mentés előtt
+
+      const tripType = document.getElementById('tripType').value;
       const now = new Date();
       const autoDateStr = now.toISOString().slice(0, 10);
       const autoTimeStr = editingId ? editingTime : now.toLocaleTimeString('hu-HU', {hour: '2-digit', minute:'2-digit'});
@@ -992,6 +1032,7 @@
       document.getElementById('formTitle').textContent = 'Új Út Rögzítése';
       document.getElementById('saveTripBtn').textContent = 'Mentés';
       document.getElementById('cancelEditBtn').classList.add('hidden');
+      lastWarnedKmValue = null;
       
       renderDriverCarSelection();
     };
@@ -1058,7 +1099,6 @@
       }).join('');
     };
 
-    // KILOMÉTER TÚLFUTÁSOK RENDERELÉSE (ELREJTÉSI LEHETŐSÉGGEL)
     function renderOverlimitShifts() {
       const container = document.getElementById('overlimitShiftsContainer');
       const badge = document.getElementById('overlimitCountBadge');
@@ -1067,7 +1107,6 @@
       const overlimitList = [];
 
       allShifts.forEach(shift => {
-        // Szűrés: ha bekerült az elrejtettek közé, ide nem rajzoljuk ki!
         if (dismissedOverlimits.includes(shift.id)) return;
 
         const shiftTrips = allTrips.filter(t => t.shiftId === shift.id);
@@ -1117,7 +1156,6 @@
       }).join('');
     }
 
-    // ELREJTÉS CSAK A TÚLFUTÁSI ABOLAKBÓL
     window.dismissOverlimitShift = function(shiftId) {
       if (!dismissedOverlimits.includes(shiftId)) {
         dismissedOverlimits.push(shiftId);
@@ -1126,6 +1164,7 @@
       }
     };
 
+    // ADMIN FELÜLET: ÉLŐ MŰSZAKOK KILOMÉTERÓRA-ÁLLÁSOK MEGJELENÍTÉSÉVEL
     window.renderAdminShifts = function() {
       const closedContainer = document.getElementById('adminClosedShiftsContainer');
       const activeContainer = document.getElementById('adminActiveShiftsContainer');
@@ -1134,6 +1173,7 @@
       const closedShifts = allShifts.filter(s => s.status === 'closed');
       const activeShifts = allShifts.filter(s => s.status === 'active');
 
+      // ÉLŐ MŰSZAKOK (JOBB OLDAL - KM ÁLLÁSOKKAL)
       if (activeShifts.length === 0) {
         activeContainer.innerHTML = `<p class="text-xs text-slate-500 text-center p-4 bg-slate-950/80 rounded-xl">Jelenleg nincs egyetlen nyitott műszak sem.</p>`;
       } else {
@@ -1155,13 +1195,20 @@
                   <span class="text-xs text-slate-500 group-open:rotate-180 transition-transform">▼</span>
                 </div>
               </summary>
-              <div class="p-2 border-t border-slate-800 bg-slate-900/60 text-xs space-y-1">
+              <div class="p-2 border-t border-slate-800 bg-slate-900/60 text-xs space-y-2">
                 ${shiftTrips.length === 0 
                   ? '<p class="text-[11px] text-slate-500 italic text-center">Még nincs rögzített út.</p>'
                   : shiftTrips.map((t, idx) => `
-                    <div class="flex justify-between text-[11px] border-b border-slate-800/50 pb-1">
-                      <span>${idx+1}.${t.startLocation} &rarr; ${t.endLocation}${t.type === 'private' ? '<span class="text-[9px] text-amber-400 bg-amber-950 px-1 rounded ml-1">Privát</span>' : ''}</span>
-                      <span class="font-mono text-orange-400 font-bold">${t.workKm} km</span>
+                    <div class="border-b border-slate-800/50 pb-1.5 space-y-0.5">
+                      <div class="flex justify-between text-[11px] font-medium">
+                        <span>${idx+1}.${t.startLocation} &rarr; ${t.endLocation}${t.type === 'private' ? '<span class="text-[9px] text-amber-400 bg-amber-950 px-1 rounded ml-1">Privát</span>' : ''}</span>
+                        <span class="font-mono text-orange-400 font-bold ml-2">${t.workKm} km</span>
+                      </div>
+                      <!-- KILOMÉTERÓRA ÁLLÁS MEGJELENÍTÉSE CÍMENKÉNT -->
+                      <div class="text-[10px] font-mono text-slate-400 flex justify-between">
+                        <span>Óraállás:</span>
+                        <span>${t.startKm \vert{}\vert{} 0} km &rarr; ${t.endKm || 0} km</span>
+                      </div>
                     </div>
                   `).join('')
                 }
