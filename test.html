@@ -196,7 +196,7 @@
         <!-- 2. JÁRMŰPARK, HÁTTÉR ÉS TÚLFUTÁSOK -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div class="bg-slate-900/90 border border-slate-800 p-4 rounded-xl space-y-3">
-            <h3 class="text-sm font-bold text-orange-400 border-b border-slate-800 pb-2">🚗 JármŰpark Kezelése</h3>
+            <h3 class="text-sm font-bold text-orange-400 border-b border-slate-800 pb-2">🚗 Járműpark Kezelése</h3>
             <form id="addCarForm" class="space-y-3">
               <div class="grid grid-cols-2 gap-2">
                 <input type="text" id="carPlateInput" placeholder="Rendszám (ABC-123)" required class="bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs uppercase">
@@ -1268,14 +1268,39 @@
       }
     };
 
-    /* ADMINISZTRÁTORI ÚT MÓDOSÍTÁS ÉS TÖRLESE */
+    /* ADMINISZTRÁTORI ÚT MÓDOSÍTÁS (TÍPUS + KILOMÉTEREK) ÉS TÖRLESE */
     window.adminEditTripPrompt = async function(tripId) {
       const trip = allTrips.find(t => t.id === tripId);
       if (!trip) return alert("Az út nem található!");
 
-      const newStartKmStr = prompt("Út módosítása (" + trip.startLocation + " -> " + trip.endLocation + ")\n\nÚj KEZDŐ kilométeróra-állás:", trip.startKm || 0);
+      const currentTypeStr = (trip.type === 'private' || trip.type === 'privat') ? "Privát út" : "Munkaút";
+
+      // 1. Út típusának bekérése
+      const newTypeChoice = prompt(
+        "Út szerkesztése (" + trip.startLocation + " -> " + trip.endLocation + ")\n\n" +
+        "Jelenlegi Típus: " + currentTypeStr + "\n" +
+        "Válassz új típust:\n" +
+        "1 = Munkaút\n" +
+        "2 = Privát út",
+        (trip.type === 'private' || trip.type === 'privat') ? "2" : "1"
+      );
+
+      if (newTypeChoice === null) return;
+
+      let newType = trip.type;
+      if (newTypeChoice.trim() === "1") {
+        newType = "work";
+      } else if (newTypeChoice.trim() === "2") {
+        newType = "private";
+      } else {
+        return alert("Hibás típusválasztás! Csak 1-est vagy 2-est írhatsz be.");
+      }
+
+      // 2. Kezdő kilométer bekérése
+      const newStartKmStr = prompt("Új KEZDŐ kilométeróra-állás:", trip.startKm || 0);
       if (newStartKmStr === null) return;
 
+      // 3. Záró kilométer bekérése
       const newEndKmStr = prompt("Új ZÁRÓ kilométeróra-állás:", trip.endKm || 0);
       if (newEndKmStr === null) return;
 
@@ -1289,12 +1314,13 @@
       const calculatedKm = newEndKm - newStartKm;
 
       await updateDoc(doc(db, "trips", tripId), {
+        type: newType,
         startKm: newStartKm,
         endKm: newEndKm,
         workKm: calculatedKm
       });
 
-      alert("Út kilométeróra-állása sikeresen frissítve!");
+      alert("Út adatai és típusa sikeresen frissítve!");
     };
 
     window.adminDeleteTripPrompt = async function(tripId) {
@@ -1323,10 +1349,11 @@
 
           const tripsHtml = shiftTrips.length === 0 
             ? '<p class="text-[11px] text-slate-500 italic text-center">Még nincs rögzített út.</p>'
-            : shiftTrips.map((t, idx) => 
-                '<div class="border-b border-slate-800/50 pb-1.5 space-y-0.5">' +
+            : shiftTrips.map((t, idx) => {
+                const isPriv = (t.type === 'private' || t.type === 'privat');
+                return '<div class="border-b border-slate-800/50 pb-1.5 space-y-0.5">' +
                   '<div class="flex justify-between text-[11px] font-medium">' +
-                    '<span>' + (idx+1) + '. ' + t.startLocation + ' &rarr; ' + t.endLocation + (t.type === 'private' ? ' <span class="text-[9px] text-amber-400 bg-amber-950 px-1 rounded ml-1">Privát</span>' : '') + '</span>' +
+                    '<span>' + (idx+1) + '. ' + t.startLocation + ' &rarr; ' + t.endLocation + (isPriv ? ' <span class="text-[9px] text-amber-400 bg-amber-950 px-1 rounded ml-1 font-semibold">Privát</span>' : ' <span class="text-[9px] text-emerald-400 bg-emerald-950 px-1 rounded ml-1">Munka</span>') + '</span>' +
                     '<span class="font-mono text-orange-400 font-bold ml-2">' + t.workKm + ' km</span>' +
                   '</div>' +
                   '<div class="text-[10px] font-mono text-slate-400 flex justify-between items-center">' +
@@ -1336,8 +1363,8 @@
                       '<button onclick="adminDeleteTripPrompt(\'' + t.id + '\')" class="text-[9px] bg-red-900/40 hover:bg-red-800 p-0.5 px-1.5 rounded text-red-300" title="Törlés">🗑️</button>' +
                     '</div>' +
                   '</div>' +
-                '</div>'
-              ).join('');
+                '</div>';
+              }).join('');
 
           return '<details class="group border border-emerald-500/40 bg-slate-950/90 rounded-xl overflow-hidden shadow-md">' +
             '<summary class="flex items-center justify-between p-3 cursor-pointer hover:bg-slate-800/50 transition select-none">' +
@@ -1402,12 +1429,15 @@
               rowsHtml = '<tr><td colspan="6" class="p-2 text-[11px] text-slate-500 italic text-center">Ebben a műszakban nem rögzítettek utat.</td></tr>';
             } else {
               rowsHtml = shiftTrips.map((t, tIdx) => {
-                return '<tr>' +
+                const isPriv = (t.type === 'private' || t.type === 'privat');
+                const rowBg = isPriv ? 'bg-amber-950/40 text-amber-200' : '';
+
+                return '<tr class="' + rowBg + '">' +
                   '<td class="p-1 font-bold text-slate-500">' + (tIdx + 1) + '.</td>' +
                   '<td class="p-1 font-mono text-slate-400">' + (t.time || '') + '</td>' +
-                  '<td class="p-1">' + (t.startLocation || '') + ' &rarr; ' + (t.endLocation || '') + (t.type === 'private' ? ' <span class="text-[9px] text-amber-400 bg-amber-950 px-1 rounded">Privát</span>' : '') + '</td>' +
+                  '<td class="p-1">' + (t.startLocation || '') + ' &rarr; ' + (t.endLocation || '') + (isPriv ? ' <span class="text-[9px] text-amber-300 bg-amber-900/80 px-1 rounded font-semibold">Privát</span>' : ' <span class="text-[9px] text-slate-400">Munka</span>') + '</td>' +
                   '<td class="p-1 text-right font-mono text-slate-400">' + (t.startKm || 0) + ' - ' + (t.endKm || 0) + '</td>' +
-                  '<td class="p-1 text-right font-mono font-semibold text-orange-400">' + (t.workKm || 0) + ' km</td>' +
+                  '<td class="p-1 text-right font-mono font-semibold ' + (isPriv ? 'text-amber-400' : 'text-orange-400') + '">' + (t.workKm || 0) + ' km</td>' +
                   '<td class="p-1 text-center whitespace-nowrap">' +
                     '<button onclick="adminEditTripPrompt(\'' + t.id + '\')" class="text-[9px] bg-slate-800 hover:bg-slate-700 p-1 px-1.5 rounded text-slate-300 mr-1 font-medium" title="Szerkesztés">✏️ Javít</button>' +
                     '<button onclick="adminDeleteTripPrompt(\'' + t.id + '\')" class="text-[9px] bg-red-900/40 hover:bg-red-800 p-1 px-1.5 rounded text-red-300" title="Törlés">🗑️</button>' +
@@ -1582,7 +1612,7 @@
         const p = Number(t.passengerCount) || 0;
         totalPassengers += p;
 
-        if (t.type === 'private') {
+        if (t.type === 'private' || t.type === 'privat') {
           totalPrivateKm += km;
         } else {
           totalWorkKm += km;
@@ -1605,7 +1635,8 @@
       const rows = tripsArray.map((t, idx) => {
         const routeNum = (idx + 1) + ". " + (t.startLocation || '-') + " > " + (t.endLocation || '-');
         const route = sanitizeText(routeNum);
-        const kmText = sanitizeText(t.workKm + " km" + (t.type === 'private' ? ' (Privát)' : ''));
+        const isPriv = (t.type === 'private' || t.type === 'privat');
+        const kmText = sanitizeText(t.workKm + " km" + (isPriv ? ' (Privát)' : ''));
         const passText = sanitizeText((t.passengerCount || 0) + " fő");
 
         if (pdfType === 'work') {
@@ -1648,7 +1679,7 @@
         didParseCell: function(data) {
           if (data.section === 'body') {
             const trip = tripsArray[data.row.index];
-            if (trip && trip.type === 'private') {
+            if (trip && (trip.type === 'private' || trip.type === 'privat')) {
               data.cell.styles.fillColor = [254, 243, 199];
               data.cell.styles.fontStyle = 'bold';
             }
@@ -1722,7 +1753,7 @@
       if (type === 'work') {
         filtered = filtered.filter(t => t.type === 'work');
       } else if (type === 'private') {
-        filtered = filtered.filter(t => t.type === 'private');
+        filtered = filtered.filter(t => t.type === 'private' || t.type === 'privat');
       }
 
       const now = new Date();
