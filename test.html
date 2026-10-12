@@ -192,9 +192,7 @@
                 <span id="overlimitCountBadge" class="text-[10px] bg-red-950 text-red-300 border border-red-800 px-2 py-0.5 rounded-full font-mono font-bold">0 eset</span>
               </div>
               
-              <div id="overlimitShiftsContainer" class="space-y-2 max-h-[350px] overflow-y-auto pr-1">
-                <!-- Ide töltődnek be automatikusan a 250+ km-es műszakok -->
-              </div>
+              <div id="overlimitShiftsContainer" class="space-y-2 max-h-[350px] overflow-y-auto pr-1"></div>
             </div>
 
           </div>
@@ -236,7 +234,6 @@
         <div id="driverCarSection" class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl shadow-md space-y-3 backdrop-blur-md">
           <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Műszak és Jármű Kezelése</h3>
           
-          <!-- 1. Műszak Indítása -->
           <div id="carSelectContainer" class="space-y-3">
             <div class="flex gap-2">
               <select id="availableCarsSelect" class="flex-1 bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-sm"></select>
@@ -246,7 +243,6 @@
             </div>
           </div>
 
-          <!-- 2. Aktív Műszak Állapot -->
           <div id="activeCarContainer" class="hidden space-y-3 bg-slate-950/80 border border-orange-500/30 p-3 rounded-xl">
             <div class="flex items-center justify-between">
               <div>
@@ -271,7 +267,6 @@
             ⚠️ Út rögzítéséhez előbb indítsd el a műszakot a fenti gombbal!
           </p>
 
-          <!-- 250 KM FIGYELMEZTETŐ DOBOZ -->
           <div id="driver250KmWarning" class="hidden bg-red-950/80 border border-red-600 text-red-200 p-3 rounded-xl text-xs font-bold flex items-center gap-2">
             <span>⚠️</span>
             <span>FIGYELEM: Elérted vagy meghaladtad a napi 250 km-es munkakilométer limitet a jelenlegi műszakban!</span>
@@ -360,7 +355,7 @@
 
   </div>
 
-  <!-- MŰSZAK INDÍTÁSA FELUGRÓ (MODAL) ABLAK -->
+  <!-- MŰSZAK INDÍTÁSA MODAL -->
   <div id="startShiftModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-slate-900 border-2 border-orange-500/50 rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl">
       <div class="border-b border-slate-800 pb-2 flex justify-between items-center">
@@ -396,7 +391,7 @@
     </div>
   </div>
 
-  <!-- FIREBASE SCRIPTS -->
+  <!-- FIREBASE ÉS ALKALMAZÁS SCRIPT -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { 
@@ -451,7 +446,7 @@
         await signInWithEmailAndPassword(auth, email, pass);
       } catch (err) {
         console.error("Bejelentkezési hiba:", err);
-        errEl.textContent = `Hiba (${err.code}): ${err.message}`;
+        errEl.textContent = "Hiba (" + err.code + "): " + err.message;
         errEl.classList.remove('hidden');
       } finally {
         btn.disabled = false;
@@ -484,7 +479,7 @@
 
     function applyUserBackground(bgUrl) {
       if (bgUrl && bgUrl.trim() !== '') {
-        document.body.style.backgroundImage = `url('${bgUrl.trim()}')`;
+        document.body.style.backgroundImage = "url('" + bgUrl.trim() + "')";
       } else {
         document.body.style.backgroundImage = 'none';
       }
@@ -512,11 +507,11 @@
       const diff = end - start;
       const calcEl = document.getElementById('tripCalculatedKm');
       if (diff >= 0) {
-        calcEl.value = `${diff} km`;
+        calcEl.value = diff + " km";
         calcEl.classList.remove('text-red-400');
         calcEl.classList.add('text-orange-400');
       } else {
-        calcEl.value = `Hibás km!`;
+        calcEl.value = "Hibás km!";
         calcEl.classList.remove('text-orange-400');
         calcEl.classList.add('text-red-400');
       }
@@ -598,7 +593,7 @@
 
     function listenToShifts() {
       onSnapshot(collection(db, "shifts"), (snapshot) => {
-        allShifts = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        allShifts = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
         activeShift = allShifts.find(s => s.driverUid === currentUser?.uid && s.status === "active") || null;
         
         updateShiftUI();
@@ -617,7 +612,7 @@
       const warningText = document.getElementById('shiftWarningText');
 
       if (activeShift) {
-        badge.textContent = `🟢 Műszak folyamatban (Kezdve: ${activeShift.startTime})`;
+        badge.textContent = "🟢 Műszak folyamatban (Kezdve: " + activeShift.startTime + ")";
         badge.className = "text-[10px] font-semibold text-emerald-400 mt-0.5";
         
         formCard.classList.remove('opacity-50', 'pointer-events-none');
@@ -644,7 +639,7 @@
       if (!selectedCarForModal) return alert("A kiválasztott autó nem található!");
 
       if (selectedCarForModal.currentDriverUid) {
-        return alert(`Ezt az autót már lefoglalta egy másik sofőr (${selectedCarForModal.currentDriverEmail})!`);
+        return alert("Ezt az autót már lefoglalta egy másik sofőr (" + selectedCarForModal.currentDriverEmail + ")!");
       }
 
       document.getElementById('modalStartKm').value = selectedCarForModal.lastKm || 0;
@@ -664,7 +659,7 @@
       const confirmedKm = Number(document.getElementById('modalStartKm').value) || 0;
       const confirmedLocation = document.getElementById('modalStartLocation').value.trim();
 
-      if (!confirm(`Biztosan ${confirmedKm} km a kezdő kilométeróra-állás?`)) {
+      if (!confirm("Biztosan " + confirmedKm + " km a kezdő kilométeróra-állás?")) {
         return;
       }
 
@@ -693,7 +688,7 @@
 
       await addDoc(collection(db, "shifts"), newShift);
       closeStartShiftModal();
-      alert(`🚀 Műszak sikeresen elindítva! (${selectedCarForModal.plateNumber} - ${confirmedKm} km)`);
+      alert("🚀 Műszak sikeresen elindítva! (" + selectedCarForModal.plateNumber + " - " + confirmedKm + " km)");
     };
 
     window.endShift = async function() {
@@ -725,9 +720,9 @@
 
       if (faultyTrip) {
         return alert(
-          `⚠️ Hibás kilométeróra állás a műszakban!\n\n` +
-          `A(z) ${faultyIndex}. útnál kiugróan magas záró kilométer szerepel (${faultyTrip.endKm} km).\n\n` +
-          `Kérlek kattints a táblázatban a ${faultyIndex}. út melletti ✏️ (szerkesztés) gombra, és javítsd a helyes kilométeróra-állásra a műszak lezárása előtt!`
+          "⚠️ Hibás kilométeróra állás a műszakban!\n\n" +
+          "A(z) " + faultyIndex + ". útnál kiugróan magas záró kilométer szerepel (" + faultyTrip.endKm + " km).\n\n" +
+          "Kérlek kattints a táblázatban a " + faultyIndex + ". út melletti ✏️ (szerkesztés) gombra, és javítsd a helyes kilométeróra-állásra a műszak lezárása előtt!"
         );
       }
 
@@ -735,9 +730,9 @@
       const defaultSuggestKm = activeCar && activeCar.lastKm > minAllowedKm ? activeCar.lastKm : minAllowedKm;
 
       const endKmInput = prompt(
-        `Műszak lezárása (${activeShift.carPlate}).\n` +
-        `Legutolsó rögzített óraállás: ${minAllowedKm} km.\n` +
-        `Kérlek add meg a végső kilométeróra állást (min. ${minAllowedKm} km):`, 
+        "Műszak lezárása (" + activeShift.carPlate + ").\n" +
+        "Legutolsó rögzített óraállás: " + minAllowedKm + " km.\n" +
+        "Kérlek add meg a végső kilométeróra állást (min. " + minAllowedKm + " km):", 
         defaultSuggestKm
       );
       
@@ -745,7 +740,7 @@
       const endKm = Number(endKmInput);
 
       if (isNaN(endKm) || endKm < minAllowedKm) {
-        return alert(`Hibás kilométeróra állás! A záró km nem lehet kisebb, mint az utolsó rögzített út óraállása (${minAllowedKm} km).`);
+        return alert("Hibás kilométeróra állás! A záró km nem lehet kisebb, mint az utolsó rögzített út óraállása (" + minAllowedKm + " km).");
       }
 
       const now = new Date();
@@ -767,12 +762,12 @@
         });
       }
 
-      alert(`🏁 Műszak sikeresen lezárva!`);
+      alert("🏁 Műszak sikeresen lezárva!");
     };
 
     function listenToUsers() {
       onSnapshot(collection(db, "users"), (snapshot) => {
-        allUsers = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        allUsers = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
         
         if (currentUser) {
           const myUpdatedUser = allUsers.find(u => u.id === currentUser.uid);
@@ -796,7 +791,7 @@
       select.innerHTML = '<option value="all">-- Összes Sofőr --</option>';
       const driverEmails = [...new Set(allShifts.map(s => s.driverEmail).filter(Boolean))];
       driverEmails.forEach(email => {
-        select.innerHTML += `<option value="${email}">${email}</option>`;
+        select.innerHTML += '<option value="' + email + '">' + email + '</option>';
       });
     }
 
@@ -806,7 +801,7 @@
       select.innerHTML = '<option value="">-- Válassz sofőrt --</option>';
       allUsers.forEach(u => {
         if (u.email) {
-          select.innerHTML += `<option value="${u.id}">${u.email} ${u.customBg ? '🎨' : ''}</option>`;
+          select.innerHTML += '<option value="' + u.id + '">' + u.email + (u.customBg ? ' 🎨' : '') + '</option>';
         }
       });
     }
@@ -828,7 +823,7 @@
 
     function listenToCars() {
       onSnapshot(collection(db, "cars"), (snapshot) => {
-        allCars = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        allCars = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
         renderAdminCars();
         renderDriverCarSelection();
       });
@@ -862,23 +857,20 @@
 
       allCars.forEach(car => {
         const isOccupied = !!car.currentDriverUid;
-        container.innerHTML += `
-          <div class="border border-slate-800 bg-slate-950 p-2.5 rounded-xl flex justify-between items-center text-xs">
-            <div>
-              <div class="font-bold text-slate-200">${car.plateNumber} <span class="font-normal text-slate-400">(${car.model})</span></div>
-              <div class="text-[10px] text-slate-500">Utolsó km: ${car.lastKm || 0}</div>
-              <div class="text-[10px] mt-0.5 ${isOccupied ? 'text-amber-400 font-semibold' : 'text-emerald-400'}">
-                ${isOccupied ? 'Foglalt (' + car.currentDriverEmail + ')' : 'Szabad'}
-              </div>
-            </div>
-            <div class="flex items-center gap-1">
-              ${isOccupied ? `
-                <button onclick="forceReleaseCar('${car.id}')" title="Foglalás törlése" class="text-amber-400 hover:text-amber-300 text-[10px] font-bold bg-amber-500/10 p-1.5 rounded-lg border border-amber-500/20">🔓 Felszabadítás</button>
-              ` : ''}
-              <button onclick="deleteCar('${car.id}')" title="Autó törlése" class="text-red-400 hover:text-red-300 text-[10px] font-bold bg-red-500/10 p-1.5 rounded-lg border border-red-500/20">Törlés</button>
-            </div>
-          </div>
-        `;
+        container.innerHTML += 
+          '<div class="border border-slate-800 bg-slate-950 p-2.5 rounded-xl flex justify-between items-center text-xs">' +
+            '<div>' +
+              '<div class="font-bold text-slate-200">' + car.plateNumber + ' <span class="font-normal text-slate-400">(' + car.model + ')</span></div>' +
+              '<div class="text-[10px] text-slate-500">Utolsó km: ' + (car.lastKm || 0) + '</div>' +
+              '<div class="text-[10px] mt-0.5 ' + (isOccupied ? 'text-amber-400 font-semibold' : 'text-emerald-400') + '">' +
+                (isOccupied ? 'Foglalt (' + car.currentDriverEmail + ')' : 'Szabad') +
+              '</div>' +
+            '</div>' +
+            '<div class="flex items-center gap-1">' +
+              (isOccupied ? '<button onclick="forceReleaseCar(\'' + car.id + '\')" title="Foglalás törlése" class="text-amber-400 hover:text-amber-300 text-[10px] font-bold bg-amber-500/10 p-1.5 rounded-lg border border-amber-500/20">🔓 Felszabadítás</button>' : '') +
+              '<button onclick="deleteCar(\'' + car.id + '\')" title="Autó törlése" class="text-red-400 hover:text-red-300 text-[10px] font-bold bg-red-500/10 p-1.5 rounded-lg border border-red-500/20">Törlés</button>' +
+            '</div>' +
+          '</div>';
       });
     }
 
@@ -941,7 +933,7 @@
 
     function listenToTrips() {
       onSnapshot(collection(db, "trips"), (snapshot) => {
-        allTrips = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        allTrips = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
         renderTripsTable();
         if (isAdminMode) {
           renderAdminShifts();
@@ -971,13 +963,13 @@
 
       const calculatedKm = endKm - startKm;
 
-      if (calculatedKm > 100 && lastWarnedKmValue !== `${startKm}_${endKm}`) {
-        lastWarnedKmValue = `${startKm}_${endKm}`;
+      if (calculatedKm > 100 && lastWarnedKmValue !== (startKm + "_" + endKm)) {
+        lastWarnedKmValue = startKm + "_" + endKm;
         alert(
-          `⚠️ Figyelem!\n\n` +
-          `A beírt út több mint 100 km (${calculatedKm} km).\n` +
-          `Kérlek ellenőrizd, hogy nem gépeltél-e el egy számjegyet a kezdő vagy záró kilométernél!\n\n` +
-          `Ha az adatok helyesek, kattints még egyszer a Mentés gombra.`
+          "⚠️ Figyelem!\n\n" +
+          "A beírt út több mint 100 km (" + calculatedKm + " km).\n" +
+          "Kérlek ellenőrizd, hogy nem gépeltél-e el egy számjegyet a kezdő vagy záró kilométernél!\n\n" +
+          "Ha az adatok helyesek, kattints még egyszer a Mentés gombra."
         );
         return;
       }
@@ -1041,7 +1033,7 @@
       if (thKm) thKm.classList.remove('hidden');
 
       if (!activeShift) {
-        tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-500">Nincs aktív műszak.</td></tr>`;
+        tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-500">Nincs aktív műszak.</td></tr>';
         if (warnBox) warnBox.classList.add('hidden');
         return;
       }
@@ -1063,7 +1055,7 @@
       displayTrips = sortTripsByKmAscending(displayTrips);
 
       if (displayTrips.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-500">Még nincsenek rögzített utak ebben a műszakban.</td></tr>`;
+        tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-500">Még nincsenek rögzített utak ebben a műszakban.</td></tr>';
         return;
       }
 
@@ -1079,18 +1071,16 @@
           ? "border-b border-amber-900/40 bg-amber-950/30 text-amber-200" 
           : "border-b border-slate-800 hover:bg-slate-800/50";
 
-        return `
-          <tr class="${rowClass}">
-            <td class="p-2.5 font-bold ${isPrivate ? 'text-amber-400' : 'text-slate-400'}">${index + 1}.</td>
-            <td class="p-2.5 font-mono">${t.time || ''}</td>
-            <td class="p-2.5 font-medium">${index + 1}. ${startAddr} &rarr; ${endAddr} ${isPrivate ? '<span class="text-xs bg-amber-900/60 text-amber-300 px-1.5 py-0.5 rounded ml-2 font-normal">Privát</span>' : ''}</td>
-            <td class="p-2.5 text-right font-mono text-slate-400">${sKm} - ${eKm}</td>
-            <td class="p-2.5 text-right font-mono font-semibold ${isPrivate ? 'text-amber-400' : ''}">${dist} km</td>
-            <td class="p-2.5 text-center">
-              <button onclick="editTrip('${t.id}')" class="text-xs bg-slate-800 hover:bg-slate-700 p-1 px-2 rounded border border-slate-700 text-slate-200" title="Szerkesztés">✏️</button>
-            </td>
-          </tr>
-        `;
+        return '<tr class="' + rowClass + '">' +
+          '<td class="p-2.5 font-bold ' + (isPrivate ? 'text-amber-400' : 'text-slate-400') + '">' + (index + 1) + '.</td>' +
+          '<td class="p-2.5 font-mono">' + (t.time || '') + '</td>' +
+          '<td class="p-2.5 font-medium">' + (index + 1) + '. ' + startAddr + ' &rarr; ' + endAddr + (isPrivate ? ' <span class="text-xs bg-amber-900/60 text-amber-300 px-1.5 py-0.5 rounded ml-2 font-normal">Privát</span>' : '') + '</td>' +
+          '<td class="p-2.5 text-right font-mono text-slate-400">' + sKm + ' - ' + eKm + '</td>' +
+          '<td class="p-2.5 text-right font-mono font-semibold ' + (isPrivate ? 'text-amber-400' : '') + '">' + dist + ' km</td>' +
+          '<td class="p-2.5 text-center">' +
+            '<button onclick="editTrip(\'' + t.id + '\')" class="text-xs bg-slate-800 hover:bg-slate-700 p-1 px-2 rounded border border-slate-700 text-slate-200" title="Szerkesztés">✏️</button>' +
+          '</td>' +
+        '</tr>';
       }).join('');
     };
 
@@ -1120,34 +1110,27 @@
 
       overlimitList.sort((a, b) => new Date(b.shift.startDate || 0) - new Date(a.shift.startDate || 0));
 
-      if (badge) badge.textContent = `${overlimitList.length} eset`;
+      if (badge) badge.textContent = overlimitList.length + " eset";
 
       if (overlimitList.length === 0) {
-        container.innerHTML = `<p class="text-xs text-slate-500 text-center p-3 bg-slate-950/60 rounded-lg">Nincs rögzített 250 km feletti műszak ebben a nézetben.</p>`;
+        container.innerHTML = '<p class="text-xs text-slate-500 text-center p-3 bg-slate-950/60 rounded-lg">Nincs rögzített 250 km feletti műszak ebben a nézetben.</p>';
         return;
       }
 
       container.innerHTML = overlimitList.map(item => {
-        const { shift, workKmTotal } = item;
-        return `
-          <div class="bg-slate-950 border border-red-900/50 rounded-lg p-2.5 flex justify-between items-center text-xs hover:border-red-600/60 transition">
-            <div>
-              <div class="font-bold text-slate-200">${shift.driverEmail || 'Ismeretlen'}</div>
-              <div class="text-[10px] text-slate-400">📅 ${shift.startDate || '-'} • <span class="text-orange-300 font-semibold">${shift.carPlate || '-'}</span></div>
-            </div>
-            <div class="flex items-center gap-1.5">
-              <span class="text-xs font-mono font-bold text-red-400 bg-red-950/80 border border-red-800/80 px-2 py-0.5 rounded-md">
-                ${workKmTotal} km
-              </span>
-              <button onclick="exportShiftPDF('${shift.id}', 'work')" title="Munka PDF Letöltése" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-200 px-2 py-1 rounded border border-red-700 transition">
-                📄 PDF
-              </button>
-              <button onclick="dismissOverlimitShift('${shift.id}')" title="Törlés csak ebből a riasztási nézetből" class="text-[10px] bg-slate-800 hover:bg-red-900/60 text-slate-400 hover:text-red-200 px-2 py-1 rounded border border-slate-700 hover:border-red-700 transition">
-                🗑️
-              </button>
-            </div>
-          </div>
-        `;
+        const shift = item.shift;
+        const workKmTotal = item.workKmTotal;
+        return '<div class="bg-slate-950 border border-red-900/50 rounded-lg p-2.5 flex justify-between items-center text-xs hover:border-red-600/60 transition">' +
+          '<div>' +
+            '<div class="font-bold text-slate-200">' + (shift.driverEmail || 'Ismeretlen') + '</div>' +
+            '<div class="text-[10px] text-slate-400">📅 ' + (shift.startDate || '-') + ' • <span class="text-orange-300 font-semibold">' + (shift.carPlate || '-') + '</span></div>' +
+          '</div>' +
+          '<div class="flex items-center gap-1.5">' +
+            '<span class="text-xs font-mono font-bold text-red-400 bg-red-950/80 border border-red-800/80 px-2 py-0.5 rounded-md">' + workKmTotal + ' km</span>' +
+            '<button onclick="exportShiftPDF(\'' + shift.id + '\', \'work\')" title="Munka PDF Letöltése" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-200 px-2 py-1 rounded border border-red-700 transition">📄 PDF</button>' +
+            '<button onclick="dismissOverlimitShift(\'' + shift.id + '\')" title="Törlés csak ebből a riasztási nézetből" class="text-[10px] bg-slate-800 hover:bg-red-900/60 text-slate-400 hover:text-red-200 px-2 py-1 rounded border border-slate-700 hover:border-red-700 transition">🗑️</button>' +
+          '</div>' +
+        '</div>';
       }).join('');
     }
 
@@ -1168,7 +1151,7 @@
       const activeShifts = allShifts.filter(s => s.status === 'active');
 
       if (activeShifts.length === 0) {
-        activeContainer.innerHTML = `<p class="text-xs text-slate-500 text-center p-4 bg-slate-950/80 rounded-xl">Jelenleg nincs egyetlen nyitott műszak sem.</p>`;
+        activeContainer.innerHTML = '<p class="text-xs text-slate-500 text-center p-4 bg-slate-950/80 rounded-xl">Jelenleg nincs egyetlen nyitott műszak sem.</p>';
       } else {
         activeContainer.innerHTML = activeShifts.map((shift) => {
           let shiftTrips = allTrips.filter(t => t.shiftId === shift.id);
@@ -1176,42 +1159,39 @@
 
           const totalKm = shiftTrips.reduce((sum, t) => sum + Number(t.workKm || 0), 0);
 
-          return `
-            <details class="group border border-emerald-500/40 bg-slate-950/90 rounded-xl overflow-hidden shadow-md">
-              <summary class="flex items-center justify-between p-3 cursor-pointer hover:bg-slate-800/50 transition select-none">
-                <div>
-                  <div class="text-xs font-bold text-slate-200">${shift.driverEmail || 'Sofőr'}</div>
-                  <div class="text-[10px] text-emerald-400 font-semibold">${shift.carPlate || 'Rendszám'} • Kezdve: ${shift.startTime || '-'}</div>
-                </div>
-                <div class="flex items-center gap-2">
-                  <span class="text-xs font-mono font-bold text-orange-400">${totalKm} km</span>
-                  <span class="text-xs text-slate-500 group-open:rotate-180 transition-transform">▼</span>
-                </div>
-              </summary>
-              <div class="p-2 border-t border-slate-800 bg-slate-900/60 text-xs space-y-2">
-                ${shiftTrips.length === 0 
-                  ? '<p class="text-[11px] text-slate-500 italic text-center">Még nincs rögzített út.</p>'
-                  : shiftTrips.map((t, idx) => `
-                    <div class="border-b border-slate-800/50 pb-1.5 space-y-0.5">
-                      <div class="flex justify-between text-[11px] font-medium">
-                        <span>${idx+1}.${t.startLocation} &rarr; ${t.endLocation}${t.type === 'private' ? '<span class="text-[9px] text-amber-400 bg-amber-950 px-1 rounded ml-1">Privát</span>' : ''}</span>
-                        <span class="font-mono text-orange-400 font-bold ml-2">${t.workKm} km</span>
-                      </div>
-                      <div class="text-[10px] font-mono text-slate-400 flex justify-between">
-                        <span>Óraállás:</span>
-                        <span>${t.startKm \vert{}\vert{} 0} km &rarr; ${t.endKm || 0} km</span>
-                      </div>
-                    </div>
-                  `).join('')
-                }
-              </div>
-            </details>
-          `;
+          const tripsHtml = shiftTrips.length === 0 
+            ? '<p class="text-[11px] text-slate-500 italic text-center">Még nincs rögzített út.</p>'
+            : shiftTrips.map((t, idx) => 
+                '<div class="border-b border-slate-800/50 pb-1.5 space-y-0.5">' +
+                  '<div class="flex justify-between text-[11px] font-medium">' +
+                    '<span>' + (idx+1) + '. ' + t.startLocation + ' &rarr; ' + t.endLocation + (t.type === 'private' ? ' <span class="text-[9px] text-amber-400 bg-amber-950 px-1 rounded ml-1">Privát</span>' : '') + '</span>' +
+                    '<span class="font-mono text-orange-400 font-bold ml-2">' + t.workKm + ' km</span>' +
+                  '</div>' +
+                  '<div class="text-[10px] font-mono text-slate-400 flex justify-between">' +
+                    '<span>Óraállás:</span>' +
+                    '<span>' + (t.startKm || 0) + ' km &rarr; ' + (t.endKm || 0) + ' km</span>' +
+                  '</div>' +
+                '</div>'
+              ).join('');
+
+          return '<details class="group border border-emerald-500/40 bg-slate-950/90 rounded-xl overflow-hidden shadow-md">' +
+            '<summary class="flex items-center justify-between p-3 cursor-pointer hover:bg-slate-800/50 transition select-none">' +
+              '<div>' +
+                '<div class="text-xs font-bold text-slate-200">' + (shift.driverEmail || 'Sofőr') + '</div>' +
+                '<div class="text-[10px] text-emerald-400 font-semibold">' + (shift.carPlate || 'Rendszám') + ' • Kezdve: ' + (shift.startTime || '-') + '</div>' +
+              '</div>' +
+              '<div class="flex items-center gap-2">' +
+                '<span class="text-xs font-mono font-bold text-orange-400">' + totalKm + ' km</span>' +
+                '<span class="text-xs text-slate-500 group-open:rotate-180 transition-transform">▼</span>' +
+              '</div>' +
+            '</summary>' +
+            '<div class="p-2 border-t border-slate-800 bg-slate-900/60 text-xs space-y-2">' + tripsHtml + '</div>' +
+          '</details>';
         }).join('');
       }
 
       if (closedShifts.length === 0) {
-        closedContainer.innerHTML = `<p class="text-xs text-slate-500 text-center p-4 bg-slate-950/80 rounded-xl">Nincsenek korábbi lezárt műszakok.</p>`;
+        closedContainer.innerHTML = '<p class="text-xs text-slate-500 text-center p-4 bg-slate-950/80 rounded-xl">Nincsenek korábbi lezárt műszakok.</p>';
         return;
       }
 
@@ -1238,87 +1218,78 @@
 
         const sortedDates = Object.keys(dateGroups).sort((a, b) => new Date(b) - new Date(a));
 
-        return `
-          <details class="group border border-slate-800 bg-slate-950/90 rounded-xl overflow-hidden mb-3">
-            <summary class="flex items-center justify-between p-3 cursor-pointer hover:bg-slate-900/80 transition select-none">
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-bold text-slate-200">👤 ${driverEmail}</span>
-                <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full border border-slate-700">${driverShifts.length} műszak</span>
-              </div>
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-mono font-bold text-orange-400">${driverTotalKm} km total</span>
-                <span class="text-xs text-slate-500 group-open:rotate-180 transition-transform">▼</span>
-              </div>
-            </summary>
+        const datesHtml = sortedDates.map((date) => {
+          const dayShifts = dateGroups[date];
 
-            <div class="p-3 border-t border-slate-800 bg-slate-900/30 space-y-3">
-              ${sortedDates.map((date) => {
-                const dayShifts = dateGroups[date];
+          const dayShiftsHtml = dayShifts.map((shift, shiftIdx) => {
+            let shiftTrips = allTrips.filter(t => t.shiftId === shift.id);
+            shiftTrips = sortTripsByKmAscending(shiftTrips);
 
-                return `
-                  <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3 space-y-2">
-                    <div class="flex justify-between items-center border-b border-slate-800/80 pb-1.5">
-                      <span class="text-xs font-extrabold text-orange-400">📅 ${date}</span>
-                      <span class="text-[10px] text-slate-500 font-semibold">${dayShifts.length} Műszak ezen a napon</span>
-                    </div>
+            const workKmTotal = shiftTrips
+              .filter(t => t.type === 'work')
+              .reduce((sum, t) => sum + Number(t.workKm || 0), 0);
 
-                    <div class="space-y-2">
-                      ${dayShifts.map((shift, shiftIdx) => {
-                        let shiftTrips = allTrips.filter(t => t.shiftId === shift.id);
-                        shiftTrips = sortTripsByKmAscending(shiftTrips);
+            const totalCombinedKm = shiftTrips.reduce((sum, t) => sum + Number(t.workKm || 0), 0);
+            const isLimitExceeded = (workKmTotal >= 250);
 
-                        const workKmTotal = shiftTrips
-                          .filter(t => t.type === 'work')
-                          .reduce((sum, t) => sum + Number(t.workKm || 0), 0);
+            const tripsTableHtml = shiftTrips.length === 0 
+              ? '<p class="text-[11px] text-slate-500 italic text-center">Ebben a műszakban nem rögzítettek utat.</p>' 
+              : '<table class="w-full text-left text-xs"><thead class="text-slate-500 border-b border-slate-800"><tr><th class="p-1">#</th><th class="p-1">Idő</th><th class="p-1">Útvonal</th><th class="p-1 text-right">Km</th><th class="p-1 text-right">Megtett</th></tr></thead><tbody class="divide-y divide-slate-800/50">' +
+                shiftTrips.map((t, tIdx) => 
+                  '<tr>' +
+                    '<td class="p-1 font-bold text-slate-500">' + (tIdx + 1) + '.</td>' +
+                    '<td class="p-1 font-mono text-slate-400">' + (t.time || '') + '</td>' +
+                    '<td class="p-1">' + (tIdx + 1) + '. ' + (t.startLocation || '') + ' &rarr; ' + (t.endLocation || '') + (t.type === 'private' ? ' <span class="text-[9px] text-amber-400 bg-amber-950 px-1 rounded">Privát</span>' : '') + '</td>' +
+                    '<td class="p-1 text-right font-mono text-slate-400">' + (t.startKm || 0) + ' - ' + (t.endKm || 0) + '</td>' +
+                    '<td class="p-1 text-right font-mono font-semibold text-orange-400">' + (t.workKm || 0) + ' km</td>' +
+                  '</tr>'
+                ).join('') +
+                '</tbody></table>';
 
-                        const totalCombinedKm = shiftTrips.reduce((sum, t) => sum + Number(t.workKm || 0), 0);
-                        const isLimitExceeded = (workKmTotal >= 250);
+            return '<details class="group/shift border ' + (isLimitExceeded ? 'border-red-500/80 bg-red-950/20' : 'border-slate-800/80 bg-slate-950') + ' rounded-lg p-2.5">' +
+              '<summary class="flex items-center justify-between cursor-pointer select-none">' +
+                '<div>' +
+                  '<div class="text-xs font-bold text-slate-200 flex items-center gap-1.5">' +
+                    '<span>' + (dayShifts.length > 1 ? (shiftIdx + 1) + '. Műszak: ' : '') + '<span class="text-orange-300 font-semibold">' + (shift.carPlate || 'Autó') + '</span></span>' +
+                    '<span class="text-[10px] text-slate-400">(' + (shift.startTime || '-') + ' &rarr; ' + (shift.endTime || '-') + ')</span>' +
+                    (isLimitExceeded ? ' <span class="bg-red-600 text-white text-[9px] font-extrabold px-1.5 py-0.2 rounded">⚠️ 250+ KM</span>' : '') +
+                  '</div>' +
+                '</div>' +
+                '<div class="flex items-center gap-1.5">' +
+                  '<span class="text-xs font-mono font-bold text-slate-300 mr-1">' + totalCombinedKm + ' km</span>' +
+                  '<button onclick="exportShiftPDF(\'' + shift.id + '\', \'work\')" title="Munkakilométer PDF" class="text-[9px] bg-emerald-700 hover:bg-emerald-600 text-white px-2 py-1 rounded border border-emerald-600 transition">Munka PDF</button>' +
+                  '<button onclick="exportShiftPDF(\'' + shift.id + '\', \'all\')" title="Összesített PDF" class="text-[9px] bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded border border-amber-500 transition">Összes PDF</button>' +
+                  '<button onclick="exportShiftPDF(\'' + shift.id + '\', \'private\')" title="Privát PDF" class="text-[9px] bg-purple-700 hover:bg-purple-600 text-white px-2 py-1 rounded border border-purple-600 transition">Privát PDF</button>' +
+                  '<button onclick="deleteShift(\'' + shift.id + '\')" class="text-[9px] bg-red-900/50 hover:bg-red-800 text-red-300 px-1.5 py-1 rounded border border-red-800 transition">🗑️</button>' +
+                  '<span class="text-xs text-slate-500 group-open/shift:rotate-180 transition-transform">▼</span>' +
+                '</div>' +
+              '</summary>' +
+              '<div class="mt-2 pt-2 border-t border-slate-800/60 bg-slate-900/60 rounded p-2">' + tripsTableHtml + '</div>' +
+            '</details>';
+          }).join('');
 
-                        const tripsTableHtml = shiftTrips.length === 0 
-                          ? '<p class="text-[11px] text-slate-500 italic text-center">Ebben a műszakban nem rögzítettek utat.</p>' 
-                          : '<table class="w-full text-left text-xs"><thead class="text-slate-500 border-b border-slate-800"><tr><th class="p-1">#</th><th class="p-1">Idő</th><th class="p-1">Útvonal</th><th class="p-1 text-right">Km</th><th class="p-1 text-right">Megtett</th></tr></thead><tbody class="divide-y divide-slate-800/50">' +
-                            shiftTrips.map((t, tIdx) => 
-                              '<tr><td class="p-1 font-bold text-slate-500">' + (tIdx + 1) + '.</td>' +
-                              '<td class="p-1 font-mono text-slate-400">' + (t.time || '') + '</td>' +
-                              '<td class="p-1">' + (tIdx + 1) + '. ' + (t.startLocation || '') + ' &rarr; ' + (t.endLocation || '') + (t.type === 'private' ? ' <span class="text-[9px] text-amber-400 bg-amber-950 px-1 rounded">Privát</span>' : '') + '</td>' +
-                              '<td class="p-1 text-right font-mono text-slate-400">' + (t.startKm || 0) + ' - ' + (t.endKm || 0) + '</td>' +
-                              '<td class="p-1 text-right font-mono font-semibold text-orange-400">' + (t.workKm || 0) + ' km</td></tr>'
-                            ).join('') +
-                            '</tbody></table>';
+          return '<div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3 space-y-2">' +
+            '<div class="flex justify-between items-center border-b border-slate-800/80 pb-1.5">' +
+              '<span class="text-xs font-extrabold text-orange-400">📅 ' + date + '</span>' +
+              '<span class="text-[10px] text-slate-500 font-semibold">' + dayShifts.length + ' Műszak ezen a napon</span>' +
+            '</div>' +
+            '<div class="space-y-2">' + dayShiftsHtml + '</div>' +
+          '</div>';
+        }).join('');
 
-                        return `
-                          <details class="group/shift border ${isLimitExceeded ? 'border-red-500/80 bg-red-950/20' : 'border-slate-800/80 bg-slate-950'} rounded-lg p-2.5">
-                            <summary class="flex items-center justify-between cursor-pointer select-none">
-                              <div>
-                                <div class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
-                                  <span>${dayShifts.length > 1 ? (shiftIdx + 1) + '. Műszak: ' : ''}<span class="text-orange-300 font-semibold">${shift.carPlate || 'Autó'}</span></span>
-                                  <span class="text-[10px] text-slate-400">(${shift.startTime || '-'} &rarr; ${shift.endTime || '-'})</span>
-                                  ${isLimitExceeded ? '<span class="bg-red-600 text-white text-[9px] font-extrabold px-1.5 py-0.2 rounded">⚠️ 250+ KM</span>' : ''}
-                                </div>
-                              </div>
-                              <div class="flex items-center gap-1.5">
-                                <span class="text-xs font-mono font-bold text-slate-300 mr-1">${totalCombinedKm} km</span>
-                                <button onclick="exportShiftPDF('${shift.id}', 'work')" title="Munkakilométer PDF" class="text-[9px] bg-emerald-700 hover:bg-emerald-600 text-white px-2 py-1 rounded border border-emerald-600 transition">Munka PDF</button>
-                                <button onclick="exportShiftPDF('${shift.id}', 'all')" title="Összesített PDF" class="text-[9px] bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded border border-amber-500 transition">Összes PDF</button>
-                                <button onclick="exportShiftPDF('${shift.id}', 'private')" title="Privát PDF" class="text-[9px] bg-purple-700 hover:bg-purple-600 text-white px-2 py-1 rounded border border-purple-600 transition">Privát PDF</button>
-                                <button onclick="deleteShift('${shift.id}')" class="text-[9px] bg-red-900/50 hover:bg-red-800 text-red-300 px-1.5 py-1 rounded border border-red-800 transition">🗑️</button>
-                                <span class="text-xs text-slate-500 group-open/shift:rotate-180 transition-transform">▼</span>
-                              </div>
-                            </summary>
-
-                            <div class="mt-2 pt-2 border-t border-slate-800/60 bg-slate-900/60 rounded p-2">
-                              ${tripsTableHtml}
-                            </div>
-                          </details>
-                        `;
-                      }).join('')}
-                    </div>
-                  </div>
-                `;
-              }).join('')}
-            </div>
-          </details>
-        `;
+        return '<details class="group border border-slate-800 bg-slate-950/90 rounded-xl overflow-hidden mb-3">' +
+          '<summary class="flex items-center justify-between p-3 cursor-pointer hover:bg-slate-900/80 transition select-none">' +
+            '<div class="flex items-center gap-2">' +
+              '<span class="text-xs font-bold text-slate-200">👤 ' + driverEmail + '</span>' +
+              '<span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full border border-slate-700">' + driverShifts.length + ' műszak</span>' +
+            '</div>' +
+            '<div class="flex items-center gap-2">' +
+              '<span class="text-xs font-mono font-bold text-orange-400">' + driverTotalKm + ' km total</span>' +
+              '<span class="text-xs text-slate-500 group-open:rotate-180 transition-transform">▼</span>' +
+            '</div>' +
+          '</summary>' +
+          '<div class="p-3 border-t border-slate-800 bg-slate-900/30 space-y-3">' + datesHtml + '</div>' +
+        '</details>';
       }).join('');
     };
 
@@ -1394,7 +1365,7 @@
         : (pdfType === 'private' ? 'Privát Menetlevél' : 'Összesített Menetlevél');
 
       const shiftDateStr = shift.startDate || (shiftTrips.length > 0 ? shiftTrips[0].date : '');
-      const fileName = `menetlevel_${pdfType}_${(shift.driverEmail || 'sofor').split('@')[0]}_${shiftDateStr}.pdf`;
+      const fileName = "menetlevel_" + pdfType + "_" + (shift.driverEmail || 'sofor').split('@')[0] + "_" + shiftDateStr + ".pdf";
 
       shiftTrips = sortTripsByKmAscending(shiftTrips);
       const firstTripTime = shiftTrips.length > 0 ? shiftTrips[0].time : '-';
@@ -1402,7 +1373,7 @@
       generatePDFForTrips(
         shiftTrips, 
         typeTitle, 
-        `Sofőr: ${shift.driverEmail} | Jármű: ${shift.carPlate || '-'} | Dátum: ${shiftDateStr} | Kezdő időpont: ${firstTripTime}`, 
+        "Sofőr: " + shift.driverEmail + " | Jármű: " + (shift.carPlate || '-') + " | Dátum: " + shiftDateStr + " | Kezdő időpont: " + firstTripTime, 
         fileName, 
         pdfType
       );
@@ -1428,7 +1399,7 @@
       
       doc.setFontSize(8);
       doc.setTextColor(120, 120, 120);
-      doc.text(sanitizeText(`Generálva: ${new Date().toLocaleDateString('hu-HU')} ${new Date().toLocaleTimeString('hu-HU')}`), 14, 26);
+      doc.text(sanitizeText("Generálva: " + new Date().toLocaleDateString('hu-HU') + " " + new Date().toLocaleTimeString('hu-HU')), 14, 26);
 
       let totalWorkKm = 0;
       let totalPrivateKm = 0;
@@ -1460,14 +1431,14 @@
       const headers = rawHeaders.map(h => sanitizeText(h));
 
       const rows = tripsArray.map((t, idx) => {
-        const routeNum = `${idx + 1}. ${t.startLocation || '-'} > ${t.endLocation || '-'}`;
+        const routeNum = (idx + 1) + ". " + (t.startLocation || '-') + " > " + (t.endLocation || '-');
         const route = sanitizeText(routeNum);
-        const kmText = sanitizeText(`${t.workKm} km${t.type === 'private' ? ' (Privát)' : ''}`);
-        const passText = sanitizeText(`${t.passengerCount || 0} fő`);
+        const kmText = sanitizeText(t.workKm + " km" + (t.type === 'private' ? ' (Privát)' : ''));
+        const passText = sanitizeText((t.passengerCount || 0) + " fő");
 
         if (pdfType === 'work') {
           return [
-            `${idx + 1}.`,
+            (idx + 1) + ".",
             t.time || '-',
             t.carPlate || '-',
             route,
@@ -1476,20 +1447,20 @@
           ];
         } else if (pdfType === 'private') {
           return [
-            `${idx + 1}.`,
+            (idx + 1) + ".",
             t.time || '-',
             t.carPlate || '-',
             route,
-            `${t.startKm || 0} - ${t.endKm || 0}`,
+            (t.startKm || 0) + " - " + (t.endKm || 0),
             kmText
           ];
         } else {
           return [
-            `${idx + 1}.`,
+            (idx + 1) + ".",
             t.time || '-',
             t.carPlate || '-',
             route,
-            `${t.startKm || 0} - ${t.endKm || 0}`,
+            (t.startKm || 0) + " - " + (t.endKm || 0),
             kmText,
             passText
           ];
@@ -1531,27 +1502,27 @@
       let currentY = finalY + 12;
 
       if (pdfType === 'work') {
-        doc.text(sanitizeText(`Összesen megtett munkakilométer: ${totalWorkKm} km`), 18, currentY);
+        doc.text(sanitizeText("Összesen megtett munkakilométer: " + totalWorkKm + " km"), 18, currentY);
         currentY += 5;
-        doc.text(sanitizeText(`Összesített utasszám: ${totalPassengers} fő`), 18, currentY);
+        doc.text(sanitizeText("Összesített utasszám: " + totalPassengers + " fő"), 18, currentY);
         currentY += 5;
       } else if (pdfType === 'private') {
-        doc.text(sanitizeText(`Összesen megtett privát kilométer: ${totalPrivateKm} km`), 18, currentY);
+        doc.text(sanitizeText("Összesen megtett privát kilométer: " + totalPrivateKm + " km"), 18, currentY);
         currentY += 5;
       } else {
-        doc.text(sanitizeText(`Összes munkakilométer: ${totalWorkKm} km`), 18, currentY);
+        doc.text(sanitizeText("Összes munkakilométer: " + totalWorkKm + " km"), 18, currentY);
         currentY += 5;
-        doc.text(sanitizeText(`Összes privát kilométer: ${totalPrivateKm} km`), 18, currentY);
+        doc.text(sanitizeText("Összes privát kilométer: " + totalPrivateKm + " km"), 18, currentY);
         currentY += 5;
         
         doc.setFont(undefined, 'bold');
         doc.setTextColor(15, 23, 42);
-        doc.text(sanitizeText(`ÖSSZESEN MEGTETT KILOMÉTER (Munka + Privát): ${totalCombinedKm} km`), 18, currentY);
+        doc.text(sanitizeText("ÖSSZESEN MEGTETT KILOMÉTER (Munka + Privát): " + totalCombinedKm + " km"), 18, currentY);
         doc.setFont(undefined, 'normal');
         doc.setTextColor(30, 41, 59);
         currentY += 5;
 
-        doc.text(sanitizeText(`Összesített utasszám: ${totalPassengers} fő`), 18, currentY);
+        doc.text(sanitizeText("Összesített utasszám: " + totalPassengers + " fő"), 18, currentY);
         currentY += 5;
       }
 
@@ -1559,7 +1530,7 @@
         doc.setTextColor(220, 38, 38);
         doc.setFont(undefined, 'bold');
         doc.setFontSize(8);
-        doc.text(sanitizeText(`FIGYELEM: A műszak munkakilométere meghaladja a 250 km-es limitet! (${totalWorkKm} km)`), 18, currentY + 1);
+        doc.text(sanitizeText("FIGYELEM: A műszak munkakilométere meghaladja a 250 km-es limitet! (" + totalWorkKm + " km)"), 18, currentY + 1);
       }
 
       doc.save(filename);
@@ -1609,9 +1580,9 @@
 
       const driverText = driver === 'all' ? 'Összes sofőr' : driver;
       const typeText = type === 'all' ? 'Összesített' : (type === 'work' ? 'Munkakilométer' : 'Privát');
-      const filename = `menetlevel_${driver === 'all' ? 'osszes' : driver.split('@')[0]}_${type}_${new Date().toISOString().slice(0,10)}.pdf`;
+      const filename = "menetlevel_" + (driver === 'all' ? 'osszes' : driver.split('@')[0]) + "_" + type + "_" + new Date().toISOString().slice(0,10) + ".pdf";
 
-      generatePDFForTrips(filtered, `Menetlevél Kimutatás`, `Sofőr: ${driverText} | Típus: ${typeText} | Időszak: ${period.toUpperCase()}`, filename, type);
+      generatePDFForTrips(filtered, "Menetlevél Kimutatás", "Sofőr: " + driverText + " | Típus: " + typeText + " | Időszak: " + period.toUpperCase(), filename, type);
     };
   </script>
 </body>
