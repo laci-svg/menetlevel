@@ -1309,15 +1309,15 @@
                                     </tr>
                                   </thead>
                                   <tbody class="divide-y divide-slate-800/50">
-                                    ${shiftTrips.map((t, tIdx) => `
+                                    ` + shiftTrips.map((t, tIdx) => `
                                       <tr>
-                                        <td class="p-1 font-bold text-slate-500">${tIdx + 1}.</td>
+                                        <td class="p-1 font-bold text-slate-500">` + (tIdx + 1) + `.</td>
                                         <td class="p-1 font-mono text-slate-400">${t.time || ''}</td>
-                                        <td class="p-1">${tIdx + 1}. ${t.startLocation || ''} &rarr; ${t.endLocation || ''} ${t.type === 'private' ? '<span class="text-[9px] text-amber-400 bg-amber-950 px-1 rounded">Privát</span>' : ''}</td>
-                                        <td class="p-1 text-right font-mono text-slate-400">${t.startKm || 0} - ${t.endKm || 0}</td>
+                                        <td class="p-1">` + (tIdx + 1) + `. ${t.startLocation || ''} &rarr; ${t.endLocation \vert{}\vert{} ''}${t.type === 'private' ? '<span class="text-[9px] text-amber-400 bg-amber-950 px-1 rounded">Privát</span>' : ''}</td>
+                                        <td class="p-1 text-right font-mono text-slate-400">${t.startKm \vert{}\vert{} 0} -${t.endKm || 0}</td>
                                         <td class="p-1 text-right font-mono font-semibold text-orange-400">${t.workKm || 0} km</td>
                                       </tr>
-                                    `).join('')}
+                                    `).join('') + `
                                   </tbody>
                                 </table>
                               `}
