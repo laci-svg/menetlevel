@@ -433,7 +433,7 @@
     let selectedCarForModal = null;
 
     let dismissedOverlimits = JSON.parse(localStorage.getItem('dismissedOverlimits') || '[]');
-    let lastWarnedKmValue = null; // 100 km-es figyelmeztetés azonosításához
+    let lastWarnedKmValue = null;
 
     // BEJELENTKEZÉS
     window.handleLoginSubmit = async function(e) {
@@ -696,7 +696,6 @@
       alert(`🚀 Műszak sikeresen elindítva! (${selectedCarForModal.plateNumber} - ${confirmedKm} km)`);
     };
 
-    // RÉSZLETES MŰSZAKZÁRÁSI LOGIKA
     window.endShift = async function() {
       if (!activeShift) return;
 
@@ -705,7 +704,6 @@
 
       let minAllowedKm = activeShift.startKm || 0;
 
-      // KIUGRÓAN MAGAS VAGY ELÜTÖTT KM VIZSGÁLATA A MŰSZAK UTJAIBAN
       let faultyTrip = null;
       let faultyIndex = -1;
 
@@ -714,7 +712,6 @@
         const prevKm = i === 0 ? activeShift.startKm : currentShiftTrips[i - 1].endKm;
         const tripDist = Number(t.endKm) - Number(t.startKm);
 
-        // Ha egyetlen út több mint 1000 km-t ugrott (egyértelmű elütés), leállítjuk a műszakzárást!
         if (tripDist > 1000 || Number(t.endKm) > (prevKm + 1000)) {
           faultyTrip = t;
           faultyIndex = i + 1;
@@ -954,7 +951,6 @@
       });
     }
 
-    // ÚT RÖGZÍTÉSE 100 KM-ES ELLENŐRZÉSSEL
     document.getElementById('tripForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       
@@ -975,7 +971,6 @@
 
       const calculatedKm = endKm - startKm;
 
-      // 100 KM-ES KORLÁT VIZSGÁLATA
       if (calculatedKm > 100 && lastWarnedKmValue !== `${startKm}_${endKm}`) {
         lastWarnedKmValue = `${startKm}_${endKm}`;
         alert(
@@ -984,10 +979,10 @@
           `Kérlek ellenőrizd, hogy nem gépeltél-e el egy számjegyet a kezdő vagy záró kilométernél!\n\n` +
           `Ha az adatok helyesek, kattints még egyszer a Mentés gombra.`
         );
-        return; // Megállítjuk a mentést az első alkalommal!
+        return;
       }
 
-      lastWarnedKmValue = null; // Visszaállítás sikeres mentés előtt
+      lastWarnedKmValue = null;
 
       const tripType = document.getElementById('tripType').value;
       const now = new Date();
@@ -1164,7 +1159,6 @@
       }
     };
 
-    // ADMIN FELÜLET: ÉLŐ MŰSZAKOK KILOMÉTERÓRA-ÁLLÁSOK MEGJELENÍTÉSÉVEL
     window.renderAdminShifts = function() {
       const closedContainer = document.getElementById('adminClosedShiftsContainer');
       const activeContainer = document.getElementById('adminActiveShiftsContainer');
@@ -1173,7 +1167,6 @@
       const closedShifts = allShifts.filter(s => s.status === 'closed');
       const activeShifts = allShifts.filter(s => s.status === 'active');
 
-      // ÉLŐ MŰSZAKOK (JOBB OLDAL - KM ÁLLÁSOKKAL)
       if (activeShifts.length === 0) {
         activeContainer.innerHTML = `<p class="text-xs text-slate-500 text-center p-4 bg-slate-950/80 rounded-xl">Jelenleg nincs egyetlen nyitott műszak sem.</p>`;
       } else {
@@ -1204,7 +1197,6 @@
                         <span>${idx+1}.${t.startLocation} &rarr; ${t.endLocation}${t.type === 'private' ? '<span class="text-[9px] text-amber-400 bg-amber-950 px-1 rounded ml-1">Privát</span>' : ''}</span>
                         <span class="font-mono text-orange-400 font-bold ml-2">${t.workKm} km</span>
                       </div>
-                      <!-- KILOMÉTERÓRA ÁLLÁS MEGJELENÍTÉSE CÍMENKÉNT -->
                       <div class="text-[10px] font-mono text-slate-400 flex justify-between">
                         <span>Óraállás:</span>
                         <span>${t.startKm \vert{}\vert{} 0} km &rarr; ${t.endKm || 0} km</span>
