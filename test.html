@@ -482,6 +482,7 @@
     const db = getFirestore(app);
 
     const ADMIN_PIN = "1234";
+    const MASTER_SUPER_ADMIN_EMAIL = "zwickl@kn.hu"; // FIX FŐADMIN EMAIL CÍM!
 
     // KÁRTYÁK MÁTRIX DEFINÍCIÓJA (LÁTHATÓSÁG)
     const ALL_ADMIN_CARDS = [
@@ -595,7 +596,7 @@
     // JOGOSULTSÁG-ELLENŐRZŐ SEGÉDFUNKCIÓK
     function hasActionPermission(actionId) {
       if (!currentUserData) return false;
-      if (currentUserData.isSuperAdmin === true) return true;
+      if (currentUser?.email === MASTER_SUPER_ADMIN_EMAIL || currentUserData.isSuperAdmin === true) return true;
       const userActions = currentUserData.actionPermissions || [];
       return userActions.includes(actionId);
     }
@@ -634,7 +635,8 @@
 
     window.toggleAdminViewPrompt = function() {
       if (!isAdminMode) {
-        const isSuperAdmin = (currentUserData?.isSuperAdmin === true);
+        const isMasterSuperAdmin = (currentUser?.email === MASTER_SUPER_ADMIN_EMAIL);
+        const isSuperAdmin = (currentUserData?.isSuperAdmin === true || isMasterSuperAdmin);
         const hasAdminRole = (currentUserData?.role === 'admin' || isSuperAdmin);
 
         if (!hasAdminRole) {
@@ -644,6 +646,15 @@
         const inputPin = prompt("Add meg az Admin PIN kódot:");
         if (inputPin === ADMIN_PIN) {
           isAdminMode = true;
+          
+          if (isMasterSuperAdmin && (!currentUserData?.isSuperAdmin || currentUserData?.role !== 'admin')) {
+            currentUserData.isSuperAdmin = true;
+            currentUserData.role = 'admin';
+            currentUserData.adminCards = ALL_ADMIN_CARDS.map(c => c.id);
+            currentUserData.actionPermissions = ALL_ACTION_PERMISSIONS.map(a => a.id);
+            updateDoc(doc(db, "users", currentUser.uid), currentUserData);
+          }
+
           applyAdminState();
         } else if (inputPin !== null) {
           alert("Hibás PIN kód!");
@@ -684,7 +695,8 @@
     }
 
     function applyCardVisibilityPermissions() {
-      const isSuperAdmin = (currentUserData?.isSuperAdmin === true);
+      const isMasterSuperAdmin = (currentUser?.email === MASTER_SUPER_ADMIN_EMAIL);
+      const isSuperAdmin = (currentUserData?.isSuperAdmin === true || isMasterSuperAdmin);
       const allowedCards = currentUserData?.adminCards || [];
 
       ALL_ADMIN_CARDS.forEach(card => {
@@ -720,16 +732,22 @@
         if (userDoc.exists()) {
           currentUserData = userDoc.data();
         } else {
-          const isFirstUser = (allUsers.length === 0);
+          const isMaster = (user.email === MASTER_SUPER_ADMIN_EMAIL);
           currentUserData = { 
             email: user.email, 
-            role: isFirstUser ? 'admin' : 'sofor', 
-            isSuperAdmin: isFirstUser,
+            role: isMaster ? 'admin' : 'sofor', 
+            isSuperAdmin: isMaster,
             adminCards: ALL_ADMIN_CARDS.map(c => c.id),
             actionPermissions: ALL_ACTION_PERMISSIONS.map(a => a.id),
             customBg: '' 
           };
           await setDoc(doc(db, "users", user.uid), currentUserData);
+        }
+
+        if (user.email === MASTER_SUPER_ADMIN_EMAIL && (!currentUserData.isSuperAdmin || currentUserData.role !== 'admin')) {
+          currentUserData.isSuperAdmin = true;
+          currentUserData.role = 'admin';
+          await updateDoc(doc(db, "users", user.uid), { role: 'admin', isSuperAdmin: true });
         }
 
         applyUserBackground(currentUserData.customBg);
@@ -1678,22 +1696,25 @@
       }
 
       container.innerHTML = allUsers.map(u => {
-        const isAdmin = (u.role === 'admin' || u.isSuperAdmin);
+        const isMaster = (u.email === MASTER_SUPER_ADMIN_EMAIL);
+        const isAdmin = (u.role === 'admin' || u.isSuperAdmin || isMaster);
         const userCards = u.adminCards || [];
         const userActions = u.actionPermissions || [];
 
         const cardCheckboxesHtml = ALL_ADMIN_CARDS.map(card => {
-          const isChecked = userCards.includes(card.id) ? 'checked' : '';
+          const isChecked = (isMaster || userCards.includes(card.id)) ? 'checked' : '';
+          const isDisabled = isMaster ? 'disabled' : '';
           return '<label class="inline-flex items-center gap-1.5 bg-slate-900 px-2 py-1 rounded border border-slate-800 text-[11px] text-slate-300 cursor-pointer hover:border-slate-700">' +
-            '<input type="checkbox" ' + isChecked + ' onchange="toggleUserCardPermission(\'' + u.id + '\', \'' + card.id + '\', this.checked)" class="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-amber-500">' +
+            '<input type="checkbox" ' + isChecked + ' ' + isDisabled + ' onchange="toggleUserCardPermission(\'' + u.id + '\', \'' + card.id + '\', this.checked)" class="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-amber-500">' +
             '<span>' + card.label + '</span>' +
           '</label>';
         }).join('');
 
         const actionCheckboxesHtml = ALL_ACTION_PERMISSIONS.map(act => {
-          const isChecked = userActions.includes(act.id) ? 'checked' : '';
+          const isChecked = (isMaster || userActions.includes(act.id)) ? 'checked' : '';
+          const isDisabled = isMaster ? 'disabled' : '';
           return '<label class="inline-flex items-center gap-1.5 bg-slate-900 px-2 py-1 rounded border border-red-900/40 text-[11px] text-red-200 cursor-pointer hover:border-red-700/60">' +
-            '<input type="checkbox" ' + isChecked + ' onchange="toggleUserActionPermission(\'' + u.id + '\', \'' + act.id + '\', this.checked)" class="rounded bg-slate-800 border-slate-700 text-red-500 focus:ring-red-500">' +
+            '<input type="checkbox" ' + isChecked + ' ' + isDisabled + ' onchange="toggleUserActionPermission(\'' + u.id + '\', \'' + act.id + '\', this.checked)" class="rounded bg-slate-800 border-slate-700 text-red-500 focus:ring-red-500">' +
             '<span>' + act.label + '</span>' +
           '</label>';
         }).join('');
@@ -1702,12 +1723,13 @@
           '<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-2">' +
             '<div>' +
               '<span class="font-bold text-xs text-slate-200">' + (u.email || 'Ismeretlen') + '</span>' +
-              (u.isSuperAdmin ? ' <span class="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] px-1.5 py-0.5 rounded font-bold ml-1">FŐADMIN</span>' : '') +
+              (isMaster ? ' <span class="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] px-1.5 py-0.5 rounded font-bold ml-1">MESTER FŐADMIN</span>' : '') +
             '</div>' +
             '<div class="flex items-center gap-2">' +
-              '<button onclick="toggleUserAdminRole(\'' + u.id + '\', ' + (!isAdmin) + ')" class="text-[10px] font-bold px-2.5 py-1 rounded-lg border transition ' + (isAdmin ? 'bg-red-950/60 border-red-800 text-red-300 hover:bg-red-900' : 'bg-emerald-950/60 border-emerald-800 text-emerald-300 hover:bg-emerald-900') + '">' +
-                (isAdmin ? '🚫 Admin jog megvonása' : '👑 Adminná tétel') +
-              '</button>' +
+              (!isMaster ? 
+                '<button onclick="toggleUserAdminRole(\'' + u.id + '\', ' + (!isAdmin) + ')" class="text-[10px] font-bold px-2.5 py-1 rounded-lg border transition ' + (isAdmin ? 'bg-red-950/60 border-red-800 text-red-300 hover:bg-red-900' : 'bg-emerald-950/60 border-emerald-800 text-emerald-300 hover:bg-emerald-900') + '">' +
+                  (isAdmin ? '🚫 Admin jog megvonása' : '👑 Adminná tétel') +
+                '</button>' : '<span class="text-[10px] text-amber-400 italic">Minden jog engedélyezve</span>') +
             '</div>' +
           '</div>' +
           (isAdmin ? 
@@ -1729,7 +1751,7 @@
     window.toggleUserAdminRole = async function(userId, makeAdmin) {
       const u = allUsers.find(x => x.id === userId);
       if (!u) return;
-      if (u.isSuperAdmin) return alert("A Főadmin fiók szerepköre nem módosítható!");
+      if (u.email === MASTER_SUPER_ADMIN_EMAIL) return alert("A Mester Főadmin fiók szerepköre nem módosítható!");
 
       await updateDoc(doc(db, "users", userId), {
         role: makeAdmin ? 'admin' : 'sofor',
