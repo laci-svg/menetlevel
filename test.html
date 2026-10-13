@@ -5,9 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Menetlevél Nyilvántartó</title>
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Firebase Compat SDK-k (Garantáltan azonnali betöltődés és működés) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
   <!-- jsPDF & autoTable -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
   <style>
     body {
       -webkit-tap-highlight-color: transparent;
@@ -53,7 +60,7 @@
           <h2 class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-red-500">Menetlevél</h2>
           <p class="text-xs text-slate-400">Jelentkezz be a folytatáshoz</p>
         </div>
-        <form id="loginForm" onsubmit="window.handleLoginSubmit(event)" class="space-y-4">
+        <form id="loginForm" class="space-y-4">
           <div>
             <label class="block text-xs font-semibold text-slate-300 mb-1">Email cím</label>
             <input type="email" id="loginEmail" autocomplete="username" required class="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none">
@@ -92,7 +99,6 @@
             <h2 class="text-base font-bold text-amber-400 flex items-center gap-1">👑 Adminisztráció & Műszak Archívum</h2>
             <span class="text-[10px] font-semibold bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30">PIN Védett</span>
           </div>
-          <!-- ÖSSZES KINYITÁSA / BECSUKÁSA GOMBOK -->
           <div class="flex items-center gap-1.5 self-end sm:self-auto">
             <button onclick="expandAllAdminCards()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[11px] font-bold px-2.5 py-1 rounded-lg transition flex items-center gap-1">
               <span>📂</span> Összes kinyitása
@@ -103,7 +109,7 @@
           </div>
         </div>
 
-        <!-- 1. SOFŐR ÉS AUTÓ ÖSSZESÍTŐ BUBORÉKOK -->
+        <!-- 1. STATISZTIKA -->
         <div id="card_stats" class="admin-card bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-md">
           <div onclick="toggleCardAccordion('card_stats')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-slate-800/50">
             <div class="flex items-center gap-2">
@@ -225,7 +231,6 @@
 
         <!-- 3. JÁRMŰPARK, HÁTTÉR ÉS TÚLFUTÁSOK -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- JÁRMŰPARK KEZELÉSE -->
           <div id="card_car_manage" class="admin-card bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-md">
             <div onclick="toggleCardAccordion('card_car_manage')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-slate-800/50">
               <div class="flex items-center gap-2">
@@ -251,7 +256,6 @@
           </div>
 
           <div class="space-y-4">
-            <!-- SOFŐR EGYEDI HÁTTÉR -->
             <div id="card_bg_manage" class="admin-card bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-md">
               <div onclick="toggleCardAccordion('card_bg_manage')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-slate-800/50">
                 <div class="flex items-center gap-2">
@@ -283,7 +287,6 @@
               </div>
             </div>
 
-            <!-- KILOMÉTER TÚLFUTÁSOK -->
             <div id="card_overlimit" class="admin-card bg-slate-900/90 border border-red-500/40 rounded-xl overflow-hidden shadow-md">
               <div onclick="toggleCardAccordion('card_overlimit')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-red-500/30">
                 <div class="flex items-center gap-2">
@@ -302,9 +305,8 @@
           </div>
         </div>
 
-        <!-- 4. MŰSZAK NÉZET & AKTUÁLIS ÓRAÁLLÁSOK -->
+        <!-- 4. MŰSZAKOK & ÓRAÁLLÁSOK -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 pt-2">
-          <!-- BAL OLDAL: Korábbi lezárt műszakok -->
           <div id="card_closed_shifts" class="admin-card lg:col-span-2 bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-md">
             <div onclick="toggleCardAccordion('card_closed_shifts')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-slate-800/50">
               <div class="flex items-center gap-2">
@@ -321,10 +323,7 @@
             </div>
           </div>
 
-          <!-- JOBB OLDAL: Aktuális Km-állások & Élő Műszakok -->
           <div class="space-y-4">
-            
-            <!-- ÉLŐ ÓRAÁLLÁS KÁRTYA -->
             <div id="card_car_live_km" class="admin-card bg-slate-900/90 border border-cyan-500/40 rounded-xl overflow-hidden shadow-md">
               <div onclick="toggleCardAccordion('card_car_live_km')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-cyan-500/30">
                 <div class="flex items-center gap-2">
@@ -341,7 +340,6 @@
               </div>
             </div>
 
-            <!-- JELENLEG ÉLŐ MŰSZAKOK -->
             <div id="card_active_shifts" class="admin-card bg-slate-900/90 border border-emerald-500/30 rounded-xl overflow-hidden shadow-md">
               <div onclick="toggleCardAccordion('card_active_shifts')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-emerald-500/30">
                 <div class="flex items-center gap-2">
@@ -361,11 +359,10 @@
                 <div id="adminActiveShiftsContainer" class="space-y-3 max-h-[350px] overflow-y-auto pr-1"></div>
               </div>
             </div>
-
           </div>
         </div>
 
-        <!-- 5. FŐADMIN: ADMIN JOGOSULTSÁG & KÁRTYA SZERKESZTŐ PANEL -->
+        <!-- 5. FŐADMIN PANEL -->
         <div id="superAdminSection" class="hidden bg-slate-900/95 border-2 border-amber-500/60 rounded-xl overflow-hidden shadow-xl">
           <div onclick="toggleCardAccordion('superAdminSection')" class="p-3.5 bg-amber-950/40 cursor-pointer flex justify-between items-center select-none hover:bg-amber-900/40 transition border-b border-amber-500/30">
             <div class="flex items-center gap-2">
@@ -545,15 +542,8 @@
   </div>
 
   <!-- SCRIPT -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { 
-      getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged 
-    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { 
-      getFirestore, collection, addDoc, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot 
-    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
+  <script>
+    // Firebase Konfiguráció
     const firebaseConfig = {
       apiKey: "AIzaSyCzpvcJSdO8o2mpLOibQKEv6tLes0BixFM",
       authDomain: "menetlevel-3563a.firebaseapp.com",
@@ -564,9 +554,10 @@
       measurementId: "G-9NNKD3N84H"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+    // Firebase Inicializálása (Compat SDK)
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
 
     const ADMIN_PIN = "1234";
     const MASTER_SUPER_ADMIN_EMAIL = "zwickl@kn.hu";
@@ -603,38 +594,40 @@
     let cardStates = JSON.parse(localStorage.getItem('adminCardStates') || '{}');
     let lastWarnedKmValue = null;
 
-    // BEJELENTKEZÉS TELJES EXPORTÁLÁSA GLOBÁLISAN
-    window.handleLoginSubmit = async function(e) {
-      if (e) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-      
-      const emailInput = document.getElementById('loginEmail');
-      const passInput = document.getElementById('loginPassword');
-      const errEl = document.getElementById('authError');
-      const btn = document.getElementById('loginBtn');
-      
-      const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
-      const pass = passInput ? passInput.value : '';
+    // BEJELENTKEZÉS KEZELÉSE BIZTOS DOM ESEMÉNYFIGYELŐVEL
+    document.addEventListener('DOMContentLoaded', () => {
+      const loginForm = document.getElementById('loginForm');
+      if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
 
-      errEl.classList.add('hidden');
-      errEl.textContent = '';
-      btn.disabled = true;
-      btn.textContent = 'Bejelentkezés...';
+          const emailInput = document.getElementById('loginEmail');
+          const passInput = document.getElementById('loginPassword');
+          const errEl = document.getElementById('authError');
+          const btn = document.getElementById('loginBtn');
 
-      try {
-        await signInWithEmailAndPassword(auth, email, pass);
-      } catch (err) {
-        console.error("Bejelentkezési hiba:", err);
-        errEl.textContent = translateAuthError(err);
-        errEl.classList.remove('hidden');
-      } finally {
-        btn.disabled = false;
-        btn.textContent = 'Bejelentkezés';
+          const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
+          const pass = passInput ? passInput.value : '';
+
+          errEl.classList.add('hidden');
+          errEl.textContent = '';
+          btn.disabled = true;
+          btn.textContent = 'Bejelentkezés...';
+
+          try {
+            await auth.signInWithEmailAndPassword(email, pass);
+          } catch (err) {
+            console.error("Bejelentkezési hiba:", err);
+            errEl.textContent = translateAuthError(err);
+            errEl.classList.remove('hidden');
+          } finally {
+            btn.disabled = false;
+            btn.textContent = 'Bejelentkezés';
+          }
+        });
       }
-      return false;
-    };
+    });
 
     window.toggleCardAccordion = function(cardId) {
       const content = document.getElementById('content_' + cardId);
@@ -809,7 +802,7 @@
               currentUserData.adminCards = ALL_ADMIN_CARDS.map(c => c.id);
               currentUserData.actionPermissions = ALL_ACTION_PERMISSIONS.map(a => a.id);
               
-              setDoc(doc(db, "users", currentUser.uid), currentUserData, { merge: true });
+              db.collection("users").doc(currentUser.uid).set(currentUserData, { merge: true });
             }
 
             applyAdminState();
@@ -883,15 +876,15 @@
     }
 
     window.logout = function() {
-      signOut(auth);
+      auth.signOut();
     };
 
-    onAuthStateChanged(auth, async (user) => {
+    auth.onAuthStateChanged(async (user) => {
       if (user) {
         currentUser = user;
-        const userDoc = await getDoc(doc(db, "users", user.uid));
+        const userDoc = await db.collection("users").doc(user.uid).get();
         
-        if (userDoc.exists()) {
+        if (userDoc.exists) {
           currentUserData = userDoc.data();
         } else {
           const isMaster = (user.email.toLowerCase() === MASTER_SUPER_ADMIN_EMAIL.toLowerCase());
@@ -903,13 +896,13 @@
             actionPermissions: ALL_ACTION_PERMISSIONS.map(a => a.id),
             customBg: '' 
           };
-          await setDoc(doc(db, "users", user.uid), currentUserData);
+          await db.collection("users").doc(user.uid).set(currentUserData);
         }
 
         if (user.email.toLowerCase() === MASTER_SUPER_ADMIN_EMAIL.toLowerCase() && (!currentUserData.isSuperAdmin || currentUserData.role !== 'admin')) {
           currentUserData.isSuperAdmin = true;
           currentUserData.role = 'admin';
-          await updateDoc(doc(db, "users", user.uid), { role: 'admin', isSuperAdmin: true });
+          await db.collection("users").doc(user.uid).update({ role: 'admin', isSuperAdmin: true });
         }
 
         applyUserBackground(currentUserData.customBg);
@@ -932,7 +925,7 @@
     });
 
     function listenToShifts() {
-      onSnapshot(collection(db, "shifts"), (snapshot) => {
+      db.collection("shifts").onSnapshot((snapshot) => {
         allShifts = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
         activeShift = allShifts.find(s => s.driverUid === currentUser?.uid && s.status === "active") || null;
         
@@ -1009,7 +1002,7 @@
       const startTimeStr = now.toLocaleTimeString('hu-HU', {hour: '2-digit', minute:'2-digit'});
       const startDateStr = now.toISOString().slice(0, 10);
 
-      await updateDoc(doc(db, "cars", selectedCarForModal.id), {
+      await db.collection("cars").doc(selectedCarForModal.id).update({
         currentDriverUid: currentUser.uid,
         currentDriverEmail: currentUser.email,
         lastKm: confirmedKm,
@@ -1028,7 +1021,7 @@
         status: "active"
       };
 
-      await addDoc(collection(db, "shifts"), newShift);
+      await db.collection("shifts").add(newShift);
       closeStartShiftModal();
       alert("🚀 Műszak sikeresen elindítva! (" + selectedCarForModal.plateNumber + " - " + confirmedKm + " km)");
     };
@@ -1088,7 +1081,7 @@
       const now = new Date();
       const endTimeStr = now.toLocaleTimeString('hu-HU', {hour: '2-digit', minute:'2-digit'});
 
-      await updateDoc(doc(db, "shifts", activeShift.id), {
+      await db.collection("shifts").doc(activeShift.id).update({
         status: "closed",
         endDate: now.toISOString().slice(0, 10),
         endTime: endTimeStr,
@@ -1097,7 +1090,7 @@
       });
 
       if (activeCar) {
-        await updateDoc(doc(db, "cars", activeCar.id), { 
+        await db.collection("cars").doc(activeCar.id).update({ 
           lastKm: endKm,
           currentDriverUid: null,
           currentDriverEmail: null
@@ -1108,7 +1101,7 @@
     };
 
     function listenToUsers() {
-      onSnapshot(collection(db, "users"), (snapshot) => {
+      db.collection("users").onSnapshot((snapshot) => {
         allUsers = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
         
         if (currentUser) {
@@ -1159,7 +1152,7 @@
 
       if (!userId) return alert("Kérlek válassz ki egy sofőrt!");
 
-      await updateDoc(doc(db, "users", userId), {
+      await db.collection("users").doc(userId).update({
         customBg: url
       });
 
@@ -1168,7 +1161,7 @@
     };
 
     function listenToCars() {
-      onSnapshot(collection(db, "cars"), (snapshot) => {
+      db.collection("cars").onSnapshot((snapshot) => {
         allCars = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
         renderAdminCars();
         renderLiveCarKm();
@@ -1218,7 +1211,7 @@
       const startKm = Number(document.getElementById('carStartKmInput').value) || 0;
 
       if (plateNumber && model) {
-        await addDoc(collection(db, "cars"), {
+        await db.collection("cars").add({
           plateNumber,
           model,
           lastKm: startKm,
@@ -1268,7 +1261,7 @@
     window.forceReleaseCar = async function(carId) {
       if (!hasActionPermission('release_car')) return alert("Nincs jogosultságod az autó felszabadításához!");
       if (confirm("Biztosan felszabadítod ezt az autót?")) {
-        await updateDoc(doc(db, "cars", carId), {
+        await db.collection("cars").doc(carId).update({
           currentDriverUid: null,
           currentDriverEmail: null
         });
@@ -1278,7 +1271,7 @@
     window.deleteCar = async function(carId) {
       if (!hasActionPermission('release_car')) return alert("Nincs jogosultságod az autó törléséhez!");
       if (confirm("Biztosan törlöd ezt az autót a rendszerből?")) {
-        await deleteDoc(doc(db, "cars", carId));
+        await db.collection("cars").doc(carId).delete();
       }
     };
 
@@ -1325,7 +1318,7 @@
     }
 
     function listenToTrips() {
-      onSnapshot(collection(db, "trips"), (snapshot) => {
+      db.collection("trips").onSnapshot((snapshot) => {
         allTrips = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
         renderTripsTable();
         if (isAdminMode) {
@@ -1392,11 +1385,11 @@
       };
 
       if (editingId) {
-        await updateDoc(doc(db, "trips", editingId), tripData);
+        await db.collection("trips").doc(editingId).update(tripData);
       } else {
-        await addDoc(collection(db, "trips"), tripData);
+        await db.collection("trips").add(tripData);
         if (activeCar) {
-          await updateDoc(doc(db, "cars", activeCar.id), {
+          await db.collection("cars").doc(activeCar.id).update({
             lastKm: endKm,
             lastLocation: tripData.endLocation
           });
@@ -1672,7 +1665,7 @@
 
       const calculatedKm = newEndKm - newStartKm;
 
-      await updateDoc(doc(db, "trips", tripId), {
+      await db.collection("trips").doc(tripId).update({
         type: newType,
         startKm: newStartKm,
         endKm: newEndKm,
@@ -1688,7 +1681,7 @@
       }
 
       if (confirm("Biztosan törölni szeretnéd ezt az utat a műszakból?")) {
-        await deleteDoc(doc(db, "trips", tripId));
+        await db.collection("trips").doc(tripId).delete();
         alert("Út törölve!");
       }
     };
@@ -1939,7 +1932,7 @@
       if (!u) return;
       if (u.email.toLowerCase() === MASTER_SUPER_ADMIN_EMAIL.toLowerCase()) return alert("A Mester Főadmin fiók szerepköre nem módosítható!");
 
-      await updateDoc(doc(db, "users", userId), {
+      await db.collection("users").doc(userId).update({
         role: makeAdmin ? 'admin' : 'sofor',
         adminCards: makeAdmin ? (u.adminCards || ALL_ADMIN_CARDS.map(c => c.id)) : [],
         actionPermissions: makeAdmin ? (u.actionPermissions || ALL_ACTION_PERMISSIONS.map(a => a.id)) : []
@@ -1959,7 +1952,7 @@
         currentCards = currentCards.filter(c => c !== cardId);
       }
 
-      await updateDoc(doc(db, "users", userId), {
+      await db.collection("users").doc(userId).update({
         adminCards: currentCards
       });
     };
@@ -1975,7 +1968,7 @@
         currentActions = currentActions.filter(a => a !== actionId);
       }
 
-      await updateDoc(doc(db, "users", userId), {
+      await db.collection("users").doc(userId).update({
         actionPermissions: currentActions
       });
     };
@@ -1991,7 +1984,156 @@
       if (shift && shift.status === 'active') {
         const car = allCars.find(c => c.plateNumber === shift.carPlate);
         if (car) {
-          await updateDoc(doc(db, "cars", car.id), {
+          await db.collection("cars").doc(car.id).update({
             currentDriverUid: null,
             currentDriverEmail: null
           });
+        }
+      }
+
+      const shiftTrips = allTrips.filter(t => t.shiftId === shiftId);
+      for (const trip of shiftTrips) {
+        await db.collection("trips").doc(trip.id).delete();
+      }
+
+      await db.collection("shifts").doc(shiftId).delete();
+      alert("Műszak és a hozzá tartozó utak törölve!");
+    };
+
+    window.editTrip = function(tripId) {
+      const trip = allTrips.find(t => t.id === tripId);
+      if (!trip) return;
+
+      document.getElementById('editingTripId').value = trip.id;
+      document.getElementById('editingTripTime').value = trip.time || '';
+      document.getElementById('tripType').value = trip.type;
+      document.getElementById('tripStartLocation').value = trip.startLocation || '';
+      document.getElementById('tripEndLocation').value = trip.endLocation || '';
+      document.getElementById('tripStartKm').value = trip.startKm || 0;
+      document.getElementById('tripEndKm').value = trip.endKm || 0;
+      document.getElementById('tripPassengers').value = trip.passengerCount || 0;
+
+      calculateCalculatedKm();
+
+      document.getElementById('formTitle').textContent = 'Út Módosítása';
+      document.getElementById('saveTripBtn').textContent = 'Frissítés';
+      document.getElementById('cancelEditBtn').classList.remove('hidden');
+    };
+
+    window.toggleCustomPdfDates = function() {
+      const period = document.getElementById('pdfPeriodSelect').value;
+      const container = document.getElementById('pdfCustomDateContainer');
+      if (period === 'custom') {
+        container.classList.remove('hidden');
+      } else {
+        container.classList.add('hidden');
+      }
+    };
+
+    window.exportShiftPDF = function(shiftId, pdfType) {
+      const shift = allShifts.find(s => s.id === shiftId);
+      if (!shift) return alert("Műszak nem található!");
+
+      let shiftTrips = allTrips.filter(t => t.shiftId === shiftId);
+
+      if (pdfType === 'work') {
+        shiftTrips = shiftTrips.filter(t => t.type === 'work');
+      } else if (pdfType === 'private') {
+        shiftTrips = shiftTrips.filter(t => t.type === 'private' || t.type === 'privat');
+      }
+
+      if (shiftTrips.length === 0) return alert("Nincs ilyen típusú út ebben a műszakban!");
+
+      const typeTitle = pdfType === 'work' 
+        ? 'Munkakilométer Menetlevél' 
+        : (pdfType === 'private' ? 'Privát Menetlevél' : 'Összesített Menetlevél');
+
+      const shiftDateStr = shift.startDate || (shiftTrips.length > 0 ? shiftTrips[0].date : '');
+      const fileName = "menetlevel_" + pdfType + "_" + (shift.driverEmail || 'sofor').split('@')[0] + "_" + shiftDateStr + ".pdf";
+
+      shiftTrips = sortTripsByKmAscending(shiftTrips);
+      const firstTripTime = shiftTrips.length > 0 ? shiftTrips[0].time : '-';
+
+      generatePDFForTrips(
+        shiftTrips, 
+        typeTitle, 
+        "Sofőr: " + shift.driverEmail + " | Jármű: " + (shift.carPlate || '-') + " | Dátum: " + shiftDateStr + " | Kezdő időpont: " + firstTripTime, 
+        fileName, 
+        pdfType
+      );
+    };
+
+    function generatePDFForTrips(tripsArray, title, subtitle, filename, pdfType = 'all') {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      tripsArray = sortTripsByKmAscending(tripsArray);
+
+      const safeTitle = sanitizeText(title);
+      const safeSubtitle = sanitizeText(subtitle);
+
+      doc.setFontSize(16);
+      doc.setFont(undefined, 'bold');
+      doc.text(safeTitle, 14, 15);
+      
+      doc.setFontSize(9);
+      doc.setFont(undefined, 'normal');
+      doc.setTextColor(70, 70, 70);
+      doc.text(safeSubtitle, 14, 21);
+      
+      doc.setFontSize(8);
+      doc.setTextColor(120, 120, 120);
+      doc.text(sanitizeText("Generálva: " + new Date().toLocaleDateString('hu-HU') + " " + new Date().toLocaleTimeString('hu-HU')), 14, 26);
+
+      let totalWorkKm = 0;
+      let totalPrivateKm = 0;
+      let totalPassengers = 0;
+
+      tripsArray.forEach(t => {
+        const km = Number(t.workKm) || 0;
+        const p = Number(t.passengerCount) || 0;
+        totalPassengers += p;
+
+        if (t.type === 'private' || t.type === 'privat') {
+          totalPrivateKm += km;
+        } else {
+          totalWorkKm += km;
+        }
+      });
+
+      const totalCombinedKm = totalWorkKm + totalPrivateKm;
+
+      let rawHeaders = [];
+      if (pdfType === 'work') {
+        rawHeaders = ['#', 'Időpont', 'Autó', 'Útvonal (Sorszámozott Címek)', 'Megtett Km', 'Utasok'];
+      } else if (pdfType === 'private') {
+        rawHeaders = ['#', 'Időpont', 'Autó', 'Útvonal (Sorszámozott Címek)', 'Km Állás', 'Megtett Km'];
+      } else {
+        rawHeaders = ['#', 'Időpont', 'Autó', 'Útvonal (Sorszámozott Címek)', 'Km Állás', 'Megtett Km', 'Utasok'];
+      }
+
+      const headers = rawHeaders.map(h => sanitizeText(h));
+
+      const rows = tripsArray.map((t, idx) => {
+        const routeNum = (idx + 1) + ". " + (t.startLocation || '-') + " > " + (t.endLocation || '-');
+        const route = sanitizeText(routeNum);
+        const isPriv = (t.type === 'private' || t.type === 'privat');
+        const kmText = sanitizeText(t.workKm + " km" + (isPriv ? ' (Privát)' : ''));
+        const passText = sanitizeText((t.passengerCount || 0) + " fő");
+
+        if (pdfType === 'work') {
+          return [
+            (idx + 1) + ".",
+            t.time || '-',
+            t.carPlate || '-',
+            route,
+            kmText,
+            passText
+          ];
+        } else if (pdfType === 'private') {
+          return [
+            (idx + 1) + ".",
+            t.time || '-',
+            t.carPlate || '-',
+            route,
+            (t.startKm || 0) + " - " + (t.endKm || 0),
