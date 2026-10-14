@@ -606,6 +606,7 @@
   </div>
 
   <!-- SCRIPT -->
+<!-- SCRIPT -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { 
@@ -715,7 +716,7 @@
         });
       }
 
-      // DIREKT ESEMÉNYKEZELŐK KÖTÉSE A GOMBOKHOZ
+      // DIREKT ESEMÉNYKEZELŐK
       const startShiftBtn = document.getElementById('startShiftBtn');
       if (startShiftBtn) startShiftBtn.addEventListener('click', openStartShiftModal);
 
@@ -1117,58 +1118,54 @@
       selectedCarForModal = null;
     }
 
-   async function confirmAndStartShift() {
-  if (!selectedCarForModal) {
-    return alert("Hiba: Nincs kiválasztva autó!");
-  }
+    async function confirmAndStartShift() {
+      if (!selectedCarForModal) return;
 
-  const confirmedKm = Number(document.getElementById('modalStartKm').value) || 0;
-  const confirmedLocation = (document.getElementById('modalStartLocation').value || '').trim();
+      const confirmedKm = Number(document.getElementById('modalStartKm').value) || 0;
+      const confirmedLocation = (document.getElementById('modalStartLocation').value || '').trim();
 
-  if (!confirm("Biztosan " + confirmedKm + " km a kezdő kilométeróra-állás?")) {
-    return;
-  }
+      if (!confirm("Biztosan " + confirmedKm + " km a kezdő kilométeróra-állás?")) {
+        return;
+      }
 
-  const now = new Date();
-  const startTimeStr = now.toLocaleTimeString('hu-HU', {hour: '2-digit', minute:'2-digit'});
-  const startDateStr = now.toISOString().slice(0, 10);
+      const now = new Date();
+      const startTimeStr = now.toLocaleTimeString('hu-HU', {hour: '2-digit', minute:'2-digit'});
+      const startDateStr = now.toISOString().slice(0, 10);
 
-  try {
-    const carPlate = selectedCarForModal.plateNumber || '';
+      try {
+        const carPlate = selectedCarForModal.plateNumber || '';
 
-    // 1. Autó lefoglalása
-    await updateDoc(doc(db, "cars", selectedCarForModal.id), {
-      currentDriverUid: currentUser.uid,
-      currentDriverEmail: currentUser.email || '',
-      lastKm: confirmedKm,
-      lastLocation: confirmedLocation
-    });
+        await updateDoc(doc(db, "cars", selectedCarForModal.id), {
+          currentDriverUid: currentUser.uid,
+          currentDriverEmail: currentUser.email || '',
+          lastKm: confirmedKm,
+          lastLocation: confirmedLocation
+        });
 
-    // 2. Új műszak dokumentum
-    const newShift = {
-      driverUid: currentUser.uid,
-      driverEmail: currentUser.email || '',
-      carPlate: carPlate,
-      startDate: startDateStr,
-      startTime: startTimeStr,
-      startKm: confirmedKm,
-      startLocation: confirmedLocation,
-      status: "active"
-    };
+        const newShift = {
+          driverUid: currentUser.uid,
+          driverEmail: currentUser.email || '',
+          carPlate: carPlate,
+          startDate: startDateStr,
+          startTime: startTimeStr,
+          startKm: confirmedKm,
+          startLocation: confirmedLocation,
+          status: "active"
+        };
 
-    if (selectedCarForModal.model) {
-      newShift.carModel = selectedCarForModal.model;
+        if (selectedCarForModal.model) {
+          newShift.carModel = selectedCarForModal.model;
+        }
+
+        await addDoc(collection(db, "shifts"), newShift);
+        closeStartShiftModal();
+        alert("🚀 Műszak sikeresen elindítva! (" + carPlate + " - " + confirmedKm + " km)");
+      } catch (err) {
+        console.error("Hiba a műszak indításakor:", err);
+        alert("Hiba történt a műszak indítása közben: " + (err.message || err));
+      }
     }
 
-    await addDoc(collection(db, "shifts"), newShift);
-    closeStartShiftModal();
-    alert("🚀 Műszak sikeresen elindítva! (" + carPlate + " - " + confirmedKm + " km)");
-  } catch (err) {
-    console.error("Hiba a műszak indításakor:", err);
-    alert("Hiba történt a műszak indítása közben: " + (err.message || err));
-  }
-}
-    // MŰSZAK LEZÁRÁSA & TÚLÓRA MODAL
     function openEndShiftModal() {
       if (!activeShift) {
         return alert("Nincs aktív műszakod, amit le lehetne zárni!");
@@ -1206,10 +1203,10 @@
         );
       }
 
-      const activeCar = allCars.find(c => c.plateNumber === activeShift.carPlate);
+      const activeCar = allCars.find(c => (c.plateNumber || '').trim().toUpperCase() === (activeShift.carPlate || '').trim().toUpperCase() || c.currentDriverUid === currentUser.uid);
       const defaultSuggestKm = activeCar && activeCar.lastKm > minAllowedEndKm ? activeCar.lastKm : minAllowedEndKm;
 
-      document.getElementById('endShiftCarInfo').textContent = "Jármű: " + activeShift.carPlate + " | Legutolsó rögzített óraállás: " + minAllowedEndKm + " km";
+      document.getElementById('endShiftCarInfo').textContent = "Jármű: " + (activeShift.carPlate || 'Autó') + " | Legutolsó rögzített óraállás: " + minAllowedEndKm + " km";
       document.getElementById('endShiftMinKmText').textContent = minAllowedEndKm;
       document.getElementById('modalEndKm').value = defaultSuggestKm;
       
@@ -1235,62 +1232,57 @@
     }
 
     async function confirmAndEndShift() {
-  if (!activeShift) {
-    return alert("Hiba: Nincs aktív műszak!");
-  }
+      if (!activeShift) {
+        closeEndShiftModal();
+        return alert("Nincs aktív műszak!");
+      }
 
-  const endKm = Number(document.getElementById('modalEndKm').value);
+      const endKm = Number(document.getElementById('modalEndKm').value);
 
-  if (isNaN(endKm) || endKm < minAllowedEndKm) {
-    return alert("Hibás kilométeróra állás! A záró km nem lehet kisebb, mint az utolsó rögzített út óraállása (" + minAllowedEndKm + " km).");
-  }
+      if (isNaN(endKm) || endKm < minAllowedEndKm) {
+        return alert("Hibás kilométeróra állás! A záró km nem lehet kisebb, mint az utolsó rögzített út óraállása (" + minAllowedEndKm + " km).");
+      }
 
-  const hasOvertime = document.getElementById('modalHasOvertime').checked;
-  const overtimeHours = hasOvertime ? (Number(document.getElementById('modalOvertimeHours').value) || 0) : 0;
+      const hasOvertime = document.getElementById('modalHasOvertime').checked;
+      const overtimeHours = hasOvertime ? (Number(document.getElementById('modalOvertimeHours').value) || 0) : 0;
 
-  const now = new Date();
-  const endTimeStr = now.toLocaleTimeString('hu-HU', {hour: '2-digit', minute:'2-digit'});
+      const now = new Date();
+      const endTimeStr = now.toLocaleTimeString('hu-HU', {hour: '2-digit', minute:'2-digit'});
 
-  try {
-    // 1. MŰSZAK LEZÁRÁSA
-    await updateDoc(doc(db, "shifts", activeShift.id), {
-      status: "closed",
-      endDate: now.toISOString().slice(0, 10),
-      endTime: endTimeStr,
-      endKm: endKm,
-      totalKm: endKm - (activeShift.startKm || 0),
-      overtimeHours: overtimeHours
-    });
+      const shiftIdToClose = activeShift.id;
+      const shiftStartKm = activeShift.startKm || 0;
+      const shiftCarPlate = (activeShift.carPlate || '').trim().toUpperCase();
 
-    // 2. AUTÓ BIZTONSÁGOS FELSZABADÍTÁSA (Null-safe keresés)
-    const shiftPlate = (activeShift.carPlate || '').trim().toUpperCase();
-    const activeCar = allCars.find(c => (c.plateNumber || '').trim().toUpperCase() === shiftPlate);
+      closeEndShiftModal();
 
-    if (activeCar) {
-      await updateDoc(doc(db, "cars", activeCar.id), { 
-        lastKm: endKm,
-        currentDriverUid: null,
-        currentDriverEmail: null
-      });
-    } else {
-      // Ha a rendszám alapján nem találja meg, megpróbáljuk a sofőr UID alapján felszabadítani az autót
-      const carByDriver = allCars.find(c => c.currentDriverUid === currentUser.uid);
-      if (carByDriver) {
-        await updateDoc(doc(db, "cars", carByDriver.id), { 
-          lastKm: endKm,
-          currentDriverUid: null,
-          currentDriverEmail: null
+      try {
+        // 1. MŰSZAK LEZÁRÁSA
+        await updateDoc(doc(db, "shifts", shiftIdToClose), {
+          status: "closed",
+          endDate: now.toISOString().slice(0, 10),
+          endTime: endTimeStr,
+          endKm: endKm,
+          totalKm: endKm - shiftStartKm,
+          overtimeHours: overtimeHours
         });
+
+        // 2. AUTÓ GARANTÁLT FELSZABADÍTÁSA DELETEREF/DELETEFIELD HASZNÁLATÁVAL
+        const activeCar = allCars.find(c => (c.plateNumber || '').trim().toUpperCase() === shiftCarPlate || c.currentDriverUid === currentUser.uid);
+
+        if (activeCar) {
+          await updateDoc(doc(db, "cars", activeCar.id), { 
+            lastKm: endKm,
+            currentDriverUid: deleteField(),
+            currentDriverEmail: deleteField()
+          });
+        }
+
+        alert("🏁 Műszak sikeresen lezárva!" + (overtimeHours > 0 ? " (Túlóra: " + overtimeHours + " óra rögzítve)" : ""));
+      } catch (err) {
+        console.error("Hiba a műszak lezárása közben:", err);
+        alert("Adatbázis hiba történt: " + (err.message || err));
       }
     }
-
-    closeEndShiftModal();
-    alert("🏁 Műszak sikeresen lezárva!" + (overtimeHours > 0 ? " (Túlóra: " + overtimeHours + " óra rögzítve)" : ""));
-  } catch (err) {
-    console.error("Hiba a műszak lezárása közben:", err);
-    alert("Adatbázis hiba: " + (err.message || err));
-  }
-}
 
     function listenToUsers() {
       onSnapshot(collection(db, "users"), (snapshot) => {
@@ -1413,9 +1405,7 @@
           plateNumber,
           model,
           lastKm: startKm,
-          lastLocation: '',
-          currentDriverUid: null,
-          currentDriverEmail: null
+          lastLocation: ''
         });
         document.getElementById('carPlateInput').value = '';
         document.getElementById('carModelInput').value = '';
@@ -1464,8 +1454,8 @@
       if (!hasActionPermission('release_car')) return alert("Nincs jogosultságod az autó felszabadításához!");
       if (confirm("Biztosan felszabadítod ezt az autót?")) {
         await updateDoc(doc(db, "cars", carId), {
-          currentDriverUid: null,
-          currentDriverEmail: null
+          currentDriverUid: deleteField(),
+          currentDriverEmail: deleteField()
         });
       }
     };
@@ -1487,7 +1477,7 @@
       if (activeShift) {
         carSelectContainer.classList.add('hidden');
         activeCarContainer.classList.remove('hidden');
-        document.getElementById('activeCarText').textContent = activeShift.carPlate + ' (Műszak folyamatban)';
+        document.getElementById('activeCarText').textContent = (activeShift.carPlate || 'Autó') + ' (Műszak folyamatban)';
 
         if (!document.getElementById('editingTripId').value) {
           let shiftTrips = allTrips.filter(t => t.shiftId === activeShift.id);
@@ -1514,7 +1504,7 @@
         select.innerHTML = '<option value="">-- Válassz autót a műszakhoz --</option>';
         const freeCars = allCars.filter(c => !c.currentDriverUid).sort((a, b) => (a.plateNumber || '').localeCompare(b.plateNumber || ''));
         freeCars.forEach(car => {
-          select.innerHTML += '<option value="' + car.id + '">' + car.plateNumber + ' - ' + car.model + '</option>';
+          select.innerHTML += '<option value="' + car.id + '">' + car.plateNumber + ' - ' + (car.model || '') + '</option>';
         });
       }
     }
@@ -1540,7 +1530,7 @@
         return alert("Út rögzítéséhez előbb indítsd el a műszakot!");
       }
 
-      const activeCar = allCars.find(c => c.plateNumber === activeShift.carPlate);
+      const activeCar = allCars.find(c => (c.plateNumber || '').trim().toUpperCase() === (activeShift.carPlate || '').trim().toUpperCase() || c.currentDriverUid === currentUser.uid);
       const editingId = document.getElementById('editingTripId').value;
       const editingTime = document.getElementById('editingTripTime').value;
 
@@ -2405,8 +2395,8 @@
         const car = allCars.find(c => c.plateNumber === shift.carPlate);
         if (car) {
           await updateDoc(doc(db, "cars", car.id), {
-            currentDriverUid: null,
-            currentDriverEmail: null
+            currentDriverUid: deleteField(),
+            currentDriverEmail: deleteField()
           });
         }
       }
