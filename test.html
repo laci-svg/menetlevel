@@ -668,7 +668,6 @@
     let cardStates = JSON.parse(localStorage.getItem('adminCardStates') || '{}');
     let lastWarnedKmValue = null;
 
-    // SEGÉDFUNKCIÓ: @ ELŐTTI NÉV KINYERÉSE
     function getUsernameFromEmail(email) {
       if (!email) return 'Ismeretlen';
       return email.split('@')[0];
@@ -1207,6 +1206,7 @@
       const now = new Date();
       const endTimeStr = now.toLocaleTimeString('hu-HU', {hour: '2-digit', minute:'2-digit'});
 
+      // MŰSZAK LEZÁRÁSA
       await updateDoc(doc(db, "shifts", activeShift.id), {
         status: "closed",
         endDate: now.toISOString().slice(0, 10),
@@ -1216,6 +1216,7 @@
         overtimeHours: overtimeHours
       });
 
+      // AUTÓ FELSZABADÍTÁSA
       const activeCar = allCars.find(c => c.plateNumber === activeShift.carPlate);
       if (activeCar) {
         await updateDoc(doc(db, "cars", activeCar.id), { 
@@ -1776,7 +1777,6 @@
         driverMap[email] += Number(t.workKm || 0);
       });
 
-      // ABC SZERINTI RENDEZÉS A SOFŐRÖKNÉL USERNAME ALAPJÁN
       const driverEntries = Object.entries(driverMap).sort((a, b) => getUsernameFromEmail(a[0]).localeCompare(getUsernameFromEmail(b[0])));
       const grandTotalDriverKm = driverEntries.reduce((sum, item) => sum + item[1], 0);
 
@@ -1806,7 +1806,6 @@
         carMap[plate] += Number(t.workKm || 0);
       });
 
-      // ABC SZERINTI RENDEZÉS AZ AUTÓKNÁL
       const carEntries = Object.entries(carMap).sort((a, b) => a[0].localeCompare(b[0]));
       const grandTotalCarKm = carEntries.reduce((sum, item) => sum + item[1], 0);
 
@@ -1953,7 +1952,6 @@
       }
     };
 
-    // TÖMEGES MŰSZAK TÖRLESI FUNKCIÓK (CHECKBOX)
     window.toggleSelectAllShiftsForDriver = function(driverEmail, isChecked) {
       const safeId = driverEmail.replace(/[^a-zA-Z0-9]/g, '_');
       const checkboxes = document.querySelectorAll('.shift-checkbox-' + safeId);
@@ -2006,7 +2004,6 @@
       if (badgeClosed) badgeClosed.textContent = closedShifts.length + " műszak archívumban";
       if (badgeActive) badgeActive.textContent = activeShifts.length + " élő műszak";
 
-      // JELENLEG ÉLŐ MŰSZAKOK - ABC RENDEZÉS USERNAME ALAPJÁN
       const sortedActiveShifts = [...activeShifts].sort((a, b) => getUsernameFromEmail(a.driverEmail).localeCompare(getUsernameFromEmail(b.driverEmail)));
 
       if (sortedActiveShifts.length === 0) {
@@ -2070,7 +2067,6 @@
         driverGroups[email].push(shift);
       });
 
-      // LEZÁRT MŰSZAKOK - SOFŐRÖK ABC RENDEZÉSE USERNAME ALAPJÁN
       const sortedDriverEmails = Object.keys(driverGroups).sort((a, b) => getUsernameFromEmail(a).localeCompare(getUsernameFromEmail(b)));
 
       closedContainer.innerHTML = sortedDriverEmails.map((driverEmail) => {
@@ -2632,6 +2628,12 @@
 
       generatePDFForTrips(filtered, "Menetlevél Kimutatás", "Sofőr: " + driverText + " | Típus: " + typeText + " | Időszak: " + period.toUpperCase(), filename, type);
     };
+
+    // GLOBÁLIS KIKÖTÉSEK A MODALOKHOZ
+    window.openEndShiftModal = openEndShiftModal;
+    window.closeEndShiftModal = closeEndShiftModal;
+    window.confirmAndEndShift = confirmAndEndShift;
+    window.toggleOvertimeInputDisplay = toggleOvertimeInputDisplay;
   </script>
 </body>
 </html>
