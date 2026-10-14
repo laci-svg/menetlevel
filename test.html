@@ -1117,8 +1117,10 @@
       selectedCarForModal = null;
     }
 
-    async function confirmAndStartShift() {
-  if (!selectedCarForModal) return;
+   async function confirmAndStartShift() {
+  if (!selectedCarForModal) {
+    return alert("Hiba: Nincs kiválasztva autó!");
+  }
 
   const confirmedKm = Number(document.getElementById('modalStartKm').value) || 0;
   const confirmedLocation = (document.getElementById('modalStartLocation').value || '').trim();
@@ -1132,6 +1134,9 @@
   const startDateStr = now.toISOString().slice(0, 10);
 
   try {
+    const carPlate = selectedCarForModal.plateNumber || '';
+
+    // 1. Autó lefoglalása
     await updateDoc(doc(db, "cars", selectedCarForModal.id), {
       currentDriverUid: currentUser.uid,
       currentDriverEmail: currentUser.email || '',
@@ -1139,10 +1144,11 @@
       lastLocation: confirmedLocation
     });
 
+    // 2. Új műszak dokumentum
     const newShift = {
       driverUid: currentUser.uid,
       driverEmail: currentUser.email || '',
-      carPlate: selectedCarForModal.plateNumber || '',
+      carPlate: carPlate,
       startDate: startDateStr,
       startTime: startTimeStr,
       startKm: confirmedKm,
@@ -1156,13 +1162,12 @@
 
     await addDoc(collection(db, "shifts"), newShift);
     closeStartShiftModal();
-    alert("🚀 Műszak sikeresen elindítva! (" + selectedCarForModal.plateNumber + " - " + confirmedKm + " km)");
+    alert("🚀 Műszak sikeresen elindítva! (" + carPlate + " - " + confirmedKm + " km)");
   } catch (err) {
     console.error("Hiba a műszak indításakor:", err);
     alert("Hiba történt a műszak indítása közben: " + (err.message || err));
   }
 }
-
     // MŰSZAK LEZÁRÁSA & TÚLÓRA MODAL
     function openEndShiftModal() {
       if (!activeShift) {
