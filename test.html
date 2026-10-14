@@ -1118,47 +1118,50 @@
     }
 
     async function confirmAndStartShift() {
-      if (!selectedCarForModal) return;
+  if (!selectedCarForModal) return;
 
-      const confirmedKm = Number(document.getElementById('modalStartKm').value) || 0;
-      const confirmedLocation = document.getElementById('modalStartLocation').value.trim();
+  const confirmedKm = Number(document.getElementById('modalStartKm').value) || 0;
+  const confirmedLocation = (document.getElementById('modalStartLocation').value || '').trim();
 
-      if (!confirm("Biztosan " + confirmedKm + " km a kezdő kilométeróra-állás?")) {
-        return;
-      }
+  if (!confirm("Biztosan " + confirmedKm + " km a kezdő kilométeróra-állás?")) {
+    return;
+  }
 
-      const now = new Date();
-      const startTimeStr = now.toLocaleTimeString('hu-HU', {hour: '2-digit', minute:'2-digit'});
-      const startDateStr = now.toISOString().slice(0, 10);
+  const now = new Date();
+  const startTimeStr = now.toLocaleTimeString('hu-HU', {hour: '2-digit', minute:'2-digit'});
+  const startDateStr = now.toISOString().slice(0, 10);
 
-      try {
-        await updateDoc(doc(db, "cars", selectedCarForModal.id), {
-          currentDriverUid: currentUser.uid,
-          currentDriverEmail: currentUser.email,
-          lastKm: confirmedKm,
-          lastLocation: confirmedLocation
-        });
+  try {
+    await updateDoc(doc(db, "cars", selectedCarForModal.id), {
+      currentDriverUid: currentUser.uid,
+      currentDriverEmail: currentUser.email || '',
+      lastKm: confirmedKm,
+      lastLocation: confirmedLocation
+    });
 
-        const newShift = {
-          driverUid: currentUser.uid,
-          driverEmail: currentUser.email,
-          carPlate: selectedCarForModal.plateNumber,
-          carModel: selectedCarForModal.model || '',
-          startDate: startDateStr,
-          startTime: startTimeStr,
-          startKm: confirmedKm,
-          startLocation: confirmedLocation,
-          status: "active"
-        };
+    const newShift = {
+      driverUid: currentUser.uid,
+      driverEmail: currentUser.email || '',
+      carPlate: selectedCarForModal.plateNumber || '',
+      startDate: startDateStr,
+      startTime: startTimeStr,
+      startKm: confirmedKm,
+      startLocation: confirmedLocation,
+      status: "active"
+    };
 
-        await addDoc(collection(db, "shifts"), newShift);
-        closeStartShiftModal();
-        alert("🚀 Műszak sikeresen elindítva! (" + selectedCarForModal.plateNumber + " - " + confirmedKm + " km)");
-      } catch (err) {
-        console.error("Hiba a műszak indításakor:", err);
-        alert("Hiba történt a műszak indítása közben!");
-      }
+    if (selectedCarForModal.model) {
+      newShift.carModel = selectedCarForModal.model;
     }
+
+    await addDoc(collection(db, "shifts"), newShift);
+    closeStartShiftModal();
+    alert("🚀 Műszak sikeresen elindítva! (" + selectedCarForModal.plateNumber + " - " + confirmedKm + " km)");
+  } catch (err) {
+    console.error("Hiba a műszak indításakor:", err);
+    alert("Hiba történt a műszak indítása közben: " + (err.message || err));
+  }
+}
 
     // MŰSZAK LEZÁRÁSA & TÚLÓRA MODAL
     function openEndShiftModal() {
