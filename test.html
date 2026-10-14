@@ -1292,13 +1292,6 @@
       }
     }
 
-        alert("🏁 Műszak sikeresen lezárva!" + (overtimeHours > 0 ? " (Túlóra: " + overtimeHours + " óra rögzítve)" : ""));
-      } catch (err) {
-        console.error("Hiba a műszak lezárása közben:", err);
-        alert("Adatbázis hiba történt: " + (err.message || err));
-      }
-    }
-
     function listenToUsers() {
       onSnapshot(collection(db, "users"), (snapshot) => {
         allUsers = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
