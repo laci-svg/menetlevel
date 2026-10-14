@@ -1235,7 +1235,9 @@
     }
 
     async function confirmAndEndShift() {
-  if (!activeShift) return;
+  if (!activeShift) {
+    return alert("Hiba: Nincs aktív műszak!");
+  }
 
   const endKm = Number(document.getElementById('modalEndKm').value);
 
@@ -1250,7 +1252,7 @@
   const endTimeStr = now.toLocaleTimeString('hu-HU', {hour: '2-digit', minute:'2-digit'});
 
   try {
-    // 1. MŰSZAK LEZÁRÁSA A SHIFTS GYŰJTEMÉNYBEN
+    // 1. MŰSZAK LEZÁRÁSA
     await updateDoc(doc(db, "shifts", activeShift.id), {
       status: "closed",
       endDate: now.toISOString().slice(0, 10),
@@ -1260,14 +1262,26 @@
       overtimeHours: overtimeHours
     });
 
-    // 2. AUTÓ FELSZABADÍTÁSA A CARS GYŰJTEMÉNYBEN
-    const activeCar = allCars.find(c => c.plateNumber === activeShift.carPlate);
+    // 2. AUTÓ BIZTONSÁGOS FELSZABADÍTÁSA (Null-safe keresés)
+    const shiftPlate = (activeShift.carPlate || '').trim().toUpperCase();
+    const activeCar = allCars.find(c => (c.plateNumber || '').trim().toUpperCase() === shiftPlate);
+
     if (activeCar) {
       await updateDoc(doc(db, "cars", activeCar.id), { 
         lastKm: endKm,
         currentDriverUid: null,
         currentDriverEmail: null
       });
+    } else {
+      // Ha a rendszám alapján nem találja meg, megpróbáljuk a sofőr UID alapján felszabadítani az autót
+      const carByDriver = allCars.find(c => c.currentDriverUid === currentUser.uid);
+      if (carByDriver) {
+        await updateDoc(doc(db, "cars", carByDriver.id), { 
+          lastKm: endKm,
+          currentDriverUid: null,
+          currentDriverEmail: null
+        });
+      }
     }
 
     closeEndShiftModal();
