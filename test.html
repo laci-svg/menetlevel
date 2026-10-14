@@ -1234,6 +1234,7 @@
       }
     }
 
+    // MŰSZAK LEZÁRÁSA - JAVÍTOTT (STABIL)
     async function confirmAndEndShift() {
       if (!activeShift) {
         closeEndShiftModal();
@@ -1252,6 +1253,7 @@
       const now = new Date();
       const endTimeStr = now.toLocaleTimeString('hu-HU', {hour: '2-digit', minute:'2-digit'});
 
+      // FONTOS: Kimentjük az adatokat HELYI VÁLTOZÓKBA az adatbázis-művelet ELŐTT!
       const shiftIdToClose = activeShift.id;
       const shiftStartKm = activeShift.startKm || 0;
       const shiftCarPlate = (activeShift.carPlate || '').trim().toUpperCase();
@@ -1259,7 +1261,7 @@
       closeEndShiftModal();
 
       try {
-        // 1. MŰSZAK LEZÁRÁSA
+        // 1. MŰSZAK LEZÁRÁSA A SHIFTS GYŰJTEMÉNYBEN
         await updateDoc(doc(db, "shifts", shiftIdToClose), {
           status: "closed",
           endDate: now.toISOString().slice(0, 10),
@@ -1269,8 +1271,11 @@
           overtimeHours: overtimeHours
         });
 
-        // 2. AUTÓ GARANTÁLT FELSZABADÍTÁSA DELETEREF/DELETEFIELD HASZNÁLATÁVAL
-        const activeCar = allCars.find(c => (c.plateNumber || '').trim().toUpperCase() === shiftCarPlate || c.currentDriverUid === currentUser.uid);
+        // 2. AUTÓ GARANTÁLT FELSZABADÍTÁSA
+        const activeCar = allCars.find(c => 
+          (c.plateNumber || '').trim().toUpperCase() === shiftCarPlate || 
+          c.currentDriverUid === currentUser.uid
+        );
 
         if (activeCar) {
           await updateDoc(doc(db, "cars", activeCar.id), { 
@@ -1279,6 +1284,13 @@
             currentDriverEmail: deleteField()
           });
         }
+
+        alert("🏁 Műszak sikeresen lezárva!" + (overtimeHours > 0 ? " (Túlóra: " + overtimeHours + " óra rögzítve)" : ""));
+      } catch (err) {
+        console.error("Hiba a műszak lezárása közben:", err);
+        alert("Adatbázis hiba történt: " + (err.message || err));
+      }
+    }
 
         alert("🏁 Műszak sikeresen lezárva!" + (overtimeHours > 0 ? " (Túlóra: " + overtimeHours + " óra rögzítve)" : ""));
       } catch (err) {
