@@ -2078,13 +2078,18 @@
             ? '<p class="text-[11px] text-slate-500 italic text-center">Még nincs rögzített út.</p>'
             : shiftTrips.map((t, idx) => {
                 const isPriv = (t.type === 'private' || t.type === 'privat');
+                const tripTime = t.time ? ('⏱️ ' + t.time) : '';
+
                 return '<div class="border-b border-slate-800/50 pb-1.5 space-y-0.5">' +
                   '<div class="flex justify-between text-[11px] font-medium">' +
                     '<span>' + (idx+1) + '. ' + t.startLocation + ' &rarr; ' + t.endLocation + (isPriv ? ' <span class="text-[9px] text-amber-400 bg-amber-950 px-1 rounded ml-1 font-semibold">Privát</span>' : ' <span class="text-[9px] text-emerald-400 bg-emerald-950 px-1 rounded ml-1">Munka</span>') + '</span>' +
                     '<span class="font-mono text-orange-400 font-bold ml-2">' + t.workKm + ' km</span>' +
                   '</div>' +
                   '<div class="text-[10px] font-mono text-slate-400 flex justify-between items-center">' +
-                    '<span>Óraállás: ' + (t.startKm || 0) + ' km &rarr; ' + (t.endKm || 0) + ' km</span>' +
+                    '<span class="flex items-center gap-2">' +
+                      (tripTime ? '<span class="text-emerald-400/90 font-semibold">' + tripTime + '</span><span>•</span>' : '') +
+                      '<span>Óraállás: ' + (t.startKm || 0) + ' km &rarr; ' + (t.endKm || 0) + ' km</span>' +
+                    '</span>' +
                     '<div class="flex gap-1">' +
                       (canEditTrip ? '<button onclick="adminEditTripPrompt(\'' + t.id + '\')" class="text-[9px] bg-slate-800 hover:bg-slate-700 p-0.5 px-1.5 rounded text-slate-300" title="Szerkesztés">✏️ Javít</button>' : '') +
                       (canDeleteTrip ? '<button onclick="adminDeleteTripPrompt(\'' + t.id + '\')" class="text-[9px] bg-red-900/40 hover:bg-red-800 p-0.5 px-1.5 rounded text-red-300" title="Törlés">🗑️</button>' : '') +
@@ -2096,7 +2101,7 @@
           const inactive = isUserInactiveByEmail(shift.driverEmail);
           const driverName = getUsernameFromEmail(shift.driverEmail);
 
-          // IDŐBÉLYEG FORMÁZÁSA (Dátum + Időpont)
+          // IDŐBÉLYEG FORMÁZÁSA A FEJLÉCBEN
           const shiftDateStr = shift.startDate ? shift.startDate : '';
           const shiftTimeStr = shift.startTime ? shift.startTime : '';
           const fullTimestamp = (shiftDateStr ? '📅 ' + shiftDateStr + ' ' : '') + '⏱️ ' + shiftTimeStr;
@@ -2258,7 +2263,7 @@
         '</details>';
       }).join('');
     };
-
+    
     function renderSuperAdminPermissionsPanel() {
       const container = document.getElementById('userPermissionsListContainer');
       const badge = document.getElementById('badge_superAdminSection');
