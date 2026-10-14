@@ -1230,48 +1230,48 @@
     }
 
     async function confirmAndEndShift() {
-      if (!activeShift) return;
+  if (!activeShift) return;
 
-      const endKm = Number(document.getElementById('modalEndKm').value);
+  const endKm = Number(document.getElementById('modalEndKm').value);
 
-      if (isNaN(endKm) || endKm < minAllowedEndKm) {
-        return alert("Hibás kilométeróra állás! A záró km nem lehet kisebb, mint az utolsó rögzített út óraállása (" + minAllowedEndKm + " km).");
-      }
+  if (isNaN(endKm) || endKm < minAllowedEndKm) {
+    return alert("Hibás kilométeróra állás! A záró km nem lehet kisebb, mint az utolsó rögzített út óraállása (" + minAllowedEndKm + " km).");
+  }
 
-      const hasOvertime = document.getElementById('modalHasOvertime').checked;
-      const overtimeHours = hasOvertime ? (Number(document.getElementById('modalOvertimeHours').value) || 0) : 0;
+  const hasOvertime = document.getElementById('modalHasOvertime').checked;
+  const overtimeHours = hasOvertime ? (Number(document.getElementById('modalOvertimeHours').value) || 0) : 0;
 
-      const now = new Date();
-      const endTimeStr = now.toLocaleTimeString('hu-HU', {hour: '2-digit', minute:'2-digit'});
+  const now = new Date();
+  const endTimeStr = now.toLocaleTimeString('hu-HU', {hour: '2-digit', minute:'2-digit'});
 
-      try {
-        // MŰSZAK LEZÁRÁSA FIRESTORE-BAN
-        await updateDoc(doc(db, "shifts", activeShift.id), {
-          status: "closed",
-          endDate: now.toISOString().slice(0, 10),
-          endTime: endTimeStr,
-          endKm: endKm,
-          totalKm: endKm - activeShift.startKm,
-          overtimeHours: overtimeHours
-        });
+  try {
+    // 1. MŰSZAK LEZÁRÁSA A SHIFTS GYŰJTEMÉNYBEN
+    await updateDoc(doc(db, "shifts", activeShift.id), {
+      status: "closed",
+      endDate: now.toISOString().slice(0, 10),
+      endTime: endTimeStr,
+      endKm: endKm,
+      totalKm: endKm - (activeShift.startKm || 0),
+      overtimeHours: overtimeHours
+    });
 
-        // AUTÓ EXPLICIT FELSZABADÍTÁSA
-        const activeCar = allCars.find(c => c.plateNumber === activeShift.carPlate);
-        if (activeCar) {
-          await updateDoc(doc(db, "cars", activeCar.id), { 
-            lastKm: endKm,
-            currentDriverUid: null,
-            currentDriverEmail: null
-          });
-        }
-
-        closeEndShiftModal();
-        alert("🏁 Műszak sikeresen lezárva!" + (overtimeHours > 0 ? " (Túlóra: " + overtimeHours + " óra rögzítve)" : ""));
-      } catch (err) {
-        console.error("Hiba a műszak lezárása közben:", err);
-        alert("Hiba történt a műszak lezárása során! Kérlek próbáld újra.");
-      }
+    // 2. AUTÓ FELSZABADÍTÁSA A CARS GYŰJTEMÉNYBEN
+    const activeCar = allCars.find(c => c.plateNumber === activeShift.carPlate);
+    if (activeCar) {
+      await updateDoc(doc(db, "cars", activeCar.id), { 
+        lastKm: endKm,
+        currentDriverUid: null,
+        currentDriverEmail: null
+      });
     }
+
+    closeEndShiftModal();
+    alert("🏁 Műszak sikeresen lezárva!" + (overtimeHours > 0 ? " (Túlóra: " + overtimeHours + " óra rögzítve)" : ""));
+  } catch (err) {
+    console.error("Hiba a műszak lezárása közben:", err);
+    alert("Adatbázis hiba: " + (err.message || err));
+  }
+}
 
     function listenToUsers() {
       onSnapshot(collection(db, "users"), (snapshot) => {
