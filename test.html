@@ -5,16 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Menetlevél Nyilvántartó</title>
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Firebase Compat SDK-k (Garantáltan azonnali betöltődés és működés) -->
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-
   <!-- jsPDF & autoTable -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-
   <style>
     body {
       -webkit-tap-highlight-color: transparent;
@@ -109,7 +102,7 @@
           </div>
         </div>
 
-        <!-- 1. STATISZTIKA -->
+        <!-- STATISZTIKA -->
         <div id="card_stats" class="admin-card bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-md">
           <div onclick="toggleCardAccordion('card_stats')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-slate-800/50">
             <div class="flex items-center gap-2">
@@ -171,7 +164,7 @@
           </div>
         </div>
 
-        <!-- 2. PDF EXPORTÁLÁS -->
+        <!-- PDF EXPORTÁLÁS -->
         <div id="card_pdf" class="admin-card bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-md">
           <div onclick="toggleCardAccordion('card_pdf')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-slate-800/50">
             <div class="flex items-center gap-2">
@@ -229,7 +222,7 @@
           </div>
         </div>
 
-        <!-- 3. JÁRMŰPARK, HÁTTÉR ÉS TÚLFUTÁSOK -->
+        <!-- JÁRMŰPARK, HÁTTÉR ÉS TÚLFUTÁSOK -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div id="card_car_manage" class="admin-card bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-md">
             <div onclick="toggleCardAccordion('card_car_manage')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-slate-800/50">
@@ -305,7 +298,7 @@
           </div>
         </div>
 
-        <!-- 4. MŰSZAKOK & ÓRAÁLLÁSOK -->
+        <!-- MŰSZAKOK & ÓRAÁLLÁSOK -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 pt-2">
           <div id="card_closed_shifts" class="admin-card lg:col-span-2 bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-md">
             <div onclick="toggleCardAccordion('card_closed_shifts')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-slate-800/50">
@@ -362,7 +355,7 @@
           </div>
         </div>
 
-        <!-- 5. FŐADMIN PANEL -->
+        <!-- FŐADMIN PANEL -->
         <div id="superAdminSection" class="hidden bg-slate-900/95 border-2 border-amber-500/60 rounded-xl overflow-hidden shadow-xl">
           <div onclick="toggleCardAccordion('superAdminSection')" class="p-3.5 bg-amber-950/40 cursor-pointer flex justify-between items-center select-none hover:bg-amber-900/40 transition border-b border-amber-500/30">
             <div class="flex items-center gap-2">
@@ -542,8 +535,15 @@
   </div>
 
   <!-- SCRIPT -->
-  <script>
-    // Firebase Konfiguráció
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { 
+      getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged 
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { 
+      getFirestore, collection, addDoc, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot 
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
     const firebaseConfig = {
       apiKey: "AIzaSyCzpvcJSdO8o2mpLOibQKEv6tLes0BixFM",
       authDomain: "menetlevel-3563a.firebaseapp.com",
@@ -554,10 +554,9 @@
       measurementId: "G-9NNKD3N84H"
     };
 
-    // Firebase Inicializálása (Compat SDK)
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
     const ADMIN_PIN = "1234";
     const MASTER_SUPER_ADMIN_EMAIL = "zwickl@kn.hu";
@@ -594,7 +593,7 @@
     let cardStates = JSON.parse(localStorage.getItem('adminCardStates') || '{}');
     let lastWarnedKmValue = null;
 
-    // BEJELENTKEZÉS KEZELÉSE BIZTOS DOM ESEMÉNYFIGYELŐVEL
+    // BEJELENTKEZÉS BIZTOS BEKÖTÉSE DOM KÉSZ ÁLLAPOTKOR
     document.addEventListener('DOMContentLoaded', () => {
       const loginForm = document.getElementById('loginForm');
       if (loginForm) {
@@ -616,7 +615,7 @@
           btn.textContent = 'Bejelentkezés...';
 
           try {
-            await auth.signInWithEmailAndPassword(email, pass);
+            await signInWithEmailAndPassword(auth, email, pass);
           } catch (err) {
             console.error("Bejelentkezési hiba:", err);
             errEl.textContent = translateAuthError(err);
@@ -802,7 +801,7 @@
               currentUserData.adminCards = ALL_ADMIN_CARDS.map(c => c.id);
               currentUserData.actionPermissions = ALL_ACTION_PERMISSIONS.map(a => a.id);
               
-              db.collection("users").doc(currentUser.uid).set(currentUserData, { merge: true });
+              setDoc(doc(db, "users", currentUser.uid), currentUserData, { merge: true });
             }
 
             applyAdminState();
@@ -876,15 +875,15 @@
     }
 
     window.logout = function() {
-      auth.signOut();
+      signOut(auth);
     };
 
-    auth.onAuthStateChanged(async (user) => {
+    onAuthStateChanged(auth, async (user) => {
       if (user) {
         currentUser = user;
-        const userDoc = await db.collection("users").doc(user.uid).get();
+        const userDoc = await getDoc(doc(db, "users", user.uid));
         
-        if (userDoc.exists) {
+        if (userDoc.exists()) {
           currentUserData = userDoc.data();
         } else {
           const isMaster = (user.email.toLowerCase() === MASTER_SUPER_ADMIN_EMAIL.toLowerCase());
@@ -896,13 +895,13 @@
             actionPermissions: ALL_ACTION_PERMISSIONS.map(a => a.id),
             customBg: '' 
           };
-          await db.collection("users").doc(user.uid).set(currentUserData);
+          await setDoc(doc(db, "users", user.uid), currentUserData);
         }
 
         if (user.email.toLowerCase() === MASTER_SUPER_ADMIN_EMAIL.toLowerCase() && (!currentUserData.isSuperAdmin || currentUserData.role !== 'admin')) {
           currentUserData.isSuperAdmin = true;
           currentUserData.role = 'admin';
-          await db.collection("users").doc(user.uid).update({ role: 'admin', isSuperAdmin: true });
+          await updateDoc(doc(db, "users", user.uid), { role: 'admin', isSuperAdmin: true });
         }
 
         applyUserBackground(currentUserData.customBg);
@@ -925,7 +924,7 @@
     });
 
     function listenToShifts() {
-      db.collection("shifts").onSnapshot((snapshot) => {
+      onSnapshot(collection(db, "shifts"), (snapshot) => {
         allShifts = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
         activeShift = allShifts.find(s => s.driverUid === currentUser?.uid && s.status === "active") || null;
         
@@ -1002,7 +1001,7 @@
       const startTimeStr = now.toLocaleTimeString('hu-HU', {hour: '2-digit', minute:'2-digit'});
       const startDateStr = now.toISOString().slice(0, 10);
 
-      await db.collection("cars").doc(selectedCarForModal.id).update({
+      await updateDoc(doc(db, "cars", selectedCarForModal.id), {
         currentDriverUid: currentUser.uid,
         currentDriverEmail: currentUser.email,
         lastKm: confirmedKm,
@@ -1021,7 +1020,7 @@
         status: "active"
       };
 
-      await db.collection("shifts").add(newShift);
+      await addDoc(collection(db, "shifts"), newShift);
       closeStartShiftModal();
       alert("🚀 Műszak sikeresen elindítva! (" + selectedCarForModal.plateNumber + " - " + confirmedKm + " km)");
     };
@@ -1081,7 +1080,7 @@
       const now = new Date();
       const endTimeStr = now.toLocaleTimeString('hu-HU', {hour: '2-digit', minute:'2-digit'});
 
-      await db.collection("shifts").doc(activeShift.id).update({
+      await updateDoc(doc(db, "shifts", activeShift.id), {
         status: "closed",
         endDate: now.toISOString().slice(0, 10),
         endTime: endTimeStr,
@@ -1090,7 +1089,7 @@
       });
 
       if (activeCar) {
-        await db.collection("cars").doc(activeCar.id).update({ 
+        await updateDoc(doc(db, "cars", activeCar.id), { 
           lastKm: endKm,
           currentDriverUid: null,
           currentDriverEmail: null
@@ -1101,7 +1100,7 @@
     };
 
     function listenToUsers() {
-      db.collection("users").onSnapshot((snapshot) => {
+      onSnapshot(collection(db, "users"), (snapshot) => {
         allUsers = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
         
         if (currentUser) {
@@ -1152,7 +1151,7 @@
 
       if (!userId) return alert("Kérlek válassz ki egy sofőrt!");
 
-      await db.collection("users").doc(userId).update({
+      await updateDoc(doc(db, "users", userId), {
         customBg: url
       });
 
@@ -1161,7 +1160,7 @@
     };
 
     function listenToCars() {
-      db.collection("cars").onSnapshot((snapshot) => {
+      onSnapshot(collection(db, "cars"), (snapshot) => {
         allCars = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
         renderAdminCars();
         renderLiveCarKm();
@@ -1211,7 +1210,7 @@
       const startKm = Number(document.getElementById('carStartKmInput').value) || 0;
 
       if (plateNumber && model) {
-        await db.collection("cars").add({
+        await addDoc(collection(db, "cars"), {
           plateNumber,
           model,
           lastKm: startKm,
@@ -1261,7 +1260,7 @@
     window.forceReleaseCar = async function(carId) {
       if (!hasActionPermission('release_car')) return alert("Nincs jogosultságod az autó felszabadításához!");
       if (confirm("Biztosan felszabadítod ezt az autót?")) {
-        await db.collection("cars").doc(carId).update({
+        await updateDoc(doc(db, "cars", carId), {
           currentDriverUid: null,
           currentDriverEmail: null
         });
@@ -1271,7 +1270,7 @@
     window.deleteCar = async function(carId) {
       if (!hasActionPermission('release_car')) return alert("Nincs jogosultságod az autó törléséhez!");
       if (confirm("Biztosan törlöd ezt az autót a rendszerből?")) {
-        await db.collection("cars").doc(carId).delete();
+        await deleteDoc(doc(db, "cars", carId));
       }
     };
 
@@ -1318,7 +1317,7 @@
     }
 
     function listenToTrips() {
-      db.collection("trips").onSnapshot((snapshot) => {
+      onSnapshot(collection(db, "trips"), (snapshot) => {
         allTrips = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
         renderTripsTable();
         if (isAdminMode) {
@@ -1385,11 +1384,11 @@
       };
 
       if (editingId) {
-        await db.collection("trips").doc(editingId).update(tripData);
+        await updateDoc(doc(db, "trips", editingId), tripData);
       } else {
-        await db.collection("trips").add(tripData);
+        await addDoc(collection(db, "trips"), tripData);
         if (activeCar) {
-          await db.collection("cars").doc(activeCar.id).update({
+          await updateDoc(doc(db, "cars", activeCar.id), {
             lastKm: endKm,
             lastLocation: tripData.endLocation
           });
@@ -1665,7 +1664,7 @@
 
       const calculatedKm = newEndKm - newStartKm;
 
-      await db.collection("trips").doc(tripId).update({
+      await updateDoc(doc(db, "trips", tripId), {
         type: newType,
         startKm: newStartKm,
         endKm: newEndKm,
@@ -1681,7 +1680,7 @@
       }
 
       if (confirm("Biztosan törölni szeretnéd ezt az utat a műszakból?")) {
-        await db.collection("trips").doc(tripId).delete();
+        await deleteDoc(doc(db, "trips", tripId));
         alert("Út törölve!");
       }
     };
@@ -1932,7 +1931,7 @@
       if (!u) return;
       if (u.email.toLowerCase() === MASTER_SUPER_ADMIN_EMAIL.toLowerCase()) return alert("A Mester Főadmin fiók szerepköre nem módosítható!");
 
-      await db.collection("users").doc(userId).update({
+      await updateDoc(doc(db, "users", userId), {
         role: makeAdmin ? 'admin' : 'sofor',
         adminCards: makeAdmin ? (u.adminCards || ALL_ADMIN_CARDS.map(c => c.id)) : [],
         actionPermissions: makeAdmin ? (u.actionPermissions || ALL_ACTION_PERMISSIONS.map(a => a.id)) : []
@@ -1952,7 +1951,7 @@
         currentCards = currentCards.filter(c => c !== cardId);
       }
 
-      await db.collection("users").doc(userId).update({
+      await updateDoc(doc(db, "users", userId), {
         adminCards: currentCards
       });
     };
@@ -1968,7 +1967,7 @@
         currentActions = currentActions.filter(a => a !== actionId);
       }
 
-      await db.collection("users").doc(userId).update({
+      await updateDoc(doc(db, "users", userId), {
         actionPermissions: currentActions
       });
     };
@@ -1984,7 +1983,7 @@
       if (shift && shift.status === 'active') {
         const car = allCars.find(c => c.plateNumber === shift.carPlate);
         if (car) {
-          await db.collection("cars").doc(car.id).update({
+          await updateDoc(doc(db, "cars", car.id), {
             currentDriverUid: null,
             currentDriverEmail: null
           });
@@ -1993,10 +1992,10 @@
 
       const shiftTrips = allTrips.filter(t => t.shiftId === shiftId);
       for (const trip of shiftTrips) {
-        await db.collection("trips").doc(trip.id).delete();
+        await deleteDoc(doc(db, "trips", trip.id));
       }
 
-      await db.collection("shifts").doc(shiftId).delete();
+      await deleteDoc(doc(db, "shifts", shiftId));
       alert("Műszak és a hozzá tartozó utak törölve!");
     };
 
@@ -2137,3 +2136,138 @@
             t.carPlate || '-',
             route,
             (t.startKm || 0) + " - " + (t.endKm || 0),
+            kmText
+          ];
+        } else {
+          return [
+            (idx + 1) + ".",
+            t.time || '-',
+            t.carPlate || '-',
+            route,
+            (t.startKm || 0) + " - " + (t.endKm || 0),
+            kmText,
+            passText
+          ];
+        }
+      });
+
+      doc.autoTable({
+        startY: 30,
+        head: [headers],
+        body: rows,
+        styles: { fontSize: 8.5, cellPadding: 2.5 },
+        headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' },
+        didParseCell: function(data) {
+          if (data.section === 'body') {
+            const trip = tripsArray[data.row.index];
+            if (trip && (trip.type === 'private' || trip.type === 'privat')) {
+              data.cell.styles.fillColor = [254, 243, 199];
+              data.cell.styles.fontStyle = 'bold';
+            }
+          }
+        }
+      });
+
+      const finalY = doc.lastAutoTable.finalY + 8;
+      let boxHeight = pdfType === 'all' ? 36 : 30;
+      if (totalWorkKm >= 250 && pdfType !== 'private') boxHeight += 8;
+
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.roundedRect(14, finalY, 182, boxHeight, 2, 2, 'FD');
+
+      doc.setFontSize(9.5);
+      doc.setFont(undefined, 'bold');
+      doc.setTextColor(30, 41, 59);
+      doc.text("ÖSSZESÍTÉS", 18, finalY + 6);
+
+      doc.setFontSize(8.5);
+      doc.setFont(undefined, 'normal');
+      let currentY = finalY + 12;
+
+      if (pdfType === 'work') {
+        doc.text(sanitizeText("Összesen megtett munkakilométer: " + totalWorkKm + " km"), 18, currentY);
+        currentY += 5;
+        doc.text(sanitizeText("Összesített utasszám: " + totalPassengers + " fő"), 18, currentY);
+        currentY += 5;
+      } else if (pdfType === 'private') {
+        doc.text(sanitizeText("Összesen megtett privát kilométer: " + totalPrivateKm + " km"), 18, currentY);
+        currentY += 5;
+      } else {
+        doc.text(sanitizeText("Összes munkakilométer: " + totalWorkKm + " km"), 18, currentY);
+        currentY += 5;
+        doc.text(sanitizeText("Összes privát kilométer: " + totalPrivateKm + " km"), 18, currentY);
+        currentY += 5;
+        
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(15, 23, 42);
+        doc.text(sanitizeText("ÖSSZESEN MEGTETT KILOMÉTER (Munka + Privát): " + totalCombinedKm + " km"), 18, currentY);
+        doc.setFont(undefined, 'normal');
+        doc.setTextColor(30, 41, 59);
+        currentY += 5;
+
+        doc.text(sanitizeText("Összesített utasszám: " + totalPassengers + " fő"), 18, currentY);
+        currentY += 5;
+      }
+
+      if (totalWorkKm >= 250 && pdfType !== 'private') {
+        doc.setTextColor(220, 38, 38);
+        doc.setFont(undefined, 'bold');
+        doc.setFontSize(8);
+        doc.text(sanitizeText("FIGYELEM: A műszak munkakilométere meghaladja a 250 km-es limitet! (" + totalWorkKm + " km)"), 18, currentY + 1);
+      }
+
+      doc.save(filename);
+    }
+
+    window.generateAdminPDF = function() {
+      const driver = document.getElementById('pdfDriverSelect').value;
+      const type = document.getElementById('pdfTypeSelect').value;
+      const period = document.getElementById('pdfPeriodSelect').value;
+
+      let filtered = [...allTrips];
+
+      if (driver !== 'all') {
+        filtered = filtered.filter(t => t.driverEmail === driver);
+      }
+
+      if (type === 'work') {
+        filtered = filtered.filter(t => t.type === 'work');
+      } else if (type === 'private') {
+        filtered = filtered.filter(t => t.type === 'private' || t.type === 'privat');
+      }
+
+      const now = new Date();
+      if (period === 'daily') {
+        const todayStr = now.toISOString().slice(0, 10);
+        filtered = filtered.filter(t => t.date === todayStr);
+      } else if (period === 'weekly') {
+        const past7Days = new Date(now.setDate(now.getDate() - 7));
+        filtered = filtered.filter(t => new Date(t.date) >= past7Days);
+      } else if (period === 'monthly') {
+        const currentMonth = new Date().toISOString().slice(0, 7);
+        filtered = filtered.filter(t => t.date.startsWith(currentMonth));
+      } else if (period === 'yearly') {
+        const currentYear = new Date().getFullYear().toString();
+        filtered = filtered.filter(t => t.date.startsWith(currentYear));
+      } else if (period === 'custom') {
+        const start = document.getElementById('pdfStartDate').value;
+        const end = document.getElementById('pdfEndDate').value;
+        if (start && end) {
+          filtered = filtered.filter(t => t.date >= start && t.date <= end);
+        }
+      }
+
+      if (filtered.length === 0) {
+        return alert("A megadott feltételekkel nem található egyetlen menetlevél bejegyzés sem!");
+      }
+
+      const driverText = driver === 'all' ? 'Összes sofőr' : driver;
+      const typeText = type === 'all' ? 'Összesített' : (type === 'work' ? 'Munkakilométer' : 'Privát');
+      const filename = "menetlevel_" + (driver === 'all' ? 'osszes' : driver.split('@')[0]) + "_" + type + "_" + new Date().toISOString().slice(0,10) + ".pdf";
+
+      generatePDFForTrips(filtered, "Menetlevél Kimutatás", "Sofőr: " + driverText + " | Típus: " + typeText + " | Időszak: " + period.toUpperCase(), filename, type);
+    };
+  </script>
+</body>
+</html>
