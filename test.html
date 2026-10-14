@@ -411,7 +411,7 @@
           <div id="carSelectContainer" class="space-y-3">
             <div class="flex gap-2">
               <select id="availableCarsSelect" class="flex-1 bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-sm"></select>
-              <button id="startShiftBtn" onclick="openStartShiftModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow transition">
+              <button id="startShiftBtn" type="button" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow transition">
                 🚀 Műszak Kezdése
               </button>
             </div>
@@ -423,7 +423,7 @@
                 <span id="activeCarText" class="font-bold text-sm text-orange-300"></span>
                 <div id="shiftStatusBadge" class="text-[10px] font-semibold text-slate-400 mt-0.5"></div>
               </div>
-              <button id="endShiftBtn" onclick="openEndShiftModal()" class="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow transition">
+              <button id="endShiftBtn" type="button" class="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow transition">
                 🏁 Műszak Végzése
               </button>
             </div>
@@ -534,7 +534,7 @@
         <h3 class="text-base font-bold text-orange-400 flex items-center gap-2">
           <span>🚀</span> Műszak Indítása & Adatellenőrzés
         </h3>
-        <button onclick="closeStartShiftModal()" class="text-slate-400 hover:text-white text-lg">✕</button>
+        <button id="closeStartShiftModalBtn" type="button" class="text-slate-400 hover:text-white text-lg">✕</button>
       </div>
 
       <p class="text-xs text-slate-300">
@@ -553,10 +553,10 @@
       </div>
 
       <div class="pt-2 flex gap-2">
-        <button onclick="confirmAndStartShift()" class="flex-1 bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-90 text-white py-3 rounded-xl font-bold text-xs shadow-lg transition">
+        <button id="confirmStartShiftBtn" type="button" class="flex-1 bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-90 text-white py-3 rounded-xl font-bold text-xs shadow-lg transition">
           Igen, adatok helyesek & Indítás
         </button>
-        <button onclick="closeStartShiftModal()" class="bg-slate-800 text-slate-400 hover:bg-slate-700 px-4 py-3 rounded-xl text-xs font-semibold">
+        <button id="cancelStartShiftBtn" type="button" class="bg-slate-800 text-slate-400 hover:bg-slate-700 px-4 py-3 rounded-xl text-xs font-semibold">
           Mégse
         </button>
       </div>
@@ -570,7 +570,7 @@
         <h3 class="text-base font-bold text-red-400 flex items-center gap-2">
           <span>🏁</span> Műszak Lezárása & Túlóra
         </h3>
-        <button onclick="closeEndShiftModal()" class="text-slate-400 hover:text-white text-lg">✕</button>
+        <button id="closeEndShiftModalBtn" type="button" class="text-slate-400 hover:text-white text-lg">✕</button>
       </div>
 
       <p id="endShiftCarInfo" class="text-xs text-slate-300"></p>
@@ -583,7 +583,7 @@
 
         <div class="pt-2 border-t border-slate-800/80">
           <label class="flex items-center gap-2 cursor-pointer select-none">
-            <input type="checkbox" id="modalHasOvertime" onchange="toggleOvertimeInputDisplay()" class="rounded bg-slate-800 border-slate-700 text-indigo-500 focus:ring-indigo-500 h-4 w-4">
+            <input type="checkbox" id="modalHasOvertime" class="rounded bg-slate-800 border-slate-700 text-indigo-500 focus:ring-indigo-500 h-4 w-4">
             <span class="text-xs font-bold text-indigo-300">Túlórám volt ebben a műszakban</span>
           </label>
         </div>
@@ -595,10 +595,10 @@
       </div>
 
       <div class="pt-2 flex gap-2">
-        <button onclick="confirmAndEndShift()" class="flex-1 bg-gradient-to-r from-red-500 to-orange-600 hover:opacity-90 text-white py-3 rounded-xl font-bold text-xs shadow-lg transition">
+        <button id="confirmEndShiftBtn" type="button" class="flex-1 bg-gradient-to-r from-red-500 to-orange-600 hover:opacity-90 text-white py-3 rounded-xl font-bold text-xs shadow-lg transition">
           🏁 Műszak Végleges Lezárása
         </button>
-        <button onclick="closeEndShiftModal()" class="bg-slate-800 text-slate-400 hover:bg-slate-700 px-4 py-3 rounded-xl text-xs font-semibold">
+        <button id="cancelEndShiftBtn" type="button" class="bg-slate-800 text-slate-400 hover:bg-slate-700 px-4 py-3 rounded-xl text-xs font-semibold">
           Mégse
         </button>
       </div>
@@ -612,7 +612,7 @@
       getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged 
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { 
-      getFirestore, collection, addDoc, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot 
+      getFirestore, collection, addDoc, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, deleteField 
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -714,6 +714,34 @@
           }
         });
       }
+
+      // DIREKT ESEMÉNYKEZELŐK KÖTÉSE A GOMBOKHOZ
+      const startShiftBtn = document.getElementById('startShiftBtn');
+      if (startShiftBtn) startShiftBtn.addEventListener('click', openStartShiftModal);
+
+      const endShiftBtn = document.getElementById('endShiftBtn');
+      if (endShiftBtn) endShiftBtn.addEventListener('click', openEndShiftModal);
+
+      const confirmStartShiftBtn = document.getElementById('confirmStartShiftBtn');
+      if (confirmStartShiftBtn) confirmStartShiftBtn.addEventListener('click', confirmAndStartShift);
+
+      const closeStartBtn = document.getElementById('closeStartShiftModalBtn');
+      if (closeStartBtn) closeStartBtn.addEventListener('click', closeStartShiftModal);
+
+      const cancelStartBtn = document.getElementById('cancelStartShiftBtn');
+      if (cancelStartBtn) cancelStartBtn.addEventListener('click', closeStartShiftModal);
+
+      const confirmEndShiftBtn = document.getElementById('confirmEndShiftBtn');
+      if (confirmEndShiftBtn) confirmEndShiftBtn.addEventListener('click', confirmAndEndShift);
+
+      const closeEndBtn = document.getElementById('closeEndShiftModalBtn');
+      if (closeEndBtn) closeEndBtn.addEventListener('click', closeEndShiftModal);
+
+      const cancelEndBtn = document.getElementById('cancelEndShiftBtn');
+      if (cancelEndBtn) cancelEndBtn.addEventListener('click', closeEndShiftModal);
+
+      const modalHasOvertime = document.getElementById('modalHasOvertime');
+      if (modalHasOvertime) modalHasOvertime.addEventListener('change', toggleOvertimeInputDisplay);
     });
 
     window.toggleCardAccordion = function(cardId) {
@@ -1062,7 +1090,7 @@
       }
     }
 
-    window.openStartShiftModal = function() {
+    function openStartShiftModal() {
       if (activeShift) {
         return alert("Már van aktív műszakod! Mielőtt újat indítanál, zárd le a jelenlegi műszakodat.");
       }
@@ -1082,14 +1110,14 @@
       document.getElementById('modalStartLocation').value = selectedCarForModal.lastLocation || '';
 
       document.getElementById('startShiftModal').classList.remove('hidden');
-    };
+    }
 
-    window.closeStartShiftModal = function() {
+    function closeStartShiftModal() {
       document.getElementById('startShiftModal').classList.add('hidden');
       selectedCarForModal = null;
-    };
+    }
 
-    window.confirmAndStartShift = async function() {
+    async function confirmAndStartShift() {
       if (!selectedCarForModal) return;
 
       const confirmedKm = Number(document.getElementById('modalStartKm').value) || 0;
@@ -1103,33 +1131,40 @@
       const startTimeStr = now.toLocaleTimeString('hu-HU', {hour: '2-digit', minute:'2-digit'});
       const startDateStr = now.toISOString().slice(0, 10);
 
-      await updateDoc(doc(db, "cars", selectedCarForModal.id), {
-        currentDriverUid: currentUser.uid,
-        currentDriverEmail: currentUser.email,
-        lastKm: confirmedKm,
-        lastLocation: confirmedLocation
-      });
+      try {
+        await updateDoc(doc(db, "cars", selectedCarForModal.id), {
+          currentDriverUid: currentUser.uid,
+          currentDriverEmail: currentUser.email,
+          lastKm: confirmedKm,
+          lastLocation: confirmedLocation
+        });
 
-      const newShift = {
-        driverUid: currentUser.uid,
-        driverEmail: currentUser.email,
-        carPlate: selectedCarForModal.plateNumber,
-        carModel: selectedCarForModal.model || '',
-        startDate: startDateStr,
-        startTime: startTimeStr,
-        startKm: confirmedKm,
-        startLocation: confirmedLocation,
-        status: "active"
-      };
+        const newShift = {
+          driverUid: currentUser.uid,
+          driverEmail: currentUser.email,
+          carPlate: selectedCarForModal.plateNumber,
+          carModel: selectedCarForModal.model || '',
+          startDate: startDateStr,
+          startTime: startTimeStr,
+          startKm: confirmedKm,
+          startLocation: confirmedLocation,
+          status: "active"
+        };
 
-      await addDoc(collection(db, "shifts"), newShift);
-      closeStartShiftModal();
-      alert("🚀 Műszak sikeresen elindítva! (" + selectedCarForModal.plateNumber + " - " + confirmedKm + " km)");
-    };
+        await addDoc(collection(db, "shifts"), newShift);
+        closeStartShiftModal();
+        alert("🚀 Műszak sikeresen elindítva! (" + selectedCarForModal.plateNumber + " - " + confirmedKm + " km)");
+      } catch (err) {
+        console.error("Hiba a műszak indításakor:", err);
+        alert("Hiba történt a műszak indítása közben!");
+      }
+    }
 
     // MŰSZAK LEZÁRÁSA & TÚLÓRA MODAL
-    window.openEndShiftModal = function() {
-      if (!activeShift) return;
+    function openEndShiftModal() {
+      if (!activeShift) {
+        return alert("Nincs aktív műszakod, amit le lehetne zárni!");
+      }
 
       let currentShiftTrips = allTrips.filter(t => t.shiftId === activeShift.id);
       currentShiftTrips = sortTripsByKmAscending(currentShiftTrips);
@@ -1175,13 +1210,13 @@
       document.getElementById('overtimeInputContainer').classList.add('hidden');
 
       document.getElementById('endShiftModal').classList.remove('hidden');
-    };
+    }
 
-    window.closeEndShiftModal = function() {
+    function closeEndShiftModal() {
       document.getElementById('endShiftModal').classList.add('hidden');
-    };
+    }
 
-    window.toggleOvertimeInputDisplay = function() {
+    function toggleOvertimeInputDisplay() {
       const isChecked = document.getElementById('modalHasOvertime').checked;
       const container = document.getElementById('overtimeInputContainer');
       if (isChecked) {
@@ -1189,9 +1224,9 @@
       } else {
         container.classList.add('hidden');
       }
-    };
+    }
 
-    window.confirmAndEndShift = async function() {
+    async function confirmAndEndShift() {
       if (!activeShift) return;
 
       const endKm = Number(document.getElementById('modalEndKm').value);
@@ -1206,29 +1241,34 @@
       const now = new Date();
       const endTimeStr = now.toLocaleTimeString('hu-HU', {hour: '2-digit', minute:'2-digit'});
 
-      // MŰSZAK LEZÁRÁSA
-      await updateDoc(doc(db, "shifts", activeShift.id), {
-        status: "closed",
-        endDate: now.toISOString().slice(0, 10),
-        endTime: endTimeStr,
-        endKm: endKm,
-        totalKm: endKm - activeShift.startKm,
-        overtimeHours: overtimeHours
-      });
-
-      // AUTÓ FELSZABADÍTÁSA
-      const activeCar = allCars.find(c => c.plateNumber === activeShift.carPlate);
-      if (activeCar) {
-        await updateDoc(doc(db, "cars", activeCar.id), { 
-          lastKm: endKm,
-          currentDriverUid: null,
-          currentDriverEmail: null
+      try {
+        // MŰSZAK LEZÁRÁSA FIRESTORE-BAN
+        await updateDoc(doc(db, "shifts", activeShift.id), {
+          status: "closed",
+          endDate: now.toISOString().slice(0, 10),
+          endTime: endTimeStr,
+          endKm: endKm,
+          totalKm: endKm - activeShift.startKm,
+          overtimeHours: overtimeHours
         });
-      }
 
-      closeEndShiftModal();
-      alert("🏁 Műszak sikeresen lezárva!" + (overtimeHours > 0 ? " (Túlóra: " + overtimeHours + " óra rögzítve)" : ""));
-    };
+        // AUTÓ EXPLICIT FELSZABADÍTÁSA
+        const activeCar = allCars.find(c => c.plateNumber === activeShift.carPlate);
+        if (activeCar) {
+          await updateDoc(doc(db, "cars", activeCar.id), { 
+            lastKm: endKm,
+            currentDriverUid: null,
+            currentDriverEmail: null
+          });
+        }
+
+        closeEndShiftModal();
+        alert("🏁 Műszak sikeresen lezárva!" + (overtimeHours > 0 ? " (Túlóra: " + overtimeHours + " óra rögzítve)" : ""));
+      } catch (err) {
+        console.error("Hiba a műszak lezárása közben:", err);
+        alert("Hiba történt a műszak lezárása során! Kérlek próbáld újra.");
+      }
+    }
 
     function listenToUsers() {
       onSnapshot(collection(db, "users"), (snapshot) => {
@@ -2628,12 +2668,6 @@
 
       generatePDFForTrips(filtered, "Menetlevél Kimutatás", "Sofőr: " + driverText + " | Típus: " + typeText + " | Időszak: " + period.toUpperCase(), filename, type);
     };
-
-    // GLOBÁLIS KIKÖTÉSEK A MODALOKHOZ
-    window.openEndShiftModal = openEndShiftModal;
-    window.closeEndShiftModal = closeEndShiftModal;
-    window.confirmAndEndShift = confirmAndEndShift;
-    window.toggleOvertimeInputDisplay = toggleOvertimeInputDisplay;
   </script>
 </body>
 </html>
