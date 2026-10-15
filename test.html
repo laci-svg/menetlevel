@@ -3217,7 +3217,7 @@
 
     window.generateAdminPDF = function() {
       const driverEmail = document.getElementById('pdfDriverSelect').value;
-      const pdfType = document.getElementById('pdfTypeSelect').value;
+      const pdfType = document.getElementById('pdfTypeSelect').value; // 'work', 'private', 'all'
       const period = document.getElementById('pdfPeriodSelect').value;
 
       let filteredShifts = [...allShifts].filter(s => s.status === 'closed');
@@ -3254,15 +3254,27 @@
       const { jsPDF } = window.jspdf;
       const docPdf = new jsPDF();
 
-      docPdf.setFontSize(16);
-      docPdf.text("Menetlevel Rendszer - Szurt Kimutatas", 14, 15);
+      // Fejléc adatai
+      const typeLabel = pdfType === 'work' ? 'Munkakilometer Kivonat (Km allasok es privat utak nelkul)' : (pdfType === 'private' ? 'Kizárolag Privat Utak' : 'Teljes Osszesitett Menetlevel');
+      
+      docPdf.setFontSize(15);
+      docPdf.text("Menetlevel Rendszer - " + typeLabel, 14, 15);
 
-      docPdf.setFontSize(10);
+      docPdf.setFontSize(9);
       docPdf.text("Sofor: " + (driverEmail === 'all' ? 'Osszes sofor' : getUsernameFromEmail(driverEmail)), 14, 22);
-      docPdf.text("Tipus: " + pdfType.toUpperCase() + " | Idoszak: " + period.toUpperCase(), 14, 27);
+      docPdf.text("Idoszak: " + period.toUpperCase(), 14, 27);
 
       let tableData = [];
       let grandTotalKm = 0;
+      let privateRowIndexes = []; // Eltérő színhez megjegyezzük a privát sorokat
+
+      // Fejlécek beállítása: Munkaút esetén NINCS km óra állás oszlop!
+      let tableHead = [];
+      if (pdfType === 'work') {
+        tableHead = [['Datum', 'Sofor', 'Rendszam', 'Utvonal (Cimek)', 'Megtett km']];
+      } else {
+        tableHead = [['Datum', 'Sofor', 'Rendszam', 'Utvonal (Cimek)', 'Km Allas', 'Megtett', 'Tipus']];
+      }
 
       filteredShifts.sort((a, b) => (a.startDate || '').localeCompare(b.startDate || '')).forEach(shift => {
         let shiftTrips = allTrips.filter(t => t.shiftId === shift.id);
@@ -3278,15 +3290,29 @@
           const dist = Number(t.workKm || 0);
           grandTotalKm += dist;
 
-          tableData.push([
-            shift.startDate || '-',
-            getUsernameFromEmail(shift.driverEmail),
-            shift.carPlate || '-',
-            (idx + 1) + '. ' + (t.startLocation || '-') + ' -> ' + (t.endLocation || '-'),
-            (t.startKm || 0) + ' - ' + (t.endKm || 0),
-            dist + ' km',
-            (t.type === 'private' || t.type === 'privat') ? 'Privat' : 'Munka'
-          ]);
+          const isPriv = (t.type === 'private' || t.type === 'privat');
+
+          if (pdfType === 'work') {
+            tableData.push([
+              shift.startDate || '-',
+              getUsernameFromEmail(shift.driverEmail),
+              shift.carPlate || '-',
+              (idx + 1) + '. ' + (t.startLocation || '-') + ' -> ' + (t.endLocation || '-'),
+              dist + ' km'
+            ]);
+          } else {
+            if (isPriv) privateRowIndexes.push(tableData.length); // Privat sor index megőrzése
+            
+            tableData.push([
+              shift.startDate || '-',
+              getUsernameFromEmail(shift.driverEmail),
+              shift.carPlate || '-',
+              (idx + 1) + '. ' + (t.startLocation || '-') + ' -> ' + (t.endLocation || '-'),
+              (t.startKm || 0) + ' - ' + (t.endKm || 0),
+              dist + ' km',
+              isPriv ? 'Privat' : 'Munka'
+            ]);
+          }
         });
       });
 
@@ -3296,18 +3322,26 @@
 
       docPdf.autoTable({
         startY: 32,
-        head: [['Datum', 'Sofor', 'Rendszam', 'Utvonal', 'Km Allas', 'Megtett', 'Tipus']],
+        head: tableHead,
         body: tableData,
         theme: 'striped',
         headStyles: { fillColor: [234, 88, 12] },
-        styles: { fontSize: 8 }
+        styles: { fontSize: 8 },
+        didParseCell: function(data) {
+          // Ha Összesített/Privát nézetben vagyunk, a PRIVÁT utak sorát eltérő (sárgás/narancsos) háttérrel jelöljük ki!
+          if (pdfType !== 'work' && data.section === 'body' && privateRowIndexes.includes(data.row.index)) {
+            data.cell.styles.fillColor = [254, 243, 199]; // Halványsárga kiemelés
+            data.cell.styles.textColor = [180, 83, 9];   // Sötétnarancs szöveg
+            data.cell.styles.fontStyle = 'bold';
+          }
+        }
       });
 
       const finalY = docPdf.lastAutoTable.finalY + 10;
       docPdf.setFontSize(11);
       docPdf.text("Osszesitett megtett kilometerek: " + grandTotalKm + " km", 14, finalY);
 
-      docPdf.save("Menetlevel_Export_" + new Date().toISOString().slice(0, 10) + ".pdf");
+      docPdf.save("Menetlevel_Export_" + pdfType + "_" + new Date().toISOString().slice(0, 10) + ".pdf");
     };
 
     window.exportShiftPDF = function(shiftId, filterType) {
@@ -3326,10 +3360,12 @@
       const { jsPDF } = window.jspdf;
       const docPdf = new jsPDF();
 
-      docPdf.setFontSize(16);
-      docPdf.text("Menetlevel - Muszak Részletezo", 14, 15);
+      const typeTitle = filterType === 'work' ? ' (Munkakilometer Kivonat)' : (filterType === 'private' ? ' (Privat Utak)' : '');
 
-      docPdf.setFontSize(10);
+      docPdf.setFontSize(15);
+      docPdf.text("Menetlevel - Muszak Reszletezo" + typeTitle, 14, 15);
+
+      docPdf.setFontSize(9);
       docPdf.text("Sofor: " + getUsernameFromEmail(shift.driverEmail), 14, 22);
       docPdf.text("Datum: " + (shift.startDate || '-') + " (" + (shift.startTime || '-') + " - " + (shift.endTime || '-') + ")", 14, 27);
       docPdf.text("Jarmu rendszam: " + (shift.carPlate || '-'), 14, 32);
@@ -3337,36 +3373,64 @@
 
       let tableData = [];
       let totalKm = 0;
+      let privateRowIndexes = [];
+
+      let tableHead = [];
+      if (filterType === 'work') {
+        tableHead = [['#', 'Idopont', 'Utvonal (Cimek)', 'Megtett km']];
+      } else {
+        tableHead = [['#', 'Idopont', 'Utvonal (Cimek)', 'Km Allas', 'Megtett', 'Tipus']];
+      }
 
       shiftTrips.forEach((t, idx) => {
         const dist = Number(t.workKm || 0);
         totalKm += dist;
 
-        tableData.push([
-          (idx + 1),
-          t.time || '-',
-          (t.startLocation || '-') + ' -> ' + (t.endLocation || '-'),
-          (t.startKm || 0) + ' - ' + (t.endKm || 0),
-          dist + ' km',
-          (t.type === 'private' || t.type === 'privat') ? 'Privat' : 'Munka'
-        ]);
+        const isPriv = (t.type === 'private' || t.type === 'privat');
+
+        if (filterType === 'work') {
+          tableData.push([
+            (idx + 1),
+            t.time || '-',
+            (t.startLocation || '-') + ' -> ' + (t.endLocation || '-'),
+            dist + ' km'
+          ]);
+        } else {
+          if (isPriv) privateRowIndexes.push(tableData.length);
+
+          tableData.push([
+            (idx + 1),
+            t.time || '-',
+            (t.startLocation || '-') + ' -> ' + (t.endLocation || '-'),
+            (t.startKm || 0) + ' - ' + (t.endKm || 0),
+            dist + ' km',
+            isPriv ? 'Privat' : 'Munka'
+          ]);
+        }
       });
 
       docPdf.autoTable({
         startY: 42,
-        head: [['#', 'Idopont', 'Utvonal', 'Km Allas', 'Megtett', 'Tipus']],
+        head: tableHead,
         body: tableData,
         theme: 'striped',
         headStyles: { fillColor: [234, 88, 12] },
-        styles: { fontSize: 8 }
+        styles: { fontSize: 8 },
+        didParseCell: function(data) {
+          if (filterType !== 'work' && data.section === 'body' && privateRowIndexes.includes(data.row.index)) {
+            data.cell.styles.fillColor = [254, 243, 199];
+            data.cell.styles.textColor = [180, 83, 9];
+            data.cell.styles.fontStyle = 'bold';
+          }
+        }
       });
 
       const finalY = docPdf.lastAutoTable.finalY + 10;
       docPdf.setFontSize(11);
-      docPdf.text("Muszak teljes megtett km: " + (shift.totalKm || totalKm) + " km", 14, finalY);
+      docPdf.text("Muszak teljes megtett km: " + totalKm + " km", 14, finalY);
 
       const driverName = getUsernameFromEmail(shift.driverEmail);
-      docPdf.save("Muszak_" + driverName + "_" + (shift.startDate || 'datum') + ".pdf");
+      docPdf.save("Muszak_" + driverName + "_" + (shift.startDate || 'datum') + "_" + filterType + ".pdf");
     };
   </script>
 </body>
