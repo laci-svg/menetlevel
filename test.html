@@ -2765,4 +2765,69 @@
               '<span class="text-xs font-extrabold text-orange-400">📅 ' + date + '</span>' +
               '<span class="text-[10px] text-slate-500 font-semibold">' + dayShifts.length + ' Műszak ezen a napon</span>' +
             '</div>' +
-            '<div class="space-y-2">' +
+            '<div class="space-y-2">' + dayShiftsHtml + '</div>' +
+          '</div>';
+        }).join('');
+
+        return '<details class="group border border-slate-800 bg-slate-950 rounded-xl overflow-hidden">' +
+          '<summary class="flex items-center justify-between p-3 cursor-pointer hover:bg-slate-900/80 transition select-none">' +
+            '<div class="flex items-center gap-2">' +
+              '<span class="text-xs font-bold ' + (inactive ? 'text-slate-500 line-through' : 'text-slate-200') + '">👤 ' + driverName + (inactive ? ' <span class="text-[9px] text-slate-500 font-normal no-underline">(Inaktív)</span>' : '') + '</span>' +
+              '<span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full border border-slate-700 font-bold">' + driverShifts.length + ' műszak</span>' +
+            '</div>' +
+            '<div class="flex items-center gap-2">' +
+              '<span class="text-xs font-mono font-bold text-orange-400">Össz: ' + driverTotalKm + ' km</span>' +
+              (canDeleteShift ? '<button onclick="deleteSelectedShifts(\'' + driverEmail + '\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-200 px-2 py-1 rounded border border-red-700 font-bold transition ml-1" onclick="event.stopPropagation()">🗑️ Kijelöltek törlése</button>' : '') +
+              '<span class="text-xs text-slate-500 group-open:rotate-180 transition-transform">▼</span>' +
+            '</div>' +
+          '</summary>' +
+          '<div class="p-3 border-t border-slate-800 bg-slate-900/40 space-y-3">' +
+            (canDeleteShift ? '<div class="flex justify-end items-center gap-2 pb-1 border-b border-slate-800"><label class="text-[10px] text-slate-400 cursor-pointer select-none flex items-center gap-1"><input type="checkbox" onchange="toggleSelectAllShiftsForDriver(\'' + driverEmail + '\', this.checked)" class="rounded bg-slate-800 border-slate-700 text-red-500 font-bold"> Összes kijelölése ehhez a sofőrhöz</label></div>' : '') +
+            datesHtml +
+          '</div>' +
+        '</details>';
+      }).join('');
+    };
+
+    window.deleteShift = async function(shiftId) {
+      if (!hasActionPermission('delete_shift')) return alert("Nincs jogosultságod műszak törléséhez!");
+      if (confirm("Biztosan törölni szeretnéd ezt a műszakot és a hozzá tartozó utakat?")) {
+        const shiftTrips = allTrips.filter(t => t.shiftId === shiftId);
+        for (const trip of shiftTrips) {
+          await deleteDoc(doc(db, "trips", trip.id));
+        }
+        await deleteDoc(doc(db, "shifts", shiftId));
+        alert("Műszak és útjai törölve!");
+      }
+    };
+
+    function renderSuperAdminPermissionsPanel() {
+      const container = document.getElementById('userPermissionsListContainer');
+      const badge = document.getElementById('badge_superAdminSection');
+      if (!container) return;
+
+      if (badge) badge.textContent = allUsers.length + " felhasználó";
+
+      container.innerHTML = allUsers.map(user => {
+        const name = getUsernameFromEmail(user.email);
+        const isMaster = user.email.toLowerCase() === MASTER_SUPER_ADMIN_EMAIL.toLowerCase();
+
+        return '<div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">' +
+          '<div class="flex justify-between items-center border-b border-slate-800 pb-1.5">' +
+            '<span class="font-bold text-xs text-amber-400">' + name + ' (' + user.email + ')' + (isMaster ? ' 👑 Master' : '') + '</span>' +
+            '<span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded">' + (user.role || 'sofor') + '</span>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    window.exportShiftPDF = function(shiftId, mode) {
+      alert("PDF Exportálás elindítva (" + mode + ")");
+    };
+
+    window.generateAdminPDF = function() {
+      alert("Szűrt PDF generálás...");
+    };
+  </script>
+</body>
+</html>
