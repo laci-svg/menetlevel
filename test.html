@@ -3435,29 +3435,6 @@ window.generateAdminPDF = function() {
       docPdf.save("Muszak_" + driverName + "_" + (shift.startDate || 'datum') + "_" + filterType + ".pdf");
     };
 
-      docPdf.autoTable({
-        startY: 42,
-        head: tableHead,
-        body: tableData,
-        theme: 'striped',
-        headStyles: { fillColor: [234, 88, 12] },
-        styles: { fontSize: 8 },
-        didParseCell: function(data) {
-          if (filterType !== 'work' && data.section === 'body' && privateRowIndexes.includes(data.row.index)) {
-            data.cell.styles.fillColor = [254, 243, 199];
-            data.cell.styles.textColor = [180, 83, 9];
-            data.cell.styles.fontStyle = 'bold';
-          }
-        }
-      });
-
-      const finalY = docPdf.lastAutoTable.finalY + 10;
-      docPdf.setFontSize(11);
-      docPdf.text("Muszak teljes megtett km: " + totalKm + " km", 14, finalY);
-
-      const driverName = getUsernameFromEmail(shift.driverEmail);
-      docPdf.save("Muszak_" + driverName + "_" + (shift.startDate || 'datum') + "_" + filterType + ".pdf");
-    };
   </script>
 </body>
 </html>
