@@ -2950,6 +2950,150 @@
         }).join('');
       }
 
+      // 2. LEZÁRT MŰSZAKOK (NAPI BONTÁSBAN, SOFŐRÖNÉNT CSOPORTOSÍTVA)
+      const closedShifts = allShifts.filter(s => s.status === 'closed');
+      
+      const shiftsByDriver = {};
+      closedShifts.forEach(shift => {
+        const email = shift.driverEmail || 'Ismeretlen Sofőr';
+        if (!shiftsByDriver[email]) shiftsByDriver[email] = [];
+        shiftsByDriver[email].push(shift);
+      });
+
+      const sortedDriverEmails = Object.keys(shiftsByDriver).sort((a, b) => getUsernameFromEmail(a).localeCompare(getUsernameFromEmail(b)));
+
+      if (closedBadge) closedBadge.textContent = closedShifts.length + " műszak archívumban";
+
+      if (sortedDriverEmails.length === 0) {
+        closedContainer.innerHTML = '<p class="text-xs text-slate-500 italic text-center p-3 bg-slate-950/60 rounded-xl">Nincsenek lezárt műszakok az archívumban.</p>';
+        return;
+      }
+
+      closedContainer.innerHTML = sortedDriverEmails.map(driverEmail => {
+        const safeDriverId = driverEmail.replace(/[^a-zA-Z0-9]/g, '_');
+        const driverShifts = shiftsByDriver[driverEmail];
+        const inactive = isUserInactiveByEmail(driverEmail);
+        const driverName = getUsernameFromEmail(driverEmail);
+
+        const totalDriverKmInClosed = driverShifts.reduce((sum, s) => sum + Number(s.totalKm || 0), 0);
+
+        // Csoportosítás DÁTUM (Nap) szerint
+        const shiftsByDate = {};
+        driverShifts.forEach(shift => {
+          const d = shift.startDate || 'Ismeretlen dátum';
+          if (!shiftsByDate[d]) shiftsByDate[d] = [];
+          shiftsByDate[d].push(shift);
+        });
+
+        const sortedDates = Object.keys(shiftsByDate).sort((a, b) => b.localeCompare(a));
+
+        const datesHtml = sortedDates.map(dateStr => {
+          const dayShifts = shiftsByDate[dateStr].sort((a, b) => (b.startTime || '').localeCompare(a.startTime || ''));
+
+          const dayShiftsHtml = dayShifts.map((shift, idx) => {
+            let shiftTrips = allTrips.filter(t => t.shiftId === shift.id);
+            shiftTrips = sortTripsByKmAscending(shiftTrips);
+
+            const tripsCount = shiftTrips.length;
+
+            const tripsListHtml = shiftTrips.map((t, tIdx) => {
+              const isPriv = (t.type === 'private' || t.type === 'privat');
+              return '<div class="flex justify-between items-center text-[11px] p-1.5 rounded bg-slate-950 border border-slate-800/80 my-1">' +
+                '<span>' + (tIdx + 1) + '. ' + t.startLocation + ' &rarr; ' + t.endLocation + (isPriv ? ' <span class="text-[9px] bg-amber-900/60 text-amber-300 px-1 rounded">Privát</span>' : '') + '</span>' +
+                '<div class="flex items-center gap-1.5 font-mono">' +
+                  '<span class="text-slate-400">' + t.startKm + '-' + t.endKm + '</span>' +
+                  '<span class="font-bold ' + (isPriv ? 'text-amber-400' : 'text-orange-400') + '">' + t.workKm + ' km</span>' +
+                  (canEditTrip ? '<button onclick="adminEditTripPrompt(\'' + t.id + '\')" title="Út szerkesztése" class="text-[9px] bg-slate-800 hover:bg-slate-700 text-slate-200 px-1 py-0.5 rounded border border-slate-700">✏️</button>' : '') +
+                  (canDeleteTrip ? '<button onclick="adminDeleteTripPrompt(\'' + t.id + '\')" title="Út törlése" class="text-[9px] bg-red-900/40 hover:bg-red-800 text-red-200 px-1 py-0.5 rounded border border-red-700">🗑️</button>' : '') +
+                '</div>' +
+              '</div>';
+            }).join('');
+
+            return '<div class="bg-slate-900 border border-slate-800/80 rounded-xl overflow-hidden">' +
+              '<!-- VÍZSZINTES MŰSZAK SOR (MÁSODIK KÉP STÍLUSÁBAN) -->' +
+              '<div class="p-2.5 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 text-xs hover:bg-slate-800/40 transition">' +
+                '<div class="flex items-center gap-2 min-w-0 flex-1">' +
+                  (canDeleteShift ? '<input type="checkbox" value="' + shift.id + '" class="shift-checkbox-' + safeDriverId + ' rounded bg-slate-800 border-slate-700 text-red-500 focus:ring-red-500 h-4 w-4 cursor-pointer flex-shrink-0">' : '') +
+                  '<div class="font-bold text-slate-200 truncate">' +
+                    (dayShifts.length - idx) + '. Műszak: <span class="text-orange-400 font-extrabold">' + (shift.carPlate || '-') + '</span> ' +
+                    '<span class="text-slate-400 text-[11px] font-normal">(' + (shift.startTime || '-') + ' &rarr; ' + (shift.endTime || '-') + ')</span>' +
+                  '</div>' +
+                '</div>' +
+
+                '<div class="flex items-center gap-2 font-mono flex-shrink-0">' +
+                  '<span class="font-bold text-slate-200 text-xs px-2">' + (shift.totalKm || 0) + ' km</span>' +
+                  '<button onclick="exportShiftPDF(\'' + shift.id + '\', \'work\')" class="bg-emerald-700 hover:bg-emerald-600 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition">Munka PDF</button>' +
+                  '<button onclick="exportShiftPDF(\'' + shift.id + '\', \'all\')" class="bg-amber-600 hover:bg-amber-500 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition">Összes PDF</button>' +
+                  '<button onclick="exportShiftPDF(\'' + shift.id + '\', \'private\')" class="bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition">Privát PDF</button>' +
+                  (canDeleteShift ? '<button onclick="adminDeleteSingleShift(\'' + shift.id + '\')" class="bg-red-900/60 hover:bg-red-800 text-red-200 text-[10px] font-bold px-2.5 py-1.5 rounded-lg border border-red-700/80 transition flex items-center gap-1">🗑️ Műszak törlése</button>' : '') +
+                '</div>' +
+              '</div>' +
+
+              '<!-- RÉSZLETES UTAK LENYITHATÓ RÉSZE -->' +
+              (tripsCount > 0 ? 
+                '<details class="group/trips px-3 pb-2 border-t border-slate-800/50">' +
+                  '<summary class="text-[10px] font-bold text-slate-400 cursor-pointer select-none hover:text-slate-200 pt-1.5 flex justify-between items-center">' +
+                    '<span>Útvonal részletei (' + tripsCount + ' út)</span>' +
+                    '<span class="group-open/trips:rotate-180 transition-transform">▼</span>' +
+                  '</summary>' +
+                  '<div class="pt-2 space-y-1">' + tripsListHtml + '</div>' +
+                '</details>' : ''
+              ) +
+            '</div>';
+          }).join('');
+
+          return '<div class="space-y-2">' +
+            '<div class="text-xs font-bold text-orange-400 flex items-center justify-between border-b border-slate-800/80 pb-1 pt-1">' +
+              '<span>📅 ' + dateStr + '</span>' +
+              '<span class="text-[10px] text-slate-400 font-normal">' + dayShifts.length + ' műszak ezen a napon</span>' +
+            '</div>' +
+            '<div class="space-y-2 pl-1">' + dayShiftsHtml + '</div>' +
+          '</div>';
+        }).join('');
+
+        return '<details class="group border border-slate-800 bg-slate-950 rounded-xl overflow-hidden mb-3">' +
+          '<summary class="flex items-center justify-between p-3.5 cursor-pointer hover:bg-slate-900/80 transition select-none">' +
+            '<div class="flex items-center gap-2">' +
+              '<span class="text-sm font-bold ' + (inactive ? 'text-slate-500 line-through' : 'text-slate-100') + '">👤 ' + driverName + (inactive ? ' <span class="text-[10px] text-slate-500 font-normal no-underline">(Inaktív)</span>' : '') + '</span>' +
+              '<span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full border border-slate-700 font-semibold">' + driverShifts.length + ' műszak</span>' +
+            '</div>' +
+            '<div class="flex items-center gap-3">' +
+              '<span class="text-xs font-mono font-bold text-orange-400 bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800">' + totalDriverKmInClosed + ' km total</span>' +
+              '<span class="text-xs text-slate-400 group-open:rotate-180 transition-transform">▼</span>' +
+            '</div>' +
+          '</summary>' +
+
+          '<div class="p-3 border-t border-slate-800/80 bg-slate-900/30 space-y-3">' +
+            (canDeleteShift ? '<div class="flex justify-between items-center bg-slate-950 p-2 rounded-lg border border-slate-800 text-xs">' +
+              '<label class="flex items-center gap-2 cursor-pointer text-slate-300 font-semibold">' +
+                '<input type="checkbox" onchange="toggleSelectAllShiftsForDriver(\'' + driverEmail + '\', this.checked)" class="rounded bg-slate-800 border-slate-700 text-red-500 focus:ring-red-500 h-4 w-4">' +
+                '<span>Összes kijelölése</span>' +
+              '</label>' +
+              '<button onclick="deleteSelectedShifts(\'' + driverEmail + '\')" class="bg-red-900/40 hover:bg-red-800 text-red-200 border border-red-700 font-bold px-3 py-1 rounded-lg transition text-xs flex items-center gap-1">' +
+                '<span>🗑️</span> Kijelöltek törlése' +
+              '</button>' +
+            '</div>' : '') +
+
+            '<div class="space-y-4">' + datesHtml + '</div>' +
+          '</div>' +
+        '</details>';
+      }).join('');
+    };
+
+    window.adminDeleteSingleShift = async function(shiftId) {
+      if (!hasActionPermission('delete_shift')) {
+        return alert("Nincs jogosultságod műszak törléséhez!");
+      }
+      if (confirm("Biztosan törölni szeretnéd ezt a műszakot és a hozzá tartozó utakat?")) {
+        const shiftTrips = allTrips.filter(t => t.shiftId === shiftId);
+        for (const trip of shiftTrips) {
+          await deleteDoc(doc(db, "trips", trip.id));
+        }
+        await deleteDoc(doc(db, "shifts", shiftId));
+        alert("Műszak sikeresen törölve!");
+      }
+    };
+
       // 2. LEZÁRT / KORÁBBI MŰSZAKOK (CSOPORTOSÍTVA SOFŐRÖK SZERINT, ABC-BEN)
       const closedShifts = allShifts.filter(s => s.status === 'closed');
       
