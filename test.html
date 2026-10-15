@@ -3217,7 +3217,7 @@
       }
     };
 
-    window.generateAdminPDF = function() {
+window.generateAdminPDF = function() {
       const driverEmail = document.getElementById('pdfDriverSelect').value;
       const pdfType = document.getElementById('pdfTypeSelect').value; // 'work', 'private', 'all'
       const period = document.getElementById('pdfPeriodSelect').value;
@@ -3256,34 +3256,34 @@
       const { jsPDF } = window.jspdf;
       const docPdf = new jsPDF();
 
-      // Fejléc adatai
-      const typeLabel = pdfType === 'work' ? 'Munkakilometer Kivonat (Km allasok es privat utak nelkul)' : (pdfType === 'private' ? 'Kizárolag Privat Utak' : 'Teljes Osszesitett Menetlevel');
+      // Fejléc címe
+      let typeLabel = 'Teljes Összesített Menetlevél';
+      if (pdfType === 'work') typeLabel = 'Munkakilométer Kivonat (Km állás és privát utak nélkül)';
+      if (pdfType === 'private') typeLabel = 'Kizárólag Privát Utak Kivonata';
       
-      docPdf.setFontSize(15);
-      docPdf.text("Menetlevel Rendszer - " + typeLabel, 14, 15);
+      docPdf.setFontSize(14);
+      docPdf.text("Menetlevél Rendszer - " + typeLabel, 14, 15);
 
       docPdf.setFontSize(9);
-      docPdf.text("Sofor: " + (driverEmail === 'all' ? 'Osszes sofor' : getUsernameFromEmail(driverEmail)), 14, 22);
-      docPdf.text("Idoszak: " + period.toUpperCase(), 14, 27);
+      docPdf.text("Sofőr: " + (driverEmail === 'all' ? 'Összes sofőr' : getUsernameFromEmail(driverEmail)), 14, 22);
+      docPdf.text("Időszak: " + period.toUpperCase(), 14, 27);
 
       let tableData = [];
       let grandTotalKm = 0;
-      let privateRowIndexes = []; // Eltérő színhez megjegyezzük a privát sorokat
+      let privateRowIndexes = [];
 
-      // Fejlécek beállítása: Munkaút esetén NINCS km óra állás oszlop!
-      let tableHead = [];
-      if (pdfType === 'work') {
-        tableHead = [['Datum', 'Sofor', 'Rendszam', 'Utvonal (Cimek)', 'Megtett km']];
-      } else {
-        tableHead = [['Datum', 'Sofor', 'Rendszam', 'Utvonal (Cimek)', 'Km Allas', 'Megtett', 'Tipus']];
-      }
+      // Osztott fejlécek: Munkaút esetén rejtett a Km Állás oszlop!
+      let tableHead = pdfType === 'work' 
+        ? [['Dátum', 'Sofőr', 'Rendszám', 'Útvonal (Címek)', 'Megtett km']]
+        : [['Dátum', 'Sofőr', 'Rendszám', 'Útvonal (Címek)', 'Km Állás', 'Megtett', 'Típus']];
 
       filteredShifts.sort((a, b) => (a.startDate || '').localeCompare(b.startDate || '')).forEach(shift => {
         let shiftTrips = allTrips.filter(t => t.shiftId === shift.id);
         shiftTrips = sortTripsByKmAscending(shiftTrips);
 
+        // SZŰRÉS PONTOSÍTÁSA
         if (pdfType === 'work') {
-          shiftTrips = shiftTrips.filter(t => t.type === 'work' || !t.type);
+          shiftTrips = shiftTrips.filter(t => t.type !== 'private' && t.type !== 'privat');
         } else if (pdfType === 'private') {
           shiftTrips = shiftTrips.filter(t => t.type === 'private' || t.type === 'privat');
         }
@@ -3291,7 +3291,6 @@
         shiftTrips.forEach((t, idx) => {
           const dist = Number(t.workKm || 0);
           grandTotalKm += dist;
-
           const isPriv = (t.type === 'private' || t.type === 'privat');
 
           if (pdfType === 'work') {
@@ -3303,7 +3302,7 @@
               dist + ' km'
             ]);
           } else {
-            if (isPriv) privateRowIndexes.push(tableData.length); // Privat sor index megőrzése
+            if (isPriv) privateRowIndexes.push(tableData.length);
             
             tableData.push([
               shift.startDate || '-',
@@ -3312,14 +3311,14 @@
               (idx + 1) + '. ' + (t.startLocation || '-') + ' -> ' + (t.endLocation || '-'),
               (t.startKm || 0) + ' - ' + (t.endKm || 0),
               dist + ' km',
-              isPriv ? 'Privat' : 'Munka'
+              isPriv ? 'Privát' : 'Munka'
             ]);
           }
         });
       });
 
       if (tableData.length === 0) {
-        return alert("Nem található a feltételeknek megfelelő út a kijelölt műszakokban!");
+        return alert("Nem található " + (pdfType === 'private' ? 'privát' : 'munka') + " út a megadott feltételekkel!");
       }
 
       docPdf.autoTable({
@@ -3330,10 +3329,9 @@
         headStyles: { fillColor: [234, 88, 12] },
         styles: { fontSize: 8 },
         didParseCell: function(data) {
-          // Ha Összesített/Privát nézetben vagyunk, a PRIVÁT utak sorát eltérő (sárgás/narancsos) háttérrel jelöljük ki!
           if (pdfType !== 'work' && data.section === 'body' && privateRowIndexes.includes(data.row.index)) {
-            data.cell.styles.fillColor = [254, 243, 199]; // Halványsárga kiemelés
-            data.cell.styles.textColor = [180, 83, 9];   // Sötétnarancs szöveg
+            data.cell.styles.fillColor = [254, 243, 199];
+            data.cell.styles.textColor = [180, 83, 9];
             data.cell.styles.fontStyle = 'bold';
           }
         }
@@ -3341,7 +3339,7 @@
 
       const finalY = docPdf.lastAutoTable.finalY + 10;
       docPdf.setFontSize(11);
-      docPdf.text("Osszesitett megtett kilometerek: " + grandTotalKm + " km", 14, finalY);
+      docPdf.text("Összesített megtett kilométerek: " + grandTotalKm + " km", 14, finalY);
 
       docPdf.save("Menetlevel_Export_" + pdfType + "_" + new Date().toISOString().slice(0, 10) + ".pdf");
     };
@@ -3354,40 +3352,42 @@
       shiftTrips = sortTripsByKmAscending(shiftTrips);
 
       if (filterType === 'work') {
-        shiftTrips = shiftTrips.filter(t => t.type === 'work' || !t.type);
+        shiftTrips = shiftTrips.filter(t => t.type !== 'private' && t.type !== 'privat');
       } else if (filterType === 'private') {
         shiftTrips = shiftTrips.filter(t => t.type === 'private' || t.type === 'privat');
+      }
+
+      if (shiftTrips.length === 0) {
+        return alert("Ebben a műszakban nincs " + (filterType === 'private' ? 'privát út' : 'munkaút') + "!");
       }
 
       const { jsPDF } = window.jspdf;
       const docPdf = new jsPDF();
 
-      const typeTitle = filterType === 'work' ? ' (Munkakilometer Kivonat)' : (filterType === 'private' ? ' (Privat Utak)' : '');
+      let typeTitle = '';
+      if (filterType === 'work') typeTitle = ' (Munkakilométer Kivonat)';
+      if (filterType === 'private') typeTitle = ' (Kizárólag Privát Utak)';
 
       docPdf.setFontSize(15);
-      docPdf.text("Menetlevel - Muszak Reszletezo" + typeTitle, 14, 15);
+      docPdf.text("Menetlevél - Műszak Részletező" + typeTitle, 14, 15);
 
       docPdf.setFontSize(9);
-      docPdf.text("Sofor: " + getUsernameFromEmail(shift.driverEmail), 14, 22);
-      docPdf.text("Datum: " + (shift.startDate || '-') + " (" + (shift.startTime || '-') + " - " + (shift.endTime || '-') + ")", 14, 27);
-      docPdf.text("Jarmu rendszam: " + (shift.carPlate || '-'), 14, 32);
-      docPdf.text("Tazigazolt Tuldora: " + (shift.overtimeHours || 0) + " ora", 14, 37);
+      docPdf.text("Sofőr: " + getUsernameFromEmail(shift.driverEmail), 14, 22);
+      docPdf.text("Dátum: " + (shift.startDate || '-') + " (" + (shift.startTime || '-') + " - " + (shift.endTime || '-') + ")", 14, 27);
+      docPdf.text("Jármű rendszám: " + (shift.carPlate || '-'), 14, 32);
+      docPdf.text("Túligazolt Túlóra: " + (shift.overtimeHours || 0) + " óra", 14, 37);
 
       let tableData = [];
       let totalKm = 0;
       let privateRowIndexes = [];
 
-      let tableHead = [];
-      if (filterType === 'work') {
-        tableHead = [['#', 'Idopont', 'Utvonal (Cimek)', 'Megtett km']];
-      } else {
-        tableHead = [['#', 'Idopont', 'Utvonal (Cimek)', 'Km Allas', 'Megtett', 'Tipus']];
-      }
+      let tableHead = filterType === 'work'
+        ? [['#', 'Időpont', 'Útvonal (Címek)', 'Megtett km']]
+        : [['#', 'Időpont', 'Útvonal (Címek)', 'Km Állás', 'Megtett', 'Típus']];
 
       shiftTrips.forEach((t, idx) => {
         const dist = Number(t.workKm || 0);
         totalKm += dist;
-
         const isPriv = (t.type === 'private' || t.type === 'privat');
 
         if (filterType === 'work') {
@@ -3406,10 +3406,34 @@
             (t.startLocation || '-') + ' -> ' + (t.endLocation || '-'),
             (t.startKm || 0) + ' - ' + (t.endKm || 0),
             dist + ' km',
-            isPriv ? 'Privat' : 'Munka'
+            isPriv ? 'Privát' : 'Munka'
           ]);
         }
       });
+
+      docPdf.autoTable({
+        startY: 42,
+        head: tableHead,
+        body: tableData,
+        theme: 'striped',
+        headStyles: { fillColor: [234, 88, 12] },
+        styles: { fontSize: 8 },
+        didParseCell: function(data) {
+          if (filterType !== 'work' && data.section === 'body' && privateRowIndexes.includes(data.row.index)) {
+            data.cell.styles.fillColor = [254, 243, 199];
+            data.cell.styles.textColor = [180, 83, 9];
+            data.cell.styles.fontStyle = 'bold';
+          }
+        }
+      });
+
+      const finalY = docPdf.lastAutoTable.finalY + 10;
+      docPdf.setFontSize(11);
+      docPdf.text("Műszak teljes megtett km: " + totalKm + " km", 14, finalY);
+
+      const driverName = getUsernameFromEmail(shift.driverEmail);
+      docPdf.save("Muszak_" + driverName + "_" + (shift.startDate || 'datum') + "_" + filterType + ".pdf");
+    };
 
       docPdf.autoTable({
         startY: 42,
