@@ -835,7 +835,7 @@
       return email.split('@')[0];
     }
 
-    // BEJELENTKEZÉS
+// BEJELENTKEZÉS
     document.addEventListener('DOMContentLoaded', () => {
       const loginForm = document.getElementById('loginForm');
       if (loginForm) {
@@ -850,6 +850,12 @@
 
           const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
           const pass = passInput ? passInput.value : '';
+
+          if (!email || !pass) {
+            errEl.textContent = 'Kérlek töltsd ki mindkét mezőt!';
+            errEl.classList.remove('hidden');
+            return;
+          }
 
           errEl.classList.add('hidden');
           errEl.textContent = '';
