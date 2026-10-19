@@ -2206,6 +2206,7 @@
     window.confirmSendToService = async function() {
       const carId = document.getElementById('serviceCarId').value;
       const date = document.getElementById('serviceModalDate').value;
+      const alertDays = Number(document.getElementById('serviceModalAlertDays').value) || 4;
       const location = document.getElementById('serviceModalLocation').value.trim();
       const workType = document.getElementById('serviceModalWorkType').value.trim();
       const cost = document.getElementById('serviceModalCost').value.trim();
@@ -2214,7 +2215,9 @@
 
       await updateDoc(doc(db, "cars", carId), {
         isUnderMaintenance: true,
-        serviceDate: date,
+        nextServiceDate: date,
+        dateServiceAlertDays: alertDays,
+        nextServiceText: workType,
         serviceLocation: location,
         serviceWorkType: workType,
         serviceCost: cost,
@@ -2223,7 +2226,7 @@
       });
 
       closeServiceCarModal();
-      alert("🛠️ Autó állapota Szervizben státuszra frissítve!");
+      alert("🛠️ Autó állapota Szervizben státuszra frissítve és a riasztás beállítva!");
     };
 
     window.returnFromService = async function(carId) {
