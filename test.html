@@ -1032,55 +1032,65 @@
       return email.split('@')[0];
     }
 
-  document.addEventListener('DOMContentLoaded', () => {
-  // Automatikus középre görgetés mobilon, amikor felugrik a billentyűzet (a felugró ablakokban is)
-  document.addEventListener('focusin', (e) => {
-    if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) {
-      setTimeout(() => {
-        e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 300);
+ document.addEventListener('DOMContentLoaded', () => {
+    // Automatikus középre görgetés mobilon, amikor felugrik a billentyűzet (a felugró ablakokban is)
+    document.addEventListener('focusin', (e) => {
+      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) {
+        setTimeout(() => {
+          e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 300);
+      }
+    });
+
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+      loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const emailInput = document.getElementById('loginEmail');
+        const passInput = document.getElementById('loginPassword');
+        const errEl = document.getElementById('authError');
+        const btn = document.getElementById('loginBtn');
+
+        const email = emailInput ? emailInput.value.trim() : '';
+        const pass = passInput ? passInput.value : '';
+
+        errEl.classList.add('hidden');
+        errEl.textContent = '';
+        btn.disabled = true;
+        btn.textContent = 'Bejelentkezés...';
+
+        try {
+          const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+          const loggedUser = userCredential.user;
+          
+          const uDoc = await getDoc(doc(db, "users", loggedUser.uid));
+          if (uDoc.exists() && uDoc.data().isInactive === true) {
+            await signOut(auth);
+            errEl.textContent = "Ez a felhasználói fiók inaktiválva lett! Kérlek keresd az adminisztrátort.";
+            errEl.classList.remove('hidden');
+          }
+        } catch (err) {
+          console.error("Bejelentkezési hiba:", err);
+          errEl.textContent = translateAuthError(err);
+          errEl.classList.remove('hidden');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Bejelentkezés';
+        }
+      });
     }
 
-  const loginForm = document.getElementById('loginForm');
-  if (loginForm) {
-    loginForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const emailInput = document.getElementById('loginEmail');
-      const passInput = document.getElementById('loginPassword');
-          const pass = passInput ? passInput.value : '';
-
-          errEl.classList.add('hidden');
-          errEl.textContent = '';
-          btn.disabled = true;
-          btn.textContent = 'Bejelentkezés...';
-
-          try {
-            const userCredential = await signInWithEmailAndPassword(auth, email, pass);
-            const loggedUser = userCredential.user;
-            
-            const uDoc = await getDoc(doc(db, "users", loggedUser.uid));
-            if (uDoc.exists() && uDoc.data().isInactive === true) {
-              await signOut(auth);
-              errEl.textContent = "Ez a felhasználói fiók inaktiválva lett! Kérlek keresd az adminisztrátort.";
-              errEl.classList.remove('hidden');
-            }
-          } catch (err) {
-            console.error("Bejelentkezési hiba:", err);
-            errEl.textContent = translateAuthError(err);
-            errEl.classList.remove('hidden');
-          } finally {
-            btn.disabled = false;
-            btn.textContent = 'Bejelentkezés';
-          }
-        });
-      }
-
-      document.getElementById('startShiftBtn')?.addEventListener('click', openStartShiftModal);
-      document.getElementById('endShiftBtn')?.addEventListener('click', openEndShiftModal);
-      document.getElementById('confirmStartShiftBtn')?.addEventListener('click', confirmAndStartShift);
-      document.getElementById('closeStartShiftModalBtn')?.addEventListener('click', closeStartShiftModal);
-      document.getElementById('cancelStartShiftBtn')?.addEventListener('click', closeStartShiftModal);
-      document.getElementById('confirmEndShiftBtn')?.addEventListener('click', confirmAndEndShift);
+    document.getElementById('startShiftBtn')?.addEventListener('click', openStartShiftModal);
+    document.getElementById('endShiftBtn')?.addEventListener('click', openEndShiftModal);
+    document.getElementById('confirmStartShiftBtn')?.addEventListener('click', confirmAndStartShift);
+    document.getElementById('closeStartShiftModalBtn')?.addEventListener('click', closeStartShiftModal);
+    document.getElementById('cancelStartShiftBtn')?.addEventListener('click', closeStartShiftModal);
+    document.getElementById('confirmEndShiftBtn')?.addEventListener('click', confirmAndEndShift);
+    document.getElementById('closeEndShiftModalBtn')?.addEventListener('click', closeEndShiftModal);
+    document.getElementById('cancelEndShiftBtn')?.addEventListener('click', closeEndShiftModal);
+    document.getElementById('modalHasOvertime')?.addEventListener('change', toggleOvertimeInputDisplay);
+    document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click', confirmDriverAnnouncement);
+  });
       document.getElementById('closeEndShiftModalBtn')?.addEventListener('click', closeEndShiftModal);
       document.getElementById('cancelEndShiftBtn')?.addEventListener('click', closeEndShiftModal);
       document.getElementById('modalHasOvertime')?.addEventListener('change', toggleOvertimeInputDisplay);
