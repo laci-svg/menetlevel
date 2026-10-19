@@ -2095,17 +2095,17 @@
       let dateServiceHtml = '';
       let dateServiceCount = 0;
 
-      allCars.forEach(car => {
-        if (car.nextServiceDate) {
-          const sDate = new Date(car.nextServiceDate);
-          const diffTime = sDate - today;
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          const threshold = car.dateServiceAlertDays || alertDays;
+allCars.forEach(car => {
+  if (car.nextServiceDate) {
+    const sDate = new Date(car.nextServiceDate + "T00:00:00");
+    const tDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const diffDays = Math.round((sDate - tDate) / (1000 * 60 * 60 * 24));
+    const threshold = car.dateServiceAlertDays || alertDays;
 
-          if (diffDays <= threshold) {
-            dateServiceCount++;
-            totalAlertsCount++;
-            const isExpired = diffDays < 0;
+    if (diffDays <= threshold) {
+      dateServiceCount++;
+      totalAlertsCount++;
+      const isExpired = diffDays < 0;
 
             dateServiceHtml += '<div class="bg-slate-900 border ' + (isExpired ? 'border-red-500' : 'border-slate-700') + ' p-2 rounded-lg flex justify-between items-center text-xs">' +
               '<div>' +
