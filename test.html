@@ -1032,10 +1032,17 @@
       return email.split('@')[0];
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-      const loginForm = document.getElementById('loginForm');
-      if (loginForm) {
-        loginForm.addEventListener('submit', async (e) => {
+  document.addEventListener('DOMContentLoaded', () => {
+  // Automatikus középre görgetés mobilon, amikor felugrik a billentyűzet
+  document.querySelectorAll('input, select, textarea').forEach(input => {
+    input.addEventListener('focus', (e) => {
+      setTimeout(() => {
+        e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
+    });
+
+  const loginForm = document.getElementById('loginForm');
+  if (loginForm) {
           e.preventDefault();
           const emailInput = document.getElementById('loginEmail');
           const passInput = document.getElementById('loginPassword');
