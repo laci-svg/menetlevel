@@ -1614,9 +1614,16 @@
             '<button onclick="deleteAnnouncement(\'' + a.id + '\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-300 px-2 py-1 rounded border border-red-800 transition">Törlés</button>' +
           '</div>' +
           '<p class="text-xs text-slate-300 bg-slate-900/80 p-2 rounded-lg border border-slate-800/80 whitespace-pre-line">' + a.message + '</p>' +
-          '<div class="text-[10px] text-emerald-400 font-semibold">' +
-            '✔ Olvasva ' + seenCount + ' sofőr által' +
-          '</div>' +
+          (() => {
+            const seenNames = (a.seenBy || []).map(uid => {
+              const u = allUsers.find(x => x.id === uid);
+              return u ? getUsernameFromEmail(u.email) : null;
+            }).filter(Boolean).join(', ');
+
+            return '<div class="text-[10px] text-emerald-400 font-semibold mt-1">' +
+              '✔ Olvasva ' + seenCount + ' sofőr által' + (seenNames ? ' (' + seenNames + ')' : '') +
+            '</div>';
+          })() +
         '</div>';
       }).join('');
     }
