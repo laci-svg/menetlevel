@@ -1,2019 +1,197 @@
-<!-- SCRIPT MODUL -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { 
-      getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged 
-    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { 
-      getFirestore, collection, addDoc, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, deleteField, arrayUnion, arrayRemove 
-    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Digitális Menetlevél Rendszer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen bg-cover bg-center bg-fixed transition-all duration-500">
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyCzpvcJSdO8o2mpLOibQKEv6tLes0BixFM",
-      authDomain: "menetlevel-3563a.firebaseapp.com",
-      projectId: "menetlevel-3563a",
-      storageBucket: "menetlevel-3563a.firebasestorage.app",
-      messagingSenderId: "306355505023",
-      appId: "1:306355505023:web:fdd44585f7946d6fddfc4a",
-      measurementId: "G-9NNKD3N84H"
-    };
+  <!-- BEJELENTKEZÉSI KÉPERNYŐ -->
+  <div id="authScreen" class="min-h-screen flex items-center justify-center p-4">
+    <div class="bg-slate-900/90 border border-slate-800 p-6 rounded-2xl max-w-sm w-full space-y-4 shadow-2xl backdrop-blur-md">
+      <div class="text-center space-y-1">
+        <h1 class="text-xl font-black text-orange-400">🚗 Menetlevél Rendszer</h1>
+        <p class="text-xs text-slate-400">Jelentkezz be a folytatáshoz</p>
+      </div>
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+      <div id="authError" class="hidden bg-red-950/80 border border-red-800 text-red-300 p-3 rounded-xl text-xs font-semibold text-center"></div>
 
-    const ADMIN_PIN = "1234";
-    const MASTER_SUPER_ADMIN_EMAIL = "zwickl@kn.hu";
+      <form id="loginForm" class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Email cím</label>
+          <input type="email" id="loginEmail" required class="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-xl text-sm focus:ring-2 focus:ring-orange-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Jelszó</label>
+          <input type="password" id="loginPassword" required class="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-xl text-sm focus:ring-2 focus:ring-orange-500 outline-none">
+        </div>
+        <button type="submit" id="loginBtn" class="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:opacity-90 text-white py-3 rounded-xl font-bold text-sm shadow-lg transition">
+          Bejelentkezés
+        </button>
+      </form>
+    </div>
+  </div>
 
-    const ALL_ADMIN_CARDS = [
-      { id: "combined_alerts", label: "⚠️ Járműpark Figyelmeztetések & Teendők", elId: "card_combined_alerts" },
-      { id: "admin_wall", label: "📌 Belső Admin Üzenőfal", elId: "card_admin_wall" },
-      { id: "announcements", label: "📢 Sofőr Üzenőfal & Közlemények", elId: "card_announcements" },
-      { id: "overtime", label: "⏰ Havi Túlórák", elId: "card_overtime" },
-      { id: "stats", label: "📊 Statisztika & Összesítő", elId: "card_stats" },
-      { id: "pdf", label: "📄 PDF Exportálás", elId: "card_pdf" },
-      { id: "car_manage", label: "🚗 Járműpark Kezelése", elId: "card_car_manage" },
-      { id: "car_live_km", label: "⏱️ Járműpark Aktuális Óraállásai", elId: "card_car_live_km" },
-      { id: "bg_manage", label: "🎨 Sofőr Egyedi Háttér", elId: "card_bg_manage" },
-      { id: "overlimit", label: "⚠️ Kilométer Túlfutások", elId: "card_overlimit" },
-      { id: "closed_shifts", label: "📁 Lezárt / Korábbi Műszakok", elId: "card_closed_shifts" },
-      { id: "active_shifts", label: "🟢 Jelenleg ÉLŐ Műszakok", elId: "card_active_shifts" }
-    ];
+  <!-- FŐ ALKALMAZÁS KÉPERNYŐ -->
+  <div id="appScreen" class="hidden min-h-screen p-3 md:p-6 space-y-4 pb-12">
+    
+    <!-- FEJLÉC & PROFIL BAR -->
+    <div class="max-w-6xl mx-auto flex justify-between items-center bg-slate-900/90 border border-slate-800 p-3.5 rounded-2xl backdrop-blur-md shadow-lg">
+      <div class="flex items-center gap-2">
+        <span class="text-lg">👤</span>
+        <div>
+          <span id="userStatus" class="font-extrabold text-sm text-slate-200"></span>
+          <span class="block text-[10px] text-slate-400 font-mono">Bejelentkezve</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="toggleAdminBtn" onclick="toggleAdminViewPrompt()" class="bg-amber-500/20 border border-amber-500/40 text-amber-400 hover:bg-amber-500/30 px-3 py-2 rounded-xl text-xs font-semibold transition">
+          👑 Admin
+        </button>
+        <button onclick="logout()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2 rounded-xl text-xs font-semibold border border-slate-700 transition">
+          Kijelentkezés
+        </button>
+      </div>
+    </div>
 
-    const ALL_ACTION_PERMISSIONS = [
-      { id: "edit_trip", label: "✏️ Utak szerkesztése (Km / Típus / Címek)" },
-      { id: "delete_trip", label: "🗑️ Utak törlése" },
-      { id: "delete_shift", label: "❌ Teljes műszak törlése" },
-      { id: "release_car", label: "🔓 Autó felszabadítása & törlése" },
-      { id: "edit_admin_wall_other", label: "✏️ Mások admin üzenőfal bejegyzéseinek szerkesztése" },
-      { id: "delete_admin_wall", label: "🗑️ Admin üzenőfal bejegyzések törlése" }
-    ];
+    <!-- ADMIN FELÜLET CONTAINER -->
+    <div id="adminSection" class="hidden max-w-6xl mx-auto space-y-4">
+      
+      <div class="flex justify-between items-center bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+        <h2 class="text-sm font-bold text-amber-400 flex items-center gap-2">
+          <span>👑</span> Adminisztrációs Vezérlőpult
+        </h2>
+        <div class="flex gap-2">
+          <button onclick="expandAllAdminCards()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg text-xs font-semibold border border-slate-700">Összes megnyitása</button>
+          <button onclick="collapseAllAdminCards()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg text-xs font-semibold border border-slate-700">Összes összecsukása</button>
+        </div>
+      </div>
 
-    let currentUser = null;
-    let currentUserData = null;
-    let allTrips = [];
-    let allCars = [];
-    let allUsers = [];
-    let allShifts = [];
-    let allAnnouncements = [];
-    let allAdminWallPosts = [];
-    let globalSettings = { vignetteAlertDays: 4 };
+      <!-- 1. JÁRMŰPARK FIGYELMEZTETÉSEK & TEENDŐK -->
+      <div id="card_combined_alerts" class="admin-card bg-slate-900/90 border border-amber-500/40 rounded-xl overflow-hidden shadow-md">
+        <div onclick="toggleCardAccordion('card_combined_alerts')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-amber-500/30">
+          <div class="flex items-center gap-2">
+            <h3 class="text-sm font-bold text-amber-400 flex items-center gap-1.5">
+              <span>⚠️</span> Járműpark Figyelmeztetések & Teendők
+            </h3>
+            <span id="badge_combined_alerts" class="text-[10px] bg-amber-950 text-amber-300 border border-amber-800 px-2 py-0.5 rounded-full font-mono font-bold">0 teendő</span>
+          </div>
+          <span id="arrow_card_combined_alerts" class="text-xs text-slate-400 font-bold transition-transform">▼</span>
+        </div>
 
-    let activeShift = null;
-    let isAdminMode = false;
-    let selectedCarForModal = null;
-    let minAllowedEndKm = 0;
-    let selectedOvertimeMonthDate = new Date();
-    let tempModalVignettes = [];
+        <div id="content_card_combined_alerts" class="hidden p-4 space-y-3 border-t border-slate-800/80">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+              <div class="flex justify-between items-center border-b border-slate-800 pb-1.5">
+                <span class="text-xs font-bold text-orange-400">🛢️ Olajcsere Esedékes</span>
+                <span id="badge_oil_service_alert" class="text-[10px] text-slate-400 font-mono">0 autó</span>
+              </div>
+              <div id="oilServiceAlertsContainer" class="space-y-1.5 max-h-[180px] overflow-y-auto pr-1"></div>
+            </div>
 
-    let dismissedOverlimits = JSON.parse(localStorage.getItem('dismissedOverlimits') || '[]');
-    let cardStates = JSON.parse(localStorage.getItem('adminCardStates') || '{}');
-    let lastWarnedKmValue = null;
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+              <div class="flex justify-between items-center border-b border-slate-800 pb-1.5">
+                <span class="text-xs font-bold text-amber-400">📋 Műszaki Vizsga & Matricák</span>
+                <span id="badge_mot_vignette_alert" class="text-[10px] text-slate-400 font-mono">0 eset</span>
+              </div>
+              <div id="motVignetteAlertsContainer" class="space-y-1.5 max-h-[180px] overflow-y-auto pr-1"></div>
+            </div>
 
-    function getUsernameFromEmail(email) {
-      if (!email) return 'Ismeretlen';
-      return email.split('@')[0];
-    }
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+              <div class="flex justify-between items-center border-b border-slate-800 pb-1.5">
+                <span class="text-xs font-bold text-sky-400">📅 Dátumhoz Kötött Szervizek</span>
+                <span id="badge_date_service_alert" class="text-[10px] text-slate-400 font-mono">0 autó</span>
+              </div>
+              <div id="dateServiceAlertsContainer" class="space-y-1.5 max-h-[180px] overflow-y-auto pr-1"></div>
+            </div>
+          </div>
 
-    document.addEventListener('DOMContentLoaded', () => {
-      const loginForm = document.getElementById('loginForm');
-      if (loginForm) {
-        loginForm.addEventListener('submit', async (e) => {
-          e.preventDefault();
-          const emailInput = document.getElementById('loginEmail');
-          const passInput = document.getElementById('loginPassword');
-          const errEl = document.getElementById('authError');
-          const btn = document.getElementById('loginBtn');
+          <div class="pt-2 border-t border-slate-800 flex justify-between items-center flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <label class="text-xs text-slate-400 font-medium">Matrica figyelmeztetés korlát:</label>
+              <input type="number" id="globalVignetteAlertDaysInput" min="1" max="60" onchange="updateGlobalVignetteAlertDays(this.value)" class="w-16 bg-slate-800 border border-slate-700 text-white p-1 rounded text-xs font-bold font-mono text-center">
+              <span class="text-xs text-slate-500">nap</span>
+            </div>
+            <button onclick="setMassHUAnnualVignettes()" class="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold transition">
+              🇭🇺 Éves magyar matricák kiosztása az összes autóra
+            </button>
+          </div>
+        </div>
+      </div>
 
-          const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
-          const pass = passInput ? passInput.value : '';
+      <!-- 2. BELSŐ ADMIN ÜZENŐFAL -->
+      <div id="card_admin_wall" class="admin-card bg-slate-900/90 border border-teal-500/40 rounded-xl overflow-hidden shadow-md">
+        <div onclick="toggleCardAccordion('card_admin_wall')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-teal-500/30">
+          <div class="flex items-center gap-2">
+            <h3 class="text-sm font-bold text-teal-300 flex items-center gap-1.5">
+              <span>📌</span> Belső Admin Üzenőfal
+            </h3>
+            <span id="badge_admin_wall" class="text-[10px] bg-teal-950 text-teal-300 border border-teal-800 px-2 py-0.5 rounded-full font-mono font-bold">0 bejegyzés</span>
+          </div>
+          <span id="arrow_card_admin_wall" class="text-xs text-slate-400 font-bold transition-transform">▼</span>
+        </div>
 
-          errEl.classList.add('hidden');
-          errEl.textContent = '';
-          btn.disabled = true;
-          btn.textContent = 'Bejelentkezés...';
+        <div id="content_card_admin_wall" class="hidden p-4 space-y-3 border-t border-slate-800/80">
+          <form id="adminWallForm" onsubmit="saveAdminWallPost(event)" class="space-y-2 bg-slate-950 p-3 rounded-xl border border-slate-800">
+            <input type="hidden" id="adminWallEditingPostId" value="">
+            <input type="text" id="adminWallTitle" placeholder="Bejegyzés címe..." required class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs font-bold">
+            <textarea id="adminWallMessage" placeholder="Írd ide a belső adminisztrátori üzenetet..." rows="2" required class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs"></textarea>
+            <div class="flex gap-2">
+              <button type="submit" id="adminWallSubmitBtn" class="bg-teal-700 hover:bg-teal-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow transition">
+                📌 Bejegyzés Közzététele
+              </button>
+              <button type="button" id="adminWallCancelBtn" onclick="resetAdminWallForm()" class="bg-slate-800 text-slate-400 hover:bg-slate-700 px-3 py-2 rounded-xl text-xs font-semibold hidden">
+                Mégse
+              </button>
+            </div>
+          </form>
 
-          try {
-            const userCredential = await signInWithEmailAndPassword(auth, email, pass);
-            const loggedUser = userCredential.user;
+          <div id="adminWallPostsList" class="space-y-2 max-h-[300px] overflow-y-auto pr-1"></div>
+        </div>
+      </div>
+
+      <!-- 3. SOFŐR ÜZENŐFAL & KÖZLEMÉNYEK -->
+      <div id="card_announcements" class="admin-card bg-slate-900/90 border border-sky-500/40 rounded-xl overflow-hidden shadow-md">
+        <div onclick="toggleCardAccordion('card_announcements')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-sky-500/30">
+          <div class="flex items-center gap-2">
+            <h3 class="text-sm font-bold text-sky-400 flex items-center gap-1.5">
+              <span>📢</span> Sofőr Üzenőfal & Kötelező Közlemények
+            </h3>
+            <span id="badge_announcements" class="text-[10px] bg-sky-950 text-sky-300 border border-sky-800 px-2 py-0.5 rounded-full font-mono font-bold">0 üzenet</span>
+          </div>
+          <span id="arrow_card_announcements" class="text-xs text-slate-400 font-bold transition-transform">▼</span>
+        </div>
+
+        <div id="content_card_announcements" class="hidden p-4 space-y-3 border-t border-slate-800/80">
+          <form id="announcementForm" onsubmit="sendAnnouncement(event)" class="space-y-3 bg-slate-950 p-3 rounded-xl border border-slate-800">
+            <input type="text" id="announcementTitle" placeholder="Üzenet / Közlemény címe..." required class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs font-bold">
+            <textarea id="announcementMessage" placeholder="A közlemény részletes leírása..." rows="3" required class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs"></textarea>
             
-            const uDoc = await getDoc(doc(db, "users", loggedUser.uid));
-            if (uDoc.exists() && uDoc.data().isInactive === true) {
-              await signOut(auth);
-              errEl.textContent = "Ez a felhasználói fiók inaktiválva lett! Kérlek keresd az adminisztrátort.";
-              errEl.classList.remove('hidden');
-            }
-          } catch (err) {
-            console.error("Bejelentkezési hiba:", err);
-            errEl.textContent = translateAuthError(err);
-            errEl.classList.remove('hidden');
-          } finally {
-            btn.disabled = false;
-            btn.textContent = 'Bejelentkezés';
-          }
-        });
-      }
-
-      document.getElementById('startShiftBtn')?.addEventListener('click', openStartShiftModal);
-      document.getElementById('endShiftBtn')?.addEventListener('click', openEndShiftModal);
-      document.getElementById('confirmStartShiftBtn')?.addEventListener('click', confirmAndStartShift);
-      document.getElementById('closeStartShiftModalBtn')?.addEventListener('click', closeStartShiftModal);
-      document.getElementById('cancelStartShiftBtn')?.addEventListener('click', closeStartShiftModal);
-      document.getElementById('confirmEndShiftBtn')?.addEventListener('click', confirmAndEndShift);
-      document.getElementById('closeEndShiftModalBtn')?.addEventListener('click', closeEndShiftModal);
-      document.getElementById('cancelEndShiftBtn')?.addEventListener('click', closeEndShiftModal);
-      document.getElementById('modalHasOvertime')?.addEventListener('change', toggleOvertimeInputDisplay);
-      document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click', confirmDriverAnnouncement);
-    });
-
-    window.toggleCardAccordion = function(cardId) {
-      const content = document.getElementById('content_' + cardId);
-      const arrow = document.getElementById('arrow_' + cardId);
-      if (!content || !arrow) return;
-
-      const isHidden = content.classList.contains('hidden');
-      if (isHidden) {
-        content.classList.remove('hidden');
-        arrow.textContent = '▲';
-        cardStates[cardId] = true;
-      } else {
-        content.classList.add('hidden');
-        arrow.textContent = '▼';
-        cardStates[cardId] = false;
-      }
-
-      localStorage.setItem('adminCardStates', JSON.stringify(cardStates));
-    };
-
-    window.expandAllAdminCards = function() {
-      const allCardIds = ALL_ADMIN_CARDS.map(c => c.elId).concat(['superAdminSection']);
-      allCardIds.forEach(cardId => {
-        const content = document.getElementById('content_' + cardId);
-        const arrow = document.getElementById('arrow_' + cardId);
-        if (content && arrow) {
-          content.classList.remove('hidden');
-          arrow.textContent = '▲';
-          cardStates[cardId] = true;
-        }
-      });
-      localStorage.setItem('adminCardStates', JSON.stringify(cardStates));
-    };
-
-    window.collapseAllAdminCards = function() {
-      const allCardIds = ALL_ADMIN_CARDS.map(c => c.elId).concat(['superAdminSection']);
-      allCardIds.forEach(cardId => {
-        const content = document.getElementById('content_' + cardId);
-        const arrow = document.getElementById('arrow_' + cardId);
-        if (content && arrow) {
-          content.classList.add('hidden');
-          arrow.textContent = '▼';
-          cardStates[cardId] = false;
-        }
-      });
-      localStorage.setItem('adminCardStates', JSON.stringify(cardStates));
-    };
-
-    function applySavedCardStates() {
-      const allCardIds = ALL_ADMIN_CARDS.map(c => c.elId).concat(['superAdminSection']);
-      allCardIds.forEach(cardId => {
-        const content = document.getElementById('content_' + cardId);
-        const arrow = document.getElementById('arrow_' + cardId);
-        if (content && arrow) {
-          if (cardStates[cardId] === true) {
-            content.classList.remove('hidden');
-            arrow.textContent = '▲';
-          } else {
-            content.classList.add('hidden');
-            arrow.textContent = '▼';
-          }
-        }
-      });
-    }
-
-    function translateAuthError(err) {
-      if (!err || !err.code) return "Bejelentkezési hiba történt. Kérlek próbáld újra!";
-      switch (err.code) {
-        case 'auth/invalid-email': return "Érvénytelen email cím formátum!";
-        case 'auth/user-not-found':
-        case 'auth/wrong-password':
-        case 'auth/invalid-credential': return "Hibás email cím vagy jelszó!";
-        case 'auth/too-many-requests': return "Túl sok hibás próbálkozás. Kérlek várj pár percet!";
-        default: return "Hiba (" + err.code + "): " + err.message;
-      }
-    }
-
-    function sanitizeText(str) {
-      if (!str) return '';
-      return String(str)
-        .replace(/ő/g, 'ö').replace(/Ő/g, 'Ö')
-        .replace(/ű/g, 'ü').replace(/Ű/g, 'Ü')
-        .replace(/–/g, '-').replace(/—/g, '-');
-    }
-
-    function sortTripsByKmAscending(trips) {
-      return [...trips].sort((a, b) => {
-        const kmA = Number(a.startKm !== undefined ? a.startKm : 0);
-        const kmB = Number(b.startKm !== undefined ? b.startKm : 0);
-        if (kmA !== kmB) return kmA - kmB;
-        return (a.time || '').localeCompare(b.time || '');
-      });
-    }
-
-    function applyUserBackground(bgUrl) {
-      document.body.style.backgroundImage = (bgUrl && bgUrl.trim() !== '') ? "url('" + bgUrl.trim() + "')" : 'none';
-    }
-
-    function hasActionPermission(actionId) {
-      const userEmail = (currentUser?.email || auth.currentUser?.email || '').toLowerCase();
-      if (userEmail === MASTER_SUPER_ADMIN_EMAIL.toLowerCase() || currentUserData?.isSuperAdmin === true) return true;
-      return (currentUserData?.actionPermissions || []).includes(actionId);
-    }
-
-    function isUserInactiveByEmail(email) {
-      if (!email) return false;
-      const u = allUsers.find(x => x.email && x.email.toLowerCase() === email.toLowerCase());
-      return u ? !!u.isInactive : false;
-    }
-
-    setInterval(() => {
-      const now = new Date();
-      const formatted = now.toLocaleDateString('hu-HU') + ' ' + now.toLocaleTimeString('hu-HU', {hour: '2-digit', minute:'2-digit'});
-      const el = document.getElementById('autoDateTimeDisplay');
-      if(el) el.textContent = formatted;
-    }, 1000);
-
-    window.syncStartKmToEndKm = function() {
-      const startKmVal = document.getElementById('tripStartKm').value;
-      const endKmInput = document.getElementById('tripEndKm');
-      if (!endKmInput.value || Number(endKmInput.value) < Number(startKmVal)) {
-        endKmInput.value = startKmVal;
-      }
-      calculateCalculatedKm();
-    };
-
-    window.calculateCalculatedKm = function() {
-      const start = Number(document.getElementById('tripStartKm').value) || 0;
-      const end = Number(document.getElementById('tripEndKm').value) || 0;
-      const diff = end - start;
-      const calcEl = document.getElementById('tripCalculatedKm');
-      if (diff >= 0) {
-        calcEl.value = diff + " km";
-        calcEl.className = "w-full bg-slate-950 border border-slate-800 font-bold text-orange-400 p-3 rounded-xl text-sm";
-      } else {
-        calcEl.value = "Hibás km!";
-        calcEl.className = "w-full bg-slate-950 border border-slate-800 font-bold text-red-400 p-3 rounded-xl text-sm";
-      }
-    };
-
-    window.toggleAdminViewPrompt = function() {
-      if (!isAdminMode) {
-        const inputPin = prompt("Add meg az Admin PIN kódot:");
-        if (inputPin === null) return;
-
-        if (inputPin === ADMIN_PIN) {
-          const userEmail = (currentUser?.email || auth.currentUser?.email || '').toLowerCase();
-          const isMasterSuperAdmin = (userEmail === MASTER_SUPER_ADMIN_EMAIL.toLowerCase());
-          const isSuperAdmin = (currentUserData?.isSuperAdmin === true || isMasterSuperAdmin);
-          const hasAdminRole = (currentUserData?.role === 'admin' || isSuperAdmin);
-
-          if (isMasterSuperAdmin || hasAdminRole) {
-            isAdminMode = true;
-            if (isMasterSuperAdmin && currentUser?.uid) {
-              currentUserData = currentUserData || {};
-              currentUserData.isSuperAdmin = true;
-              currentUserData.role = 'admin';
-              currentUserData.adminCards = ALL_ADMIN_CARDS.map(c => c.id);
-              currentUserData.actionPermissions = ALL_ACTION_PERMISSIONS.map(a => a.id);
-              setDoc(doc(db, "users", currentUser.uid), currentUserData, { merge: true });
-            }
-            applyAdminState();
-          } else {
-            alert("Hiba: A fiókodhoz az Admin jogosultság nincs engedélyezve!");
-          }
-        } else {
-          alert("Hibás PIN kód!");
-        }
-      } else {
-        isAdminMode = false;
-        applyAdminState();
-      }
-    };
-
-    function applyAdminState() {
-      const adminSec = document.getElementById('adminSection');
-      const driverSec = document.getElementById('driverViewContainer');
-      const btn = document.getElementById('toggleAdminBtn');
-
-      if (isAdminMode) {
-        adminSec.classList.remove('hidden');
-        driverSec.classList.add('hidden');
-        btn.textContent = '🚗 Sofőr nézet';
-        btn.className = 'bg-blue-500/20 border border-blue-500/40 text-blue-400 hover:bg-blue-500/30 px-3 py-2 rounded-xl text-xs font-semibold transition';
-        
-        applySavedCardStates();
-        applyCardVisibilityPermissions();
-        renderCombinedAlerts();
-        renderAdminWallPosts();
-        renderAdminAnnouncements();
-        renderLiveCarKm();
-        renderAdminShifts();
-        renderOverlimitShifts();
-        renderAdminOvertime();
-        populatePdfDriverDropdown();
-        populateBgDriverDropdown();
-        renderAdminStats();
-        renderSuperAdminPermissionsPanel();
-      } else {
-        adminSec.classList.add('hidden');
-        driverSec.classList.remove('hidden');
-        btn.textContent = '👑 Admin';
-        btn.className = 'bg-amber-500/20 border border-amber-500/40 text-amber-400 hover:bg-amber-500/30 px-3 py-2 rounded-xl text-xs font-semibold transition';
-      }
-
-      renderTripsTable();
-    }
-
-    function applyCardVisibilityPermissions() {
-      const userEmail = (currentUser?.email || auth.currentUser?.email || '').toLowerCase();
-      const isMasterSuperAdmin = (userEmail === MASTER_SUPER_ADMIN_EMAIL.toLowerCase());
-      const isSuperAdmin = (currentUserData?.isSuperAdmin === true || isMasterSuperAdmin);
-      const allowedCards = currentUserData?.adminCards || [];
-
-      ALL_ADMIN_CARDS.forEach(card => {
-        const el = document.getElementById(card.elId);
-        if (el) {
-          if (isSuperAdmin || allowedCards.includes(card.id)) {
-            el.classList.remove('hidden');
-          } else {
-            el.classList.add('hidden');
-          }
-        }
-      });
-
-      const superAdminSec = document.getElementById('superAdminSection');
-      if (superAdminSec) {
-        if (isSuperAdmin) superAdminSec.classList.remove('hidden');
-        else superAdminSec.classList.add('hidden');
-      }
-    }
-
-    window.logout = function() {
-      signOut(auth);
-    };
-
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        currentUser = user;
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        
-        if (userDoc.exists()) {
-          currentUserData = userDoc.data();
-          if (currentUserData.isInactive === true) {
-            await signOut(auth);
-            alert("Ez a fiók inaktiválva lett!");
-            return;
-          }
-        } else {
-          const isMaster = (user.email.toLowerCase() === MASTER_SUPER_ADMIN_EMAIL.toLowerCase());
-          currentUserData = { 
-            email: user.email, 
-            role: isMaster ? 'admin' : 'sofor', 
-            isSuperAdmin: isMaster,
-            adminCards: ALL_ADMIN_CARDS.map(c => c.id),
-            actionPermissions: ALL_ACTION_PERMISSIONS.map(a => a.id),
-            customBg: '',
-            vacationDaysQuota: 20,
-            isInactive: false
-          };
-          await setDoc(doc(db, "users", user.uid), currentUserData);
-        }
-
-        applyUserBackground(currentUserData.customBg);
-
-        document.getElementById('authScreen').classList.add('hidden');
-        document.getElementById('appScreen').classList.remove('hidden');
-        document.getElementById('userStatus').textContent = getUsernameFromEmail(currentUserData.email);
-
-        listenToGlobalSettings();
-        listenToCars();
-        listenToTrips();
-        listenToUsers();
-        listenToShifts();
-        listenToAnnouncements();
-        listenToAdminWall();
-      } else {
-        currentUser = null;
-        currentUserData = null;
-        applyUserBackground('');
-        document.getElementById('authScreen').classList.remove('hidden');
-        document.getElementById('appScreen').classList.add('hidden');
-      }
-    });
-
-    function listenToGlobalSettings() {
-      onSnapshot(doc(db, "settings", "global"), (docSnap) => {
-        if (docSnap.exists()) {
-          globalSettings = docSnap.data();
-        } else {
-          setDoc(doc(db, "settings", "global"), { vignetteAlertDays: 4 });
-        }
-        const input = document.getElementById('globalVignetteAlertDaysInput');
-        if (input) input.value = globalSettings.vignetteAlertDays || 4;
-        
-        if (isAdminMode) renderCombinedAlerts();
-      });
-    }
-
-    window.updateGlobalVignetteAlertDays = async function(val) {
-      const days = Number(val) || 4;
-      await setDoc(doc(db, "settings", "global"), { vignetteAlertDays: days }, { merge: true });
-    };
-
-    function listenToAdminWall() {
-      onSnapshot(collection(db, "admin_wall"), (snapshot) => {
-        allAdminWallPosts = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
-        if (isAdminMode) renderAdminWallPosts();
-      });
-    }
-
-    window.saveAdminWallPost = async function(e) {
-      e.preventDefault();
-      const postId = document.getElementById('adminWallEditingPostId').value;
-      const title = document.getElementById('adminWallTitle').value.trim();
-      const message = document.getElementById('adminWallMessage').value.trim();
-
-      const now = new Date();
-      const dateStr = now.toLocaleDateString('hu-HU') + ' ' + now.toLocaleTimeString('hu-HU', {hour:'2-digit', minute:'2-digit'});
-
-      if (postId) {
-        await updateDoc(doc(db, "admin_wall", postId), {
-          title,
-          message,
-          updatedAt: dateStr
-        });
-        alert("📌 Admin bejegyzés frissítve!");
-      } else {
-        await addDoc(collection(db, "admin_wall"), {
-          title,
-          message,
-          authorUid: currentUser.uid,
-          authorEmail: currentUser.email,
-          createdAt: dateStr
-        });
-        alert("📌 Új admin bejegyzés közzétéve!");
-      }
-
-      resetAdminWallForm();
-    };
-
-    window.resetAdminWallForm = function() {
-      document.getElementById('adminWallEditingPostId').value = '';
-      document.getElementById('adminWallTitle').value = '';
-      document.getElementById('adminWallMessage').value = '';
-      document.getElementById('adminWallSubmitBtn').textContent = '📌 Bejegyzés Közzététele';
-      document.getElementById('adminWallCancelBtn').classList.add('hidden');
-    };
-
-    function renderAdminWallPosts() {
-      const container = document.getElementById('adminWallPostsList');
-      const badge = document.getElementById('badge_admin_wall');
-      if (!container) return;
-
-      if (badge) badge.textContent = allAdminWallPosts.length + " bejegyzés";
-
-      if (allAdminWallPosts.length === 0) {
-        container.innerHTML = '<p class="text-xs text-slate-500 text-center p-3 bg-slate-950/60 rounded-xl">Nincsenek adminisztrátori bejegyzések az üzenőfalon.</p>';
-        return;
-      }
-
-      const sorted = [...allAdminWallPosts].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-
-      const canEditOther = hasActionPermission('edit_admin_wall_other');
-      const canDelete = hasActionPermission('delete_admin_wall');
-
-      container.innerHTML = sorted.map(post => {
-        const isMyPost = post.authorUid === currentUser?.uid;
-        const canEditThis = isMyPost || canEditOther;
-        const authorName = getUsernameFromEmail(post.authorEmail);
-
-        return '<div class="bg-slate-950 border border-teal-500/30 p-3 rounded-xl space-y-2 shadow-sm">' +
-          '<div class="flex justify-between items-start">' +
-            '<div>' +
-              '<h5 class="text-xs font-bold text-teal-300">' + post.title + '</h5>' +
-              '<span class="text-[10px] text-slate-500 font-mono">👤 ' + authorName + ' • 📅 ' + post.createdAt + (post.updatedAt ? ' (Szerkesztve: ' + post.updatedAt + ')' : '') + '</span>' +
-            '</div>' +
-            '<div class="flex items-center gap-1.5">' +
-              (canEditThis ? '<button onclick="editAdminWallPost(\'' + post.id + '\')" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-teal-300 px-2 py-1 rounded border border-slate-700 font-bold">✏️ Módosítás</button>' : '') +
-              (canDelete ? '<button onclick="deleteAdminWallPost(\'' + post.id + '\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-300 px-2 py-1 rounded border border-red-800 font-bold">Törlés</button>' : '') +
-            '</div>' +
-          '</div>' +
-          '<p class="text-xs text-slate-300 bg-slate-900/80 p-2.5 rounded-lg border border-slate-800 whitespace-pre-line">' + post.message + '</p>' +
-        '</div>';
-      }).join('');
-    }
-
-    window.editAdminWallPost = function(id) {
-      const post = allAdminWallPosts.find(p => p.id === id);
-      if (!post) return;
-
-      document.getElementById('adminWallEditingPostId').value = post.id;
-      document.getElementById('adminWallTitle').value = post.title || '';
-      document.getElementById('adminWallMessage').value = post.message || '';
-      document.getElementById('adminWallSubmitBtn').textContent = '💾 Módosítások Mentése';
-      document.getElementById('adminWallCancelBtn').classList.remove('hidden');
-    };
-
-    window.deleteAdminWallPost = async function(id) {
-      if (!hasActionPermission('delete_admin_wall')) return alert("Nincs jogosultságod az admin üzenőfal bejegyzéseinek törléséhez!");
-      if (confirm("Biztosan törlöd ezt a bejegyzést a belső üzenőfalról?")) {
-        await deleteDoc(doc(db, "admin_wall", id));
-      }
-    };
-
-    function listenToAnnouncements() {
-      onSnapshot(collection(db, "announcements"), (snapshot) => {
-        allAnnouncements = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
-        checkDriverUnreadAnnouncements();
-        renderDriverAnnouncementHistory();
-        if (isAdminMode) {
-          renderAdminAnnouncements();
-        }
-      });
-    }
-
-    function checkDriverUnreadAnnouncements() {
-      if (isAdminMode || !currentUser) return;
-
-      const unread = allAnnouncements.find(a => {
-        const isTargeted = (a.targetDrivers.includes('all') || a.targetDrivers.includes(currentUser.uid));
-        const seenByList = a.seenBy || [];
-        return isTargeted && !seenByList.includes(currentUser.uid);
-      });
-
-      const modal = document.getElementById('driverAnnouncementModal');
-      if (unread) {
-        document.getElementById('modalAnnouncementTitle').textContent = unread.title || 'Központi Felhívás';
-        document.getElementById('modalAnnouncementDate').textContent = unread.createdAt || '';
-        document.getElementById('modalAnnouncementMessage').textContent = unread.message || '';
-        modal.dataset.currentAnnouncementId = unread.id;
-        modal.classList.remove('hidden');
-      } else {
-        modal.classList.add('hidden');
-        modal.dataset.currentAnnouncementId = '';
-      }
-    }
-
-    async function confirmDriverAnnouncement() {
-      const modal = document.getElementById('driverAnnouncementModal');
-      const announcementId = modal.dataset.currentAnnouncementId;
-      if (!announcementId || !currentUser) return;
-
-      await updateDoc(doc(db, "announcements", announcementId), {
-        seenBy: arrayUnion(currentUser.uid)
-      });
-
-      modal.classList.add('hidden');
-      alert("Köszönjük! Az üzenet tudomásul vétele rögzítve lett.");
-    }
-
-    window.selectAllAnnouncementDrivers = function(selectAll) {
-      const container = document.getElementById('announcementDriversContainer');
-      if (!container) return;
-      const checkboxes = container.querySelectorAll('input[type="checkbox"]');
-      checkboxes.forEach(cb => cb.checked = selectAll);
-    };
-
-    window.sendAnnouncement = async function(e) {
-      e.preventDefault();
-      const title = document.getElementById('announcementTitle').value.trim();
-      const message = document.getElementById('announcementMessage').value.trim();
-      
-      const container = document.getElementById('announcementDriversContainer');
-      const selectedBoxes = container ? container.querySelectorAll('input[type="checkbox"]:checked') : [];
-      const targetDrivers = Array.from(selectedBoxes).map(cb => cb.value);
-
-      if (targetDrivers.length === 0) {
-        return alert("Kérlek válassz ki legalább egy címzett sofőrt!");
-      }
-
-      const now = new Date();
-      const dateStr = now.toLocaleDateString('hu-HU') + ' ' + now.toLocaleTimeString('hu-HU', {hour:'2-digit', minute:'2-digit'});
-
-      await addDoc(collection(db, "announcements"), {
-        title,
-        message,
-        targetDrivers,
-        seenBy: [],
-        createdAt: dateStr
-      });
-
-      document.getElementById('announcementTitle').value = '';
-      document.getElementById('announcementMessage').value = '';
-      alert("📢 Üzenet sikeresen kiküldve a kijelölteknek!");
-    };
-
-    function renderAdminAnnouncements() {
-      const container = document.getElementById('adminAnnouncementsList');
-      const driversContainer = document.getElementById('announcementDriversContainer');
-      const badge = document.getElementById('badge_announcements');
-      if (!container) return;
-
-      if (driversContainer) {
-        const activeUsers = allUsers.filter(u => u.email && !u.isInactive).sort((a, b) => getUsernameFromEmail(a.email).localeCompare(getUsernameFromEmail(b.email)));
-        driversContainer.innerHTML = '<label class="inline-flex items-center gap-1.5 bg-slate-800 px-2.5 py-1 rounded-lg text-xs font-bold text-sky-300 cursor-pointer"><input type="checkbox" value="all" checked class="rounded bg-slate-900 border-slate-700 text-sky-500"> Mindenki (Összes Sofőr)</label>' +
-          activeUsers.map(u => '<label class="inline-flex items-center gap-1.5 bg-slate-800 px-2.5 py-1 rounded-lg text-xs text-slate-200 cursor-pointer"><input type="checkbox" value="' + u.id + '" class="rounded bg-slate-900 border-slate-700 text-sky-500"> ' + getUsernameFromEmail(u.email) + '</label>').join('');
-      }
-
-      if (badge) badge.textContent = allAnnouncements.length + " üzenet";
-
-      if (allAnnouncements.length === 0) {
-        container.innerHTML = '<p class="text-xs text-slate-500 text-center p-3 bg-slate-950/60 rounded-xl">Még nem küldtél központi üzenetet.</p>';
-        return;
-      }
-
-      const sorted = [...allAnnouncements].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-
-      container.innerHTML = sorted.map(a => {
-        const seenCount = (a.seenBy || []).length;
-        const targetText = a.targetDrivers.includes('all') ? 'Minden sofőr' : a.targetDrivers.length + ' kijelölt sofőr';
-
-        return '<div class="bg-slate-950 border border-slate-800 p-3 rounded-xl space-y-2">' +
-          '<div class="flex justify-between items-start">' +
-            '<div>' +
-              '<h5 class="text-xs font-bold text-sky-400">' + a.title + '</h5>' +
-              '<span class="text-[10px] text-slate-500 font-mono">📅 ' + a.createdAt + ' • 🎯 ' + targetText + '</span>' +
-            '</div>' +
-            '<button onclick="deleteAnnouncement(\'' + a.id + '\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-300 px-2 py-1 rounded border border-red-800 transition">Törlés</button>' +
-          '</div>' +
-          '<p class="text-xs text-slate-300 bg-slate-900/80 p-2 rounded-lg border border-slate-800/80 whitespace-pre-line">' + a.message + '</p>' +
-          '<div class="text-[10px] text-emerald-400 font-semibold">' +
-            '✔ Olvasva ' + seenCount + ' sofőr által' +
-          '</div>' +
-        '</div>';
-      }).join('');
-    }
-
-    window.deleteAnnouncement = async function(id) {
-      if (confirm("Biztosan törlöd ezt az üzenetet az admin felületről és az archívumokból?")) {
-        await deleteDoc(doc(db, "announcements", id));
-      }
-    };
-
-    function renderDriverAnnouncementHistory() {
-      const container = document.getElementById('driverAnnouncementHistoryList');
-      if (!container || !currentUser) return;
-
-      const driverAnnouncements = allAnnouncements.filter(a => {
-        const isTargeted = a.targetDrivers.includes('all') || a.targetDrivers.includes(currentUser.uid);
-        const seen = (a.seenBy || []).includes(currentUser.uid);
-        return isTargeted && seen;
-      }).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-
-      if (driverAnnouncements.length === 0) {
-        container.innerHTML = '<p class="text-xs text-slate-500 text-center italic p-2">Nincsenek korábbi központi üzenetek az archívumban.</p>';
-        return;
-      }
-
-      container.innerHTML = driverAnnouncements.map(a => {
-        return '<div class="bg-slate-950 border border-slate-800 p-3 rounded-xl space-y-1">' +
-          '<div class="flex justify-between items-center border-b border-slate-800 pb-1">' +
-            '<span class="text-xs font-bold text-sky-300">' + a.title + '</span>' +
-            '<span class="text-[9px] text-slate-500 font-mono">' + a.createdAt + '</span>' +
-          '</div>' +
-          '<p class="text-xs text-slate-300 whitespace-pre-line pt-1">' + a.message + '</p>' +
-        '</div>';
-      }).join('');
-    }
-
-    function listenToShifts() {
-      onSnapshot(collection(db, "shifts"), (snapshot) => {
-        allShifts = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
-        activeShift = allShifts.find(s => s.driverUid === currentUser?.uid && s.status === "active") || null;
-        
-        updateShiftUI();
-        renderTripsTable();
-        renderDriverCarSelection();
-        renderDriverStats();
-
-        if (isAdminMode) {
-          renderCombinedAlerts();
-          renderLiveCarKm();
-          renderAdminShifts();
-          renderOverlimitShifts();
-          renderAdminOvertime();
-          renderAdminStats();
-        }
-      });
-    }
-
-    function renderDriverStats() {
-      const workedDaysEl = document.getElementById('driverWorkedDaysText');
-      const vacationDaysEl = document.getElementById('driverVacationDaysText');
-      if (!workedDaysEl || !vacationDaysEl || !currentUser) return;
-
-      const now = new Date();
-      const currentMonthStr = now.toISOString().slice(0, 7);
-
-      let workedDaysVal = 0;
-
-      if (currentUserData && currentUserData.overrideWorkedDays !== undefined && currentUserData.overrideWorkedDays !== "") {
-        workedDaysVal = Number(currentUserData.overrideWorkedDays);
-      } else {
-        const myClosedAndActiveShifts = allShifts.filter(s => s.driverUid === currentUser.uid && s.startDate && s.startDate.startsWith(currentMonthStr));
-        const uniqueWorkedDates = new Set(myClosedAndActiveShifts.map(s => s.startDate));
-        workedDaysVal = uniqueWorkedDates.size;
-      }
-
-      workedDaysEl.textContent = workedDaysVal + " nap";
-
-      const totalQuota = currentUserData?.vacationDaysQuota !== undefined ? Number(currentUserData.vacationDaysQuota) : 20;
-      vacationDaysEl.textContent = totalQuota + " nap";
-    }
-
-    function updateShiftUI() {
-      const badge = document.getElementById('shiftStatusBadge');
-      const formCard = document.getElementById('tripFormCard');
-      const warningText = document.getElementById('shiftWarningText');
-
-      if (activeShift) {
-        badge.textContent = "🟢 Műszak folyamatban (Kezdve: " + activeShift.startTime + ")";
-        badge.className = "text-[10px] font-semibold text-emerald-400 mt-0.5";
-        formCard.classList.remove('opacity-50', 'pointer-events-none');
-        warningText.classList.add('hidden');
-      } else {
-        badge.textContent = "🔴 Nincs aktív műszak";
-        badge.className = "text-[10px] font-semibold text-slate-400 mt-0.5";
-        formCard.classList.add('opacity-50', 'pointer-events-none');
-        warningText.classList.remove('hidden');
-      }
-    }
-
-    function openStartShiftModal() {
-      if (activeShift) {
-        return alert("Már van aktív műszakod! Mielőtt újat indítanál, zárd le a jelenlegi műszakodat.");
-      }
-
-      const select = document.getElementById('availableCarsSelect');
-      const carId = select ? select.value : '';
-      if (!carId) return alert("Műszak indításához kérlek válassz ki egy autót!");
-
-      selectedCarForModal = allCars.find(c => c.id === carId);
-      if (!selectedCarForModal) return alert("A kiválasztott autó nem található!");
-
-      if (selectedCarForModal.isUnderMaintenance) {
-        return alert("Ez az autó jelenleg szervizben van! Nem indítható vele műszak.");
-      }
-
-      if (selectedCarForModal.currentDriverUid) {
-        return alert("Ezt az autót már lefoglalta egy másik sofőr (" + getUsernameFromEmail(selectedCarForModal.currentDriverEmail) + ")!");
-      }
-
-      document.getElementById('modalStartKm').value = selectedCarForModal.lastKm || 0;
-      document.getElementById('modalStartLocation').value = selectedCarForModal.lastLocation || '';
-      document.getElementById('startShiftModal').classList.remove('hidden');
-    }
-
-    function closeStartShiftModal() {
-      document.getElementById('startShiftModal').classList.add('hidden');
-      selectedCarForModal = null;
-    }
-
-    async function confirmAndStartShift() {
-      if (!selectedCarForModal) return alert("Hiba: Nincs kiválasztva autó!");
-
-      const confirmedKm = Number(document.getElementById('modalStartKm').value) || 0;
-      const confirmedLocation = (document.getElementById('modalStartLocation').value || '').trim();
-
-      if (!confirm("Biztosan " + confirmedKm + " km a kezdő kilométeróra-állás?")) return;
-
-      const now = new Date();
-      const startTimeStr = now.toLocaleTimeString('hu-HU', {hour: '2-digit', minute:'2-digit'});
-      const startDateStr = now.toISOString().slice(0, 10);
-
-      const carId = selectedCarForModal.id;
-      const carPlate = selectedCarForModal.plateNumber || '';
-      const carModel = selectedCarForModal.model || '';
-
-      try {
-        await updateDoc(doc(db, "cars", carId), {
-          currentDriverUid: currentUser.uid,
-          currentDriverEmail: currentUser.email || '',
-          lastKm: confirmedKm,
-          lastLocation: confirmedLocation
-        });
-
-        const newShift = {
-          driverUid: currentUser.uid,
-          driverEmail: currentUser.email || '',
-          carPlate: carPlate,
-          carModel: carModel,
-          startDate: startDateStr,
-          startTime: startTimeStr,
-          startKm: confirmedKm,
-          startLocation: confirmedLocation,
-          status: "active"
-        };
-
-        await addDoc(collection(db, "shifts"), newShift);
-        closeStartShiftModal();
-        alert("🚀 Műszak sikeresen elindítva! (" + carPlate + " - " + confirmedKm + " km)");
-      } catch (err) {
-        console.error("Hiba a műszak indításakor:", err);
-        alert("Hiba történt a műszak indítása közben: " + (err.message || err));
-      }
-    }
-
-    function openEndShiftModal() {
-      if (!activeShift) return alert("Nincs aktív műszakod, amit le lehetne zárni!");
-
-      let currentShiftTrips = allTrips.filter(t => t.shiftId === activeShift.id);
-      currentShiftTrips = sortTripsByKmAscending(currentShiftTrips);
-
-      minAllowedEndKm = activeShift.startKm || 0;
-      let faultyTrip = null;
-      let faultyIndex = -1;
-
-      for (let i = 0; i < currentShiftTrips.length; i++) {
-        const t = currentShiftTrips[i];
-        const prevKm = i === 0 ? activeShift.startKm : currentShiftTrips[i - 1].endKm;
-        const tripDist = Number(t.endKm) - Number(t.startKm);
-
-        if (tripDist > 1000 || Number(t.endKm) > (prevKm + 1000)) {
-          faultyTrip = t;
-          faultyIndex = i + 1;
-          break;
-        }
-
-        if (Number(t.endKm) > minAllowedEndKm) minAllowedEndKm = Number(t.endKm);
-      }
-
-      if (faultyTrip) {
-        return alert("⚠️ Hibás kilométeróra állás a műszakban!\nA(z) " + faultyIndex + ". útnál kiugróan magas záró kilométer szerepel (" + faultyTrip.endKm + " km).\nKérlek javítsd a műszak lezárása előtt!");
-      }
-
-      const activeCar = allCars.find(c => (c.plateNumber || '').trim().toUpperCase() === (activeShift.carPlate || '').trim().toUpperCase() || c.currentDriverUid === currentUser.uid);
-      const defaultSuggestKm = activeCar && activeCar.lastKm > minAllowedEndKm ? activeCar.lastKm : minAllowedEndKm;
-
-      document.getElementById('endShiftCarInfo').textContent = "Jármű: " + (activeShift.carPlate || 'Autó') + " | Legutolsó rögzített óraállás: " + minAllowedEndKm + " km";
-      document.getElementById('endShiftMinKmText').textContent = minAllowedEndKm;
-      document.getElementById('modalEndKm').value = defaultSuggestKm;
-      document.getElementById('modalHasOvertime').checked = false;
-      document.getElementById('modalOvertimeHours').value = "1";
-      document.getElementById('overtimeInputContainer').classList.add('hidden');
-
-      document.getElementById('endShiftModal').classList.remove('hidden');
-    }
-
-    function closeEndShiftModal() {
-      document.getElementById('endShiftModal').classList.add('hidden');
-    }
-
-    function toggleOvertimeInputDisplay() {
-      const isChecked = document.getElementById('modalHasOvertime').checked;
-      const container = document.getElementById('overtimeInputContainer');
-      if (isChecked) container.classList.remove('hidden');
-      else container.classList.add('hidden');
-    }
-
-    async function confirmAndEndShift() {
-      if (!activeShift) return closeEndShiftModal();
-
-      const endKm = Number(document.getElementById('modalEndKm').value);
-      if (isNaN(endKm) || endKm < minAllowedEndKm) {
-        return alert("Hibás kilométeróra állás! A záró km nem lehet kisebb, mint " + minAllowedEndKm + " km.");
-      }
-
-      const hasOvertime = document.getElementById('modalHasOvertime').checked;
-      const overtimeHours = hasOvertime ? (Number(document.getElementById('modalOvertimeHours').value) || 0) : 0;
-
-      const now = new Date();
-      const endTimeStr = now.toLocaleTimeString('hu-HU', {hour: '2-digit', minute:'2-digit'});
-
-      const shiftIdToClose = activeShift.id;
-      const shiftStartKm = activeShift.startKm || 0;
-      const shiftCarPlate = (activeShift.carPlate || '').trim().toUpperCase();
-
-      closeEndShiftModal();
-
-      try {
-        await updateDoc(doc(db, "shifts", shiftIdToClose), {
-          status: "closed",
-          endDate: now.toISOString().slice(0, 10),
-          endTime: endTimeStr,
-          endKm: endKm,
-          totalKm: endKm - shiftStartKm,
-          overtimeHours: overtimeHours
-        });
-
-        const activeCar = allCars.find(c => (c.plateNumber || '').trim().toUpperCase() === shiftCarPlate || c.currentDriverUid === currentUser.uid);
-        if (activeCar) {
-          await updateDoc(doc(db, "cars", activeCar.id), { 
-            lastKm: endKm,
-            currentDriverUid: deleteField(),
-            currentDriverEmail: deleteField()
-          });
-        }
-
-        alert("🏁 Műszak sikeresen lezárva!");
-      } catch (err) {
-        console.error("Hiba a műszak lezárása közben:", err);
-        alert("Adatbázis hiba történt: " + (err.message || err));
-      }
-    }
-
-    function listenToUsers() {
-      onSnapshot(collection(db, "users"), (snapshot) => {
-        allUsers = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
-        if (currentUser) {
-          const myUpdatedUser = allUsers.find(u => u.id === currentUser.uid);
-          if (myUpdatedUser) {
-            currentUserData = myUpdatedUser;
-            applyUserBackground(currentUserData.customBg);
-          }
-        }
-
-        renderDriverStats();
-
-        if (isAdminMode) {
-          applyCardVisibilityPermissions();
-          renderAdminWallPosts();
-          renderAdminAnnouncements();
-          renderAdminShifts();
-          renderOverlimitShifts();
-          renderAdminOvertime();
-          populatePdfDriverDropdown();
-          populateBgDriverDropdown();
-          renderAdminStats();
-          renderSuperAdminPermissionsPanel();
-        }
-      });
-    }
-
-    function populatePdfDriverDropdown() {
-      const select = document.getElementById('pdfDriverSelect');
-      if (!select) return;
-      select.innerHTML = '<option value="all">-- Összes Sofőr --</option>';
-      const driverEmails = [...new Set(allShifts.map(s => s.driverEmail).filter(Boolean))].sort((a, b) => getUsernameFromEmail(a).localeCompare(getUsernameFromEmail(b)));
-      driverEmails.forEach(email => {
-        const inactive = isUserInactiveByEmail(email);
-        select.innerHTML += '<option value="' + email + '">' + getUsernameFromEmail(email) + (inactive ? ' (Inaktív)' : '') + '</option>';
-      });
-    }
-
-    function populateBgDriverDropdown() {
-      const select = document.getElementById('bgDriverSelect');
-      if (!select) return;
-      select.innerHTML = '<option value="">-- Válassz sofőrt --</option>';
-      const activeUsers = allUsers.filter(u => u.email && !u.isInactive).sort((a, b) => getUsernameFromEmail(a.email).localeCompare(getUsernameFromEmail(b.email)));
-      activeUsers.forEach(u => {
-        select.innerHTML += '<option value="' + u.id + '">' + getUsernameFromEmail(u.email) + (u.customBg ? ' 🎨' : '') + '</option>';
-      });
-    }
-
-    window.saveDriverBackground = async function(e) {
-      e.preventDefault();
-      const userId = document.getElementById('bgDriverSelect').value;
-      const url = document.getElementById('bgUrlInput').value.trim();
-      if (!userId) return alert("Kérlek válassz ki egy sofőrt!");
-
-      await updateDoc(doc(db, "users", userId), { customBg: url });
-      alert("🎨 Egyedi háttérkép mentve!");
-      document.getElementById('bgUrlInput').value = '';
-    };
-
-    function listenToCars() {
-      onSnapshot(collection(db, "cars"), (snapshot) => {
-        allCars = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
-        renderAdminCars();
-        renderLiveCarKm();
-        renderDriverCarSelection();
-        if (isAdminMode) renderCombinedAlerts();
-      });
-    }
-
-    window.setMassHUAnnualVignettes = async function() {
-      if (!confirm("Biztosan beállítod az ÖSSZES autóra a magyar éves autópálya matricát (aktuális év Jan 31 - következő év Jan 31)?")) return;
-
-      const currentYear = new Date().getFullYear();
-      const startDateStr = currentYear + "-01-31";
-      const endDateStr = (currentYear + 1) + "-01-31";
-
-      for (const car of allCars) {
-        let vignettes = [...(car.vignettes || [])];
-        vignettes = vignettes.filter(v => v.country !== 'HU');
-        vignettes.push({
-          country: 'HU',
-          startDate: startDateStr,
-          endDate: endDateStr
-        });
-
-        await updateDoc(doc(db, "cars", car.id), { vignettes });
-      }
-
-      alert("🇭🇺 Magyar éves matricák sikeresen kiosztva az összes autóra!");
-    };
-
-    function renderCombinedAlerts() {
-      const oilContainer = document.getElementById('oilServiceAlertsContainer');
-      const motVigContainer = document.getElementById('motVignetteAlertsContainer');
-      const dateServiceContainer = document.getElementById('dateServiceAlertsContainer');
-      const badgeCombined = document.getElementById('badge_combined_alerts');
-
-      if (!oilContainer || !motVigContainer) return;
-
-      const alertDays = globalSettings.vignetteAlertDays || 4;
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      let totalAlertsCount = 0;
-
-      let oilAlertsHtml = '';
-      let oilAlertsCount = 0;
-
-      allCars.forEach(car => {
-        const lastKm = car.lastKm || 0;
-        const lastOilKm = car.lastOilKm || 0;
-        const period = car.oilPeriodKm || 15000;
-        const alertThreshold = car.oilAlertKm || 1000;
-
-        const nextOilKm = lastOilKm + period;
-        const remainingKm = nextOilKm - lastKm;
-
-        if (remainingKm <= alertThreshold) {
-          oilAlertsCount++;
-          totalAlertsCount++;
-          const isOverdue = remainingKm <= 0;
-
-          oilAlertsHtml += '<div class="bg-slate-900 border ' + (isOverdue ? 'border-red-500 bg-red-950/30' : 'border-orange-500/50') + ' p-2 rounded-lg flex justify-between items-center text-xs">' +
-            '<div>' +
-              '<span class="font-bold text-slate-100">' + car.plateNumber + '</span> <span class="text-[10px] text-slate-400">(' + car.model + ')</span>' +
-              '<div class="text-[10px] text-slate-400">Jelenlegi: <span class="font-mono text-white">' + lastKm + ' km</span> | Cserélve: <span class="font-mono text-white">' + lastOilKm + ' km</span></div>' +
-            '</div>' +
-            '<div class="text-right">' +
-              '<span class="text-xs font-mono font-bold ' + (isOverdue ? 'text-red-400' : 'text-orange-400') + '">' + (isOverdue ? 'TÚLLÉPVE (' + Math.abs(remainingKm) + ' km)' : remainingKm + ' km maradt') + '</span>' +
-              '<button onclick="resetCarOilChange(\'' + car.id + '\')" class="block text-[9px] bg-orange-950 hover:bg-orange-900 text-orange-200 px-1.5 py-0.5 rounded border border-orange-700 mt-1 font-semibold ml-auto">🛢️ Csere elvégezve</button>' +
-            '</div>' +
-          '</div>';
-        }
-      });
-
-      document.getElementById('badge_oil_service_alert').textContent = oilAlertsCount + " autó";
-      oilContainer.innerHTML = oilAlertsHtml || '<p class="text-[11px] text-slate-500 italic text-center p-2">Minden autónál rendben az olajcsere.</p>';
-
-      let motVigHtml = '';
-      let motVigCount = 0;
-
-      allCars.forEach(car => {
-        if (car.motExpiry) {
-          const motDate = new Date(car.motExpiry);
-          const diffTime = motDate - today;
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-          if (diffDays <= 30) {
-            motVigCount++;
-            totalAlertsCount++;
-            const isExpired = diffDays < 0;
-
-            motVigHtml += '<div class="bg-slate-900 border ' + (isExpired ? 'border-red-500' : 'border-amber-500/50') + ' p-2 rounded-lg flex justify-between items-center text-xs">' +
-              '<div>' +
-                '<span class="font-bold text-slate-100">' + car.plateNumber + '</span> <span class="text-[10px] bg-amber-950 text-amber-300 px-1.5 py-0.2 rounded border border-amber-800">📋 Műszaki</span>' +
-                '<div class="text-[10px] text-slate-400">Lejárat: ' + car.motExpiry + '</div>' +
-              '</div>' +
-              '<span class="text-xs font-mono font-bold ' + (isExpired ? 'text-red-400' : 'text-amber-400') + '">' + (isExpired ? 'LEJÁRT (' + Math.abs(diffDays) + ' napja)' : diffDays + ' nap maradt') + '</span>' +
-            '</div>';
-          }
-        }
-
-        (car.vignettes || []).forEach(v => {
-          if (v.endDate) {
-            const endDate = new Date(v.endDate);
-            const diffTime = endDate - today;
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-            if (diffDays <= alertDays) {
-              motVigCount++;
-              totalAlertsCount++;
-              const isExpired = diffDays < 0;
-
-              motVigHtml += '<div class="bg-slate-900 border ' + (isExpired ? 'border-red-500' : 'border-amber-500/50') + ' p-2 rounded-lg flex justify-between items-center text-xs">' +
-                '<div>' +
-                  '<span class="font-bold text-slate-100">' + car.plateNumber + '</span> <span class="text-[10px] bg-amber-950 text-amber-300 px-1.5 py-0.2 rounded border border-amber-800 font-bold">' + v.country + ' Matrica</span>' +
-                  '<div class="text-[10px] text-slate-400">Érvényes: ' + v.endDate + '-ig</div>' +
-                '</div>' +
-                '<span class="text-xs font-mono font-bold ' + (isExpired ? 'text-red-400' : 'text-amber-400') + '">' + (isExpired ? 'LEJÁRT (' + Math.abs(diffDays) + ' napja)' : diffDays + ' nap maradt') + '</span>' +
-              '</div>';
-            }
-          }
-        });
-      });
-
-      document.getElementById('badge_mot_vignette_alert').textContent = motVigCount + " eset";
-      motVigContainer.innerHTML = motVigHtml || '<p class="text-[11px] text-slate-500 italic text-center p-2">Nincs lejáró matrica vagy műszaki vizsga.</p>';
-
-      let dateServiceHtml = '';
-      let dateServiceCount = 0;
-
-      allCars.forEach(car => {
-        if (car.nextServiceDate) {
-          const sDate = new Date(car.nextServiceDate);
-          const diffTime = sDate - today;
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          const threshold = car.dateServiceAlertDays || alertDays;
-
-          if (diffDays <= threshold) {
-            dateServiceCount++;
-            totalAlertsCount++;
-            const isExpired = diffDays < 0;
-
-            dateServiceHtml += '<div class="bg-slate-900 border ' + (isExpired ? 'border-red-500' : 'border-slate-700') + ' p-2 rounded-lg flex justify-between items-center text-xs">' +
-              '<div>' +
-                '<span class="font-bold text-slate-100">' + car.plateNumber + '</span> - <span class="text-slate-300 font-semibold">' + (car.nextServiceText || 'Szerviz') + '</span>' +
-                '<div class="text-[10px] text-slate-400">Esedékes: ' + car.nextServiceDate + '</div>' +
-              '</div>' +
-              '<span class="text-xs font-mono font-bold ' + (isExpired ? 'text-red-400' : 'text-amber-400') + '">' + (isExpired ? 'ESEDÉKES!' : diffDays + ' nap maradt') + '</span>' +
-            '</div>';
-          }
-        }
-      });
-
-      document.getElementById('badge_date_service_alert').textContent = dateServiceCount + " autó";
-      if (dateServiceContainer) dateServiceContainer.innerHTML = dateServiceHtml || '<p class="text-[11px] text-slate-500 italic text-center p-2">Nincs dátumhoz kötött szerviz ezen a határidőn belül.</p>';
-
-      if (badgeCombined) badgeCombined.textContent = totalAlertsCount + " teendő";
-    }
-
-    window.resetCarOilChange = async function(carId) {
-      const car = allCars.find(c => c.id === carId);
-      if (!car) return;
-      if (confirm("Igazolod, hogy az olajcsere megtörtént a " + car.plateNumber + " autónál? A számláló a jelenlegi óraálláshoz (" + (car.lastKm || 0) + " km) frissül!")) {
-        await updateDoc(doc(db, "cars", carId), {
-          lastOilKm: car.lastKm || 0
-        });
-        alert("🛢️ Olajcsere rögzítve!");
-      }
-    };
-
-    function renderAdminCars() {
-      const container = document.getElementById('adminCarList');
-      const badge = document.getElementById('badge_car_manage');
-      if (!container) return;
-
-      const sortedCars = [...allCars].sort((a, b) => (a.plateNumber || '').localeCompare(b.plateNumber || ''));
-      const freeCount = sortedCars.filter(c => !c.currentDriverUid && !c.isUnderMaintenance).length;
-      const occupiedCount = sortedCars.filter(c => c.currentDriverUid).length;
-      const serviceCount = sortedCars.filter(c => c.isUnderMaintenance).length;
-
-      if (badge) badge.textContent = sortedCars.length + " autó (" + freeCount + " szabad / " + occupiedCount + " foglalt / " + serviceCount + " szervizben)";
-
-      const canRelease = hasActionPermission('release_car');
-
-      container.innerHTML = sortedCars.map(car => {
-        const isOccupied = !!car.currentDriverUid;
-        const isService = !!car.isUnderMaintenance;
-        const driverName = getUsernameFromEmail(car.currentDriverEmail);
-
-        let statusText = '<span class="text-emerald-400 font-semibold">🟢 Szabad</span>';
-        if (isService) {
-          statusText = '<span class="text-amber-400 font-bold bg-amber-950 px-1.5 py-0.5 rounded border border-amber-800">🛠️ SZERVIZBEN (' + (car.serviceWorkType || 'Karbantartás') + ')</span>';
-        } else if (isOccupied) {
-          statusText = '<span class="text-amber-400 font-semibold">Foglalt (' + driverName + ')</span>';
-        }
-
-        return '<div class="border border-slate-800 bg-slate-950 p-3 rounded-xl space-y-2 text-xs">' +
-          '<div class="flex justify-between items-start">' +
-            '<div>' +
-              '<div class="font-bold text-slate-200 text-sm">' + car.plateNumber + ' <span class="font-normal text-slate-400 text-xs">(' + car.model + ')</span></div>' +
-              '<div class="text-[10px] text-slate-400 mt-0.5">Óraállás: <strong class="text-orange-400 font-mono">' + (car.lastKm || 0) + ' km</strong> | Utolsó olaj: ' + (car.lastOilKm || 0) + ' km</div>' +
-              '<div class="text-[10px] mt-1">' + statusText + '</div>' +
-            '</div>' +
-            '<div class="flex flex-wrap gap-1 justify-end max-w-[200px]">' +
-              '<button onclick="openEditCarModal(\'' + car.id + '\')" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-amber-300 p-1.5 px-2 rounded-lg border border-slate-700 font-bold">✏️ Módosít</button>' +
-              (!isService ? 
-                '<button onclick="openServiceCarModal(\'' + car.id + '\')" class="text-[10px] bg-amber-950 hover:bg-amber-900 text-amber-200 p-1.5 px-2 rounded-lg border border-amber-800 font-bold">🛠️ Szervizbe</button>' : 
-                '<button onclick="returnFromService(\'' + car.id + '\')" class="text-[10px] bg-emerald-950 hover:bg-emerald-900 text-emerald-300 p-1.5 px-2 rounded-lg border border-emerald-800 font-bold">✅ Visszavesz</button>') +
-              (isOccupied && canRelease ? '<button onclick="forceReleaseCar(\'' + car.id + '\')" class="text-[10px] bg-amber-500/10 text-amber-400 p-1.5 px-2 rounded-lg border border-amber-500/20 font-bold">🔓 Felszabadít</button>' : '') +
-              (canRelease ? '<button onclick="deleteCar(\'' + car.id + '\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-300 p-1.5 px-2 rounded-lg border border-red-800 font-bold">Törlés</button>' : '') +
-            '</div>' +
-          '</div>' +
-          ((car.serviceHistory || []).length > 0 ? 
-            '<details class="text-[10px] text-slate-400 pt-1 border-t border-slate-800/80">' +
-              '<summary class="cursor-pointer font-bold text-sky-400 hover:underline">📜 Szerviztörténet megtekintése (' + car.serviceHistory.length + ' bejegyzés)</summary>' +
-              '<div class="space-y-1 mt-1 pl-2 border-l border-slate-800">' +
-                car.serviceHistory.map(h => '<div>📅 ' + h.date + ' • <strong>' + h.workType + '</strong> (' + h.location + ')' + (h.cost ? ' - ' + h.cost + ' Ft' : '') + '</div>').join('') +
-              '</div>' +
-            '</details>' : '') +
-        '</div>';
-      }).join('');
-    }
-
-    window.openServiceCarModal = function(carId) {
-      const car = allCars.find(c => c.id === carId);
-      if (!car) return;
-      document.getElementById('serviceCarId').value = carId;
-      document.getElementById('serviceModalDate').value = new Date().toISOString().slice(0, 10);
-      document.getElementById('serviceModalLocation').value = '';
-      document.getElementById('serviceModalWorkType').value = '';
-      document.getElementById('serviceModalCost').value = '';
-      document.getElementById('serviceCarModal').classList.remove('hidden');
-    };
-
-    window.closeServiceCarModal = function() {
-      document.getElementById('serviceCarModal').classList.add('hidden');
-    };
-
-    window.confirmSendToService = async function() {
-      const carId = document.getElementById('serviceCarId').value;
-      const date = document.getElementById('serviceModalDate').value;
-      const location = document.getElementById('serviceModalLocation').value.trim();
-      const workType = document.getElementById('serviceModalWorkType').value.trim();
-      const cost = document.getElementById('serviceModalCost').value.trim();
-
-      if (!workType) return alert("Kérlek add meg az elvégzendő munka típusát!");
-
-      await updateDoc(doc(db, "cars", carId), {
-        isUnderMaintenance: true,
-        serviceDate: date,
-        serviceLocation: location,
-        serviceWorkType: workType,
-        serviceCost: cost,
-        currentDriverUid: deleteField(),
-        currentDriverEmail: deleteField()
-      });
-
-      closeServiceCarModal();
-      alert("🛠️ Autó állapota Szervizben státuszra frissítve!");
-    };
-
-    window.returnFromService = async function(carId) {
-      const car = allCars.find(c => c.id === carId);
-      if (!car) return;
-
-      if (confirm("Biztosan visszaállítod a " + car.plateNumber + " autót aktív státuszba? A szerviz bejegyzés elmentődik a szerviztörténetbe!")) {
-        const historyEntry = {
-          date: car.serviceDate || new Date().toISOString().slice(0, 10),
-          location: car.serviceLocation || 'Ismeretlen hely',
-          workType: car.serviceWorkType || 'Karbantartás',
-          cost: car.serviceCost || ''
-        };
-
-        await updateDoc(doc(db, "cars", carId), {
-          isUnderMaintenance: false,
-          serviceDate: deleteField(),
-          serviceLocation: deleteField(),
-          serviceWorkType: deleteField(),
-          serviceCost: deleteField(),
-          serviceHistory: arrayUnion(historyEntry)
-        });
-
-        alert("✅ Autó újra aktív és elérhető a sofőrök számára!");
-      }
-    };
-
-    window.openEditCarModal = function(carId) {
-      const car = allCars.find(c => c.id === carId);
-      if (!car) return;
-
-      document.getElementById('editCarId').value = carId;
-      document.getElementById('editCarPlate').value = car.plateNumber || '';
-      document.getElementById('editCarModel').value = car.model || '';
-      document.getElementById('editCarMot').value = car.motExpiry || '';
-      document.getElementById('editMotAlertDays').value = car.motAlertDays || 30;
-
-      document.getElementById('editCarLastOilKm').value = car.lastOilKm || car.lastKm || 0;
-      document.getElementById('editCarOilPeriodKm').value = car.oilPeriodKm || 15000;
-      document.getElementById('editOilAlertKm').value = car.oilAlertKm || 1000;
-
-      document.getElementById('editCarNextServiceText').value = car.nextServiceText || '';
-      document.getElementById('editCarNextServiceDate').value = car.nextServiceDate || '';
-      document.getElementById('editDateServiceAlertDays').value = car.dateServiceAlertDays || 4;
-
-      tempModalVignettes = [...(car.vignettes || [])];
-      renderModalVignettesList();
-
-      document.getElementById('editCarModal').classList.remove('hidden');
-    };
-
-    window.closeEditCarModal = function() {
-      document.getElementById('editCarModal').classList.add('hidden');
-    };
-
-    function renderModalVignettesList() {
-      const container = document.getElementById('modalVignettesList');
-      if (!container) return;
-
-      if (tempModalVignettes.length === 0) {
-        container.innerHTML = '<p class="text-[10px] text-slate-500 italic">Még nincs rögzített autópálya matrica.</p>';
-        return;
-      }
-
-      container.innerHTML = tempModalVignettes.map((v, idx) => {
-        return '<div class="flex justify-between items-center bg-slate-900 p-1.5 rounded text-xs border border-slate-800">' +
-          '<span><strong>' + v.country + '</strong> (' + (v.startDate || 'Kezdet') + ' &rarr; ' + (v.endDate || 'Lejárat') + ')</span>' +
-          '<button type="button" onclick="deleteVignetteFromModal(' + idx + ')" class="text-red-400 font-bold hover:text-red-300">✕</button>' +
-        '</div>';
-      }).join('');
-    }
-
-    window.addVignetteToEditModal = function() {
-      const country = document.getElementById('newVignetteCountry').value;
-      const startDate = document.getElementById('newVignetteStart').value;
-      const endDate = document.getElementById('newVignetteEnd').value;
-
-      if (!endDate) return alert("Kérlek add meg a matrica lejárati dátumát!");
-
-      tempModalVignettes.push({ country, startDate, endDate });
-      renderModalVignettesList();
-
-      document.getElementById('newVignetteStart').value = '';
-      document.getElementById('newVignetteEnd').value = '';
-    };
-
-    window.deleteVignetteFromModal = function(index) {
-      tempModalVignettes.splice(index, 1);
-      renderModalVignettesList();
-    };
-
-    window.saveCarEditModal = async function() {
-      const carId = document.getElementById('editCarId').value;
-      if (!carId) return;
-
-      const plateNumber = document.getElementById('editCarPlate').value.trim().toUpperCase();
-      const model = document.getElementById('editCarModel').value.trim();
-
-      await updateDoc(doc(db, "cars", carId), {
-        plateNumber,
-        model,
-        motExpiry: document.getElementById('editCarMot').value,
-        motAlertDays: Number(document.getElementById('editMotAlertDays').value) || 30,
-        lastOilKm: Number(document.getElementById('editCarLastOilKm').value) || 0,
-        oilPeriodKm: Number(document.getElementById('editCarOilPeriodKm').value) || 15000,
-        oilAlertKm: Number(document.getElementById('editOilAlertKm').value) || 1000,
-        nextServiceText: document.getElementById('editCarNextServiceText').value.trim(),
-        nextServiceDate: document.getElementById('editCarNextServiceDate').value,
-        dateServiceAlertDays: Number(document.getElementById('editDateServiceAlertDays').value) || 4,
-        vignettes: tempModalVignettes
-      });
-
-      closeEditCarModal();
-      alert("💾 Autó adatai és matricái frissítve!");
-    };
-
-    function renderLiveCarKm() {
-      const container = document.getElementById('liveCarKmContainer');
-      const badge = document.getElementById('badge_car_live_km');
-      if (!container) return;
-
-      if (allCars.length === 0) {
-        container.innerHTML = '<p class="text-xs text-slate-500 text-center p-2 col-span-full">Még nincs rögzített autó.</p>';
-        if (badge) badge.textContent = "Nincs autó";
-        return;
-      }
-
-      const sortedCars = [...allCars].sort((a, b) => (a.plateNumber || '').localeCompare(b.plateNumber || ''));
-      if (badge) badge.textContent = sortedCars.length + " autó rendszerben";
-
-      container.innerHTML = sortedCars.map(car => {
-        const isOccupied = !!car.currentDriverUid;
-        const isService = !!car.isUnderMaintenance;
-        const driverName = getUsernameFromEmail(car.currentDriverEmail);
-
-        let statusText = '<span class="text-emerald-400 font-semibold">🟢 Szabad</span>';
-        if (isService) statusText = '<span class="text-amber-400 font-bold">🛠️ Szervizben</span>';
-        else if (isOccupied) statusText = '<span class="text-amber-400 font-medium">👤 ' + driverName + '</span>';
-
-        return '<div class="bg-slate-950 border border-slate-800 p-2.5 rounded-xl flex justify-between items-center text-xs shadow-sm hover:border-cyan-500/50 transition">' +
-          '<div>' +
-            '<div class="font-bold text-slate-100 flex items-center gap-1">' +
-              '<span>' + car.plateNumber + '</span>' +
-              '<span class="text-[10px] text-slate-400 font-normal">(' + car.model + ')</span>' +
-            '</div>' +
-            '<div class="text-[10px] mt-0.5">' + statusText + '</div>' +
-          '</div>' +
-          '<div class="text-right">' +
-            '<span class="text-sm font-mono font-extrabold text-cyan-400 bg-cyan-950/80 px-2.5 py-1 rounded-lg border border-cyan-800/80 block">' + (car.lastKm || 0) + ' km</span>' +
-          '</div>' +
-        '</div>';
-      }).join('');
-    }
-
-    document.getElementById('addCarForm')?.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const plateNumber = document.getElementById('carPlateInput').value.trim().toUpperCase();
-      const model = document.getElementById('carModelInput').value.trim();
-      const startKm = Number(document.getElementById('carStartKmInput').value) || 0;
-      const motExpiry = document.getElementById('carMotInput').value || '';
-
-      if (plateNumber && model) {
-        await addDoc(collection(db, "cars"), {
-          plateNumber,
-          model,
-          lastKm: startKm,
-          lastOilKm: startKm,
-          oilPeriodKm: 15000,
-          oilAlertKm: 1000,
-          motExpiry,
-          vignettes: [],
-          isUnderMaintenance: false,
-          lastLocation: ''
-        });
-        document.getElementById('carPlateInput').value = '';
-        document.getElementById('carModelInput').value = '';
-        document.getElementById('carStartKmInput').value = '';
-        document.getElementById('carMotInput').value = '';
-      }
-    });
-
-    window.forceReleaseCar = async function(carId) {
-      if (!hasActionPermission('release_car')) return alert("Nincs jogosultságod az autó felszabadításához!");
-      if (confirm("Biztosan felszabadítod ezt az autót?")) {
-        await updateDoc(doc(db, "cars", carId), {
-          currentDriverUid: deleteField(),
-          currentDriverEmail: deleteField()
-        });
-      }
-    };
-
-    window.deleteCar = async function(carId) {
-      if (!hasActionPermission('release_car')) return alert("Nincs jogosultságod az autó törléséhez!");
-      if (confirm("Biztosan törlöd ezt az autót a rendszerből?")) {
-        await deleteDoc(doc(db, "cars", carId));
-      }
-    };
-
-    function renderDriverCarSelection() {
-      const carSelectContainer = document.getElementById('carSelectContainer');
-      const activeCarContainer = document.getElementById('activeCarContainer');
-      const select = document.getElementById('availableCarsSelect');
-
-      if (!carSelectContainer || !activeCarContainer) return;
-
-      if (activeShift) {
-        carSelectContainer.classList.add('hidden');
-        activeCarContainer.classList.remove('hidden');
-        document.getElementById('activeCarText').textContent = (activeShift.carPlate || 'Autó') + ' (Műszak folyamatban)';
-
-        if (!document.getElementById('editingTripId').value) {
-          let shiftTrips = allTrips.filter(t => t.shiftId === activeShift.id);
-          shiftTrips = sortTripsByKmAscending(shiftTrips);
-
-          let currentStartKm = activeShift.startKm || 0;
-          let currentStartLoc = activeShift.startLocation || '';
-
-          if (shiftTrips.length > 0) {
-            const lastTrip = shiftTrips[shiftTrips.length - 1];
-            currentStartKm = lastTrip.endKm;
-            currentStartLoc = lastTrip.endLocation;
-          }
-
-          document.getElementById('tripStartKm').value = currentStartKm;
-          document.getElementById('tripEndKm').value = currentStartKm;
-          document.getElementById('tripStartLocation').value = currentStartLoc;
-          calculateCalculatedKm();
-        }
-      } else {
-        activeCarContainer.classList.add('hidden');
-        carSelectContainer.classList.remove('hidden');
-
-        select.innerHTML = '<option value="">-- Válassz autót a műszakhoz --</option>';
-        const availableCars = allCars.filter(c => !c.currentDriverUid && !c.isUnderMaintenance).sort((a, b) => (a.plateNumber || '').localeCompare(b.plateNumber || ''));
-        availableCars.forEach(car => {
-          select.innerHTML += '<option value="' + car.id + '">' + car.plateNumber + ' - ' + (car.model || '') + '</option>';
-        });
-      }
-    }
-
-    function listenToTrips() {
-      onSnapshot(collection(db, "trips"), (snapshot) => {
-        allTrips = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
-        renderTripsTable();
-        if (isAdminMode) {
-          renderCombinedAlerts();
-          renderAdminShifts();
-          renderOverlimitShifts();
-          renderAdminOvertime();
-          populatePdfDriverDropdown();
-          renderAdminStats();
-        }
-      });
-    }
-
-    document.getElementById('tripForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      if (!activeShift) return alert("Út rögzítéséhez előbb indítsd el a műszakot!");
-
-      const activeCar = allCars.find(c => (c.plateNumber || '').trim().toUpperCase() === (activeShift.carPlate || '').trim().toUpperCase() || c.currentDriverUid === currentUser.uid);
-      const editingId = document.getElementById('editingTripId').value;
-      const editingTime = document.getElementById('editingTripTime').value;
-
-      const startKm = Number(document.getElementById('tripStartKm').value);
-      const endKm = Number(document.getElementById('tripEndKm').value);
-
-      if (endKm < startKm) return alert("A záró kilométeróra állás nem lehet kisebb a kezdőnél!");
-
-      const calculatedKm = endKm - startKm;
-
-      if (calculatedKm > 100 && lastWarnedKmValue !== (startKm + "_" + endKm)) {
-        lastWarnedKmValue = startKm + "_" + endKm;
-        alert("⚠️ Figyelem!\nA beírt út több mint 100 km (" + calculatedKm + " km).\nKérlek ellenőrizd az adatokat, majd kattints újra a Mentésre!");
-        return;
-      }
-
-      lastWarnedKmValue = null;
-      const tripType = document.getElementById('tripType').value;
-      const now = new Date();
-      const autoDateStr = now.toISOString().slice(0, 10);
-      const autoTimeStr = editingId ? editingTime : now.toLocaleTimeString('hu-HU', {hour: '2-digit', minute:'2-digit'});
-
-      const tripData = {
-        shiftId: activeShift.id,
-        date: autoDateStr,
-        time: autoTimeStr,
-        type: tripType,
-        startLocation: document.getElementById('tripStartLocation').value.trim(),
-        endLocation: document.getElementById('tripEndLocation').value.trim(),
-        startKm: startKm,
-        endKm: endKm,
-        workKm: calculatedKm,
-        passengerCount: Number(document.getElementById('tripPassengers').value),
-        driverUid: currentUser.uid,
-        driverEmail: currentUser.email,
-        carPlate: activeShift.carPlate || 'Nincs megadva'
-      };
-
-      if (editingId) {
-        await updateDoc(doc(db, "trips", editingId), tripData);
-      } else {
-        await addDoc(collection(db, "trips"), tripData);
-        if (activeCar) {
-          await updateDoc(doc(db, "cars", activeCar.id), {
-            lastKm: endKm,
-            lastLocation: tripData.endLocation
-          });
-        }
-      }
-
-      resetTripForm();
-    });
-
-    window.resetTripForm = function() {
-      document.getElementById('tripForm').reset();
-      document.getElementById('editingTripId').value = '';
-      document.getElementById('editingTripTime').value = '';
-      document.getElementById('formTitle').textContent = 'Új Út Rögzítése';
-      document.getElementById('saveTripBtn').textContent = 'Mentés';
-      document.getElementById('cancelEditBtn').classList.add('hidden');
-      lastWarnedKmValue = null;
-      renderDriverCarSelection();
-    };
-
-    window.renderTripsTable = function() {
-      const tbody = document.getElementById('tripsTableBody');
-      const thKm = document.getElementById('thStartEndKmDriver');
-      const warnBox = document.getElementById('driver250KmWarning');
-      if (!tbody) return;
-
-      if (thKm) thKm.classList.remove('hidden');
-
-      if (!activeShift) {
-        tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-500">Nincs aktív műszak.</td></tr>';
-        if (warnBox) warnBox.classList.add('hidden');
-        return;
-      }
-
-      let displayTrips = allTrips.filter(t => t.shiftId === activeShift.id);
-      const currentWorkKmTotal = displayTrips.filter(t => t.type === 'work').reduce((sum, t) => sum + Number(t.workKm || 0), 0);
-
-      if (warnBox) {
-        if (currentWorkKmTotal >= 250) warnBox.classList.remove('hidden');
-        else warnBox.classList.add('hidden');
-      }
-
-      displayTrips = sortTripsByKmAscending(displayTrips);
-
-      if (displayTrips.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-500">Még nincsenek rögzített utak ebben a műszakban.</td></tr>';
-        return;
-      }
-
-      tbody.innerHTML = displayTrips.map((t, index) => {
-        const isPrivate = (t.type === 'private' || t.type === 'privat');
-        const rowClass = isPrivate ? "border-b border-amber-900/40 bg-amber-950/30 text-amber-200" : "border-b border-slate-800 hover:bg-slate-800/50";
-
-        return '<tr class="' + rowClass + '">' +
-          '<td class="p-2.5 font-bold ' + (isPrivate ? 'text-amber-400' : 'text-slate-400') + '">' + (index + 1) + '.</td>' +
-          '<td class="p-2.5 font-mono">' + (t.time || '') + '</td>' +
-          '<td class="p-2.5 font-medium">' + (t.startLocation || '') + ' &rarr; ' + (t.endLocation || '') + (isPrivate ? ' <span class="text-xs bg-amber-900/60 text-amber-300 px-1.5 py-0.5 rounded ml-2 font-normal">Privát</span>' : '') + '</td>' +
-          '<td class="p-2.5 text-right font-mono text-slate-400">' + (t.startKm || 0) + ' - ' + (t.endKm || 0) + '</td>' +
-          '<td class="p-2.5 text-right font-mono font-semibold ' + (isPrivate ? 'text-amber-400' : '') + '">' + (t.workKm || 0) + ' km</td>' +
-          '<td class="p-2.5 text-center">' +
-            '<button onclick="editTrip(\'' + t.id + '\')" class="text-xs bg-slate-800 hover:bg-slate-700 p-1 px-2 rounded border border-slate-700 text-slate-200">✏️</button>' +
-          '</td>' +
-        '</tr>';
-      }).join('');
-    };
-
-    window.changeOvertimeMonth = function(direction) {
-      selectedOvertimeMonthDate.setMonth(selectedOvertimeMonthDate.getMonth() + direction);
-      renderAdminOvertime();
-    };
-
-    window.renderAdminOvertime = function() {
-      const container = document.getElementById('overtimeListContainer');
-      const label = document.getElementById('overtimeMonthLabel');
-      const badge = document.getElementById('badge_overtime');
-      if (!container || !label) return;
-
-      const year = selectedOvertimeMonthDate.getFullYear();
-      const month = selectedOvertimeMonthDate.getMonth();
-      const monthNames = ["Január", "Február", "Március", "Április", "Május", "Június", "Július", "Augusztus", "Szeptember", "Október", "November", "December"];
-      const monthStr = year + "-" + String(month + 1).padStart(2, '0');
-      label.textContent = year + ". " + monthNames[month];
-
-      const monthShiftsWithOvertime = allShifts.filter(s => {
-        const shiftDate = s.startDate || s.endDate || '';
-        return shiftDate.startsWith(monthStr) && Number(s.overtimeHours) > 0;
-      });
-
-      const driverOvertimeMap = {};
-      let totalOvertimeInMonth = 0;
-
-      monthShiftsWithOvertime.forEach(s => {
-        const email = s.driverEmail || 'Ismeretlen Sofőr';
-        const hrs = Number(s.overtimeHours) || 0;
-        totalOvertimeInMonth += hrs;
-        if (!driverOvertimeMap[email]) driverOvertimeMap[email] = { email, totalHours: 0, shifts: [] };
-        driverOvertimeMap[email].totalHours += hrs;
-        driverOvertimeMap[email].shifts.push(s);
-      });
-
-      if (badge) badge.textContent = totalOvertimeInMonth + " óra (" + monthNames[month] + ")";
-
-      const sortedDrivers = Object.values(driverOvertimeMap).sort((a, b) => getUsernameFromEmail(a.email).localeCompare(getUsernameFromEmail(b.email)));
-
-      if (sortedDrivers.length === 0) {
-        container.innerHTML = '<p class="text-xs text-slate-500 text-center p-4 bg-slate-950/60 rounded-xl">Ebben a hónapban nem rögzítettek túlórákat.</p>';
-        return;
-      }
-
-      container.innerHTML = sortedDrivers.map(item => {
-        const name = getUsernameFromEmail(item.email);
-        const inactive = isUserInactiveByEmail(item.email);
-
-        const shiftListHtml = item.shifts.map(s => {
-          return '<div class="flex justify-between items-center text-xs bg-slate-900 p-2 rounded-lg border border-slate-800">' +
-            '<div>' +
-              '<span class="font-bold text-slate-200">📅 ' + (s.startDate || '-') + '</span>' +
-              '<span class="text-[10px] text-slate-400 ml-2">(' + (s.carPlate || '-') + ')</span>' +
-            '</div>' +
-            '<div class="flex items-center gap-2">' +
-              '<span class="font-mono font-bold text-indigo-400 bg-indigo-950/80 px-2 py-0.5 rounded border border-indigo-800/80">' + s.overtimeHours + ' óra</span>' +
-              '<button onclick="adminEditShiftOvertime(\'' + s.id + '\')" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-200 p-1 px-1.5 rounded border border-slate-700">✏️</button>' +
-              '<button onclick="adminDeleteShiftOvertime(\'' + s.id + '\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-300 p-1 px-1.5 rounded border border-red-700">🗑️</button>' +
-            '</div>' +
-          '</div>';
-        }).join('');
-
-        return '<details class="group border border-indigo-500/30 bg-slate-950 rounded-xl overflow-hidden mb-2">' +
-          '<summary class="flex items-center justify-between p-3 cursor-pointer hover:bg-slate-900/80 transition select-none">' +
-            '<div class="flex items-center gap-2">' +
-              '<span class="text-xs font-bold ' + (inactive ? 'text-slate-500 line-through' : 'text-slate-200') + '">👤 ' + name + '</span>' +
-              '<span class="text-[10px] bg-indigo-950 text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-800/80 font-bold">' + item.shifts.length + ' műszak</span>' +
-            '</div>' +
-            '<div class="flex items-center gap-2">' +
-              '<span class="text-xs font-mono font-bold text-indigo-400">Összesen: ' + item.totalHours + ' óra</span>' +
-              '<span class="text-xs text-slate-500 group-open:rotate-180 transition-transform">▼</span>' +
-            '</div>' +
-          '</summary>' +
-          '<div class="p-3 border-t border-slate-800/80 bg-slate-900/40 space-y-2">' + shiftListHtml + '</div>' +
-        '</details>';
-      }).join('');
-    };
-
-    window.adminEditShiftOvertime = async function(shiftId) {
-      const shift = allShifts.find(s => s.id === shiftId);
-      if (!shift) return;
-      const newHrsStr = prompt("Túlóra órák módosítása:", shift.overtimeHours || 0);
-      if (newHrsStr === null) return;
-      const newHrs = Number(newHrsStr);
-      if (isNaN(newHrs) || newHrs < 0) return alert("Hibás óraszám!");
-      await updateDoc(doc(db, "shifts", shiftId), { overtimeHours: newHrs });
-      alert("Túlóra frissítve!");
-    };
-
-    window.adminDeleteShiftOvertime = async function(shiftId) {
-      if (confirm("Biztosan törlöd a túlórát erről a műszakról?")) {
-        await updateDoc(doc(db, "shifts", shiftId), { overtimeHours: 0 });
-        alert("Túlóra törölve!");
-      }
-    };
-
-    window.toggleStatsCustomDates = function() {
-      const period = document.getElementById('statsPeriodSelect').value;
-      const container = document.getElementById('statsCustomDateContainer');
-      if (period === 'custom') container.classList.remove('hidden');
-      else container.classList.add('hidden');
-    };
-
-    window.renderAdminStats = function() {
-      const driverContainer = document.getElementById('driverStatsContainer');
-      const carContainer = document.getElementById('carStatsContainer');
-      const totalDriverKmEl = document.getElementById('statsTotalDriverKm');
-      const totalCarKmEl = document.getElementById('statsTotalCarKm');
-      const badgeStats = document.getElementById('badge_stats');
-
-      if (!driverContainer || !carContainer) return;
-
-      const period = document.getElementById('statsPeriodSelect').value;
-      const now = new Date();
-      let filteredTrips = [...allTrips];
-
-      if (period === 'daily') {
-        const todayStr = now.toISOString().slice(0, 10);
-        filteredTrips = filteredTrips.filter(t => t.date === todayStr);
-      } else if (period === 'weekly') {
-        const past7Days = new Date(now.setDate(now.getDate() - 7));
-        filteredTrips = filteredTrips.filter(t => new Date(t.date) >= past7Days);
-      } else if (period === 'monthly') {
-        const currentMonth = new Date().toISOString().slice(0, 7);
-        filteredTrips = filteredTrips.filter(t => t.date && t.date.startsWith(currentMonth));
-      } else if (period === 'yearly') {
-        const currentYear = new Date().getFullYear().toString();
-        filteredTrips = filteredTrips.filter(t => t.date && t.date.startsWith(currentYear));
-      } else if (period === 'custom') {
-        const start = document.getElementById('statsStartDate').value;
-        const end = document.getElementById('statsEndDate').value;
-        if (start && end) filteredTrips = filteredTrips.filter(t => t.date >= start && t.date <= end);
-      }
-
-      const driverMap = {};
-      filteredTrips.forEach(t => {
-        const email = t.driverEmail || 'Ismeretlen Sofőr';
-        if (!driverMap[email]) driverMap[email] = 0;
-        driverMap[email] += Number(t.workKm || 0);
-      });
-
-      const driverEntries = Object.entries(driverMap).sort((a, b) => getUsernameFromEmail(a[0]).localeCompare(getUsernameFromEmail(b[0])));
-      const grandTotalDriverKm = driverEntries.reduce((sum, item) => sum + item[1], 0);
-
-      if (totalDriverKmEl) totalDriverKmEl.textContent = grandTotalDriverKm + " km";
-      if (badgeStats) badgeStats.textContent = "Össz. " + grandTotalDriverKm + " km";
-
-      driverContainer.innerHTML = driverEntries.map(entry => {
-        const inactive = isUserInactiveByEmail(entry[0]);
-        const name = getUsernameFromEmail(entry[0]);
-        return '<div class="flex justify-between items-center text-xs p-1.5 bg-slate-900 rounded-lg border border-slate-800/80">' +
-          '<span class="' + (inactive ? 'text-slate-500 line-through' : 'text-slate-300 font-medium') + '">' + name + '</span>' +
-          '<span class="font-mono font-bold text-orange-400">' + entry[1] + ' km</span>' +
-        '</div>';
-      }).join('') || '<p class="text-[11px] text-slate-500 text-center">Nincs adat.</p>';
-
-      const carMap = {};
-      filteredTrips.forEach(t => {
-        const plate = t.carPlate || 'Nincs megadva';
-        if (!carMap[plate]) carMap[plate] = 0;
-        carMap[plate] += Number(t.workKm || 0);
-      });
-
-      const carEntries = Object.entries(carMap).sort((a, b) => a[0].localeCompare(b[0]));
-      const grandTotalCarKm = carEntries.reduce((sum, item) => sum + item[1], 0);
-
-      if (totalCarKmEl) totalCarKmEl.textContent = grandTotalCarKm + " km";
-
-      carContainer.innerHTML = carEntries.map(entry => {
-        return '<div class="flex justify-between items-center text-xs p-1.5 bg-slate-900 rounded-lg border border-slate-800/80">' +
-          '<span class="font-bold text-slate-200">' + entry[0] + '</span>' +
-          '<span class="font-mono font-bold text-orange-400">' + entry[1] + ' km</span>' +
-        '</div>';
-      }).join('') || '<p class="text-[11px] text-slate-500 text-center">Nincs adat.</p>';
-    };
-
-    function renderOverlimitShifts() {
-      const container = document.getElementById('overlimitShiftsContainer');
-      const badgeContainer = document.getElementById('badge_overlimit');
-      if (!container) return;
-
-      const overlimitList = [];
-      allShifts.forEach(shift => {
-        if (dismissedOverlimits.includes(shift.id)) return;
-        const shiftTrips = allTrips.filter(t => t.shiftId === shift.id);
-        const workKmTotal = shiftTrips.filter(t => t.type === 'work').reduce((sum, t) => sum + Number(t.workKm || 0), 0);
-        if (workKmTotal >= 250) {
-          overlimitList.push({ shift, workKmTotal });
-        }
-      });
-
-      if (badgeContainer) badgeContainer.textContent = overlimitList.length + " eset";
-
-      if (overlimitList.length === 0) {
-        container.innerHTML = '<p class="text-xs text-slate-500 text-center p-3 bg-slate-950/60 rounded-lg">Nincs rögzített 250 km feletti műszak.</p>';
-        return;
-      }
-
-      container.innerHTML = overlimitList.map(item => {
-        const shift = item.shift;
-        const driverName = getUsernameFromEmail(shift.driverEmail);
-
-        return '<div class="bg-slate-950 border border-red-900/50 rounded-lg p-2.5 flex justify-between items-center text-xs">' +
-          '<div>' +
-            '<div class="font-bold text-slate-200">' + driverName + '</div>' +
-            '<div class="text-[10px] text-slate-400">📅 ' + (shift.startDate || '-') + ' • ' + (shift.carPlate || '-') + '</div>' +
-          '</div>' +
-          '<div class="flex items-center gap-1.5">' +
-            '<span class="text-xs font-mono font-bold text-red-400 bg-red-950/80 border border-red-800 px-2 py-0.5 rounded">' + item.workKmTotal + ' km</span>' +
-            '<button onclick="exportShiftPDF(\'' + shift.id + '\', \'work\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-200 px-2 py-1 rounded border border-red-700">📄 PDF</button>' +
-            '<button onclick="dismissOverlimitShift(\'' + shift.id + '\')" class="text-[10px] bg-slate-800 hover:bg-red-900/60 text-slate-400 px-2 py-1 rounded border border-slate-700">🗑️</button>' +
-          '</div>' +
-        '</div>';
-      }).join('');
-    }
-
-    window.dismissOverlimitShift = function(shiftId) {
-      if (!dismissedOverlimits.includes(shiftId)) {
-        dismissedOverlimits.push(shiftId);
-        localStorage.setItem('dismissedOverlimits', JSON.stringify(dismissedOverlimits));
-        renderOverlimitShifts();
-      }
-    };
-
-    window.adminEditTripPrompt = function(tripId) {
-      if (!hasActionPermission('edit_trip')) return alert("Nincs jogosultságod az utak szerkesztéséhez!");
-      const trip = allTrips.find(t => t.id === tripId);
-      if (!trip) return;
-
-      document.getElementById('adminEditingTripId').value = trip.id;
-      document.getElementById('adminTripType').value = trip.type || 'work';
-      document.getElementById('adminTripStartLoc').value = trip.startLocation || '';
-      document.getElementById('adminTripEndLoc').value = trip.endLocation || '';
-      document.getElementById('adminTripStartKm').value = trip.startKm || 0;
-      document.getElementById('adminTripEndKm').value = trip.endKm || 0;
-      document.getElementById('adminTripPassengers').value = trip.passengerCount || 0;
-      calculateAdminTripKm();
-
-      document.getElementById('adminEditTripModal').classList.remove('hidden');
-    };
-
-    window.closeAdminEditTripModal = function() {
-      document.getElementById('adminEditTripModal').classList.add('hidden');
-    };
-
-    window.calculateAdminTripKm = function() {
-      const start = Number(document.getElementById('adminTripStartKm').value) || 0;
-      const end = Number(document.getElementById('adminTripEndKm').value) || 0;
-      const diff = end - start;
-      const el = document.getElementById('adminTripCalcKm');
-      if (diff >= 0) el.value = diff + " km";
-      else el.value = "Hibás km!";
-    };
-
-    window.saveAdminTripEdit = async function() {
-      const tripId = document.getElementById('adminEditingTripId').value;
-      const startKm = Number(document.getElementById('adminTripStartKm').value);
-      const endKm = Number(document.getElementById('adminTripEndKm').value);
-
-      if (isNaN(startKm) || isNaN(endKm) || endKm < startKm) {
-        return alert("Hibás adatok! A záró km nem lehet kisebb a kezdőnél.");
-      }
-
-      const trip = allTrips.find(t => t.id === tripId);
-
-      await updateDoc(doc(db, "trips", tripId), {
-        type: document.getElementById('adminTripType').value,
-        startLocation: document.getElementById('adminTripStartLoc').value.trim(),
-        endLocation: document.getElementById('adminTripEndLoc').value.trim(),
-        startKm: startKm,
-        endKm: endKm,
-        workKm: endKm - startKm,
-        passengerCount: Number(document.getElementById('adminTripPassengers').value) || 0
-      });
-
-      if (trip && trip.shiftId) {
-        const shiftTrips = allTrips.filter(t => t.shiftId === trip.shiftId);
-        const lastKmInShift = Math.max(...shiftTrips.map(t => t.id === tripId ? endKm : Number(t.endKm || 0)));
-        const shift = allShifts.find(s => s.id === trip.shiftId);
-        if (shift) {
-          const car = allCars.find(c => c.plateNumber === shift.carPlate);
-          if (car && lastKmInShift > (car.lastKm || 0)) {
-            await updateDoc(doc(db, "cars", car.id), { lastKm: lastKmInShift });
-          }
-        }
-      }
-
-      closeAdminEditTripModal();
-      alert("💾 Út adatai sikeresen frissítve!");
-    };
-
-    window.adminDeleteTripPrompt = async function(tripId) {
-      if (!hasActionPermission('delete_trip')) return alert("Nincs jogosultságod az utak törléséhez!");
-      if (confirm("Biztosan törölni szeretnéd ezt az utat?")) {
-        await deleteDoc(doc(db, "trips", tripId));
-        alert("Út törölve!");
-      }
-    };
-
-    window.toggleSelectAllShiftsForDriver = function(driverEmail, isChecked) {
-      const safeId = driverEmail.replace(/[^a-zA-Z0-9]/g, '_');
-      const checkboxes = document.querySelectorAll('.shift-checkbox-' + safeId);
-      checkboxes.forEach(cb => cb.checked = isChecked);
-    };
-
-    window.deleteSelectedShifts = async function(driverEmail) {
-      if (!hasActionPermission('delete_shift')) return alert("Nincs jogosultságod műszakok törléséhez!");
-      const safeId = driverEmail.replace(/[^a-zA-Z0-9]/g, '_');
-      const selectedBoxes = document.querySelectorAll('.shift-checkbox-' + safeId + ':checked');
-      
-      if (selectedBoxes.length === 0) return alert("Kérlek válaszd ki a törölni kívánt műszakokat!");
-
-      if (confirm("Biztosan törlöd a kijelölt " + selectedBoxes.length + " műszakot?")) {
-        for (const cb of selectedBoxes) {
-          const shiftId = cb.value;
-          const shiftTrips = allTrips.filter(t => t.shiftId === shiftId);
-          for (const trip of shiftTrips) await deleteDoc(doc(db, "trips", trip.id));
-          await deleteDoc(doc(db, "shifts", shiftId));
-        }
-        alert("Műszakok törölve!");
-      }
-    };
-
-    window.renderAdminShifts = function() {
-      const closedContainer = document.getElementById('adminClosedShiftsContainer');
-      const activeContainer = document.getElementById('adminActiveShiftsContainer');
-      const badgeClosed = document.getElementById('badge_closed_shifts');
-      const badgeActive = document.getElementById('badge_active_shifts');
-
-      if (!closedContainer || !activeContainer) return;
-
-      const canEditTrip = hasActionPermission('edit_trip');
-      const canDeleteTrip = hasActionPermission('delete_trip');
-      const canDeleteShift = hasActionPermission('delete_shift');
-
-      const closedShifts = allShifts.filter(s => s.status === 'closed');
-      const activeShifts = allShifts.filter(s => s.status === 'active');
-
-      if (badgeClosed) badgeClosed.textContent = closedShifts.length + " műszak archívumban";
-      if (badgeActive) badgeActive.textContent = activeShifts.length + " élő műszak";
-
-      const sortedActiveShifts = [...activeShifts].sort((a, b) => getUsernameFromEmail(a.driverEmail).localeCompare(getUsernameFromEmail(b.driverEmail)));
-
-      activeContainer.innerHTML = sortedActiveShifts.map((shift) => {
-        let shiftTrips = sortTripsByKmAscending(allTrips.filter(t => t.shiftId === shift.id));
-        const totalKm = shiftTrips.reduce((sum, t) => sum + Number(t.workKm || 0), 0);
-
-        const tripsHtml = shiftTrips.map((t, idx) => {
-          const isPriv = (t.type === 'private' || t.type === 'privat');
-          return '<div class="border-b border-slate-800/50 pb-1.5 space-y-0.5 text-[11px]">' +
-            '<div class="flex justify-between">' +
-              '<span>' + (idx+1) + '. ' + t.startLocation + ' &rarr; ' + t.endLocation + (isPriv ? ' <span class="text-[9px] text-amber-400 bg-amber-950 px-1 rounded">Privát</span>' : '') + '</span>' +
-              '<span class="font-mono text-orange-400 font-bold">' + t.workKm + ' km</span>' +
-            '</div>' +
-            '<div class="flex justify-between items-center text-[10px] text-slate-400 font-mono">' +
-              '<span>' + (t.time || '') + ' | ' + t.startKm + ' - ' + t.endKm + ' km</span>' +
-              '<div class="flex gap-1">' +
-                (canEditTrip ? '<button onclick="adminEditTripPrompt(\'' + t.id + '\')" class="bg-slate-800 px-1 rounded text-slate-300 hover:bg-slate-700">✏️</button>' : '') +
-                (canDeleteTrip ? '<button onclick="adminDeleteTripPrompt(\'' + t.id + '\')" class="bg-red-900/40 px-1 rounded text-red-300 hover:bg-red-800">🗑️</button>' : '') +
-              '</div>' +
-            '</div>' +
-          '</div>';
-        }).join('') || '<p class="text-[11px] text-slate-500 italic text-center">Nincs út.</p>';
-
-        return '<details class="group border border-emerald-500/40 bg-slate-950 rounded-xl overflow-hidden">' +
-          '<summary class="flex items-center justify-between p-3 cursor-pointer hover:bg-slate-800/50 transition select-none">' +
-            '<div>' +
-              '<div class="text-xs font-bold text-slate-200">' + getUsernameFromEmail(shift.driverEmail) + '</div>' +
-              '<div class="text-[10px] text-emerald-400 font-semibold mt-0.5">🚗 ' + (shift.carPlate || '') + ' • 📅 ' + shift.startDate + ' ' + shift.startTime + '</div>' +
-            '</div>' +
-            '<span class="text-xs font-mono font-bold text-orange-400">' + totalKm + ' km</span>' +
-          '</summary>' +
-          '<div class="p-2 border-t border-slate-800 bg-slate-900/60 space-y-2">' + tripsHtml + '</div>' +
-        '</details>';
-      }).join('') || '<p class="text-xs text-slate-500 text-center p-3">Nincs élő műszak.</p>';
-
-      const driverGroups = {};
-      closedShifts.forEach(shift => {
-        const email = shift.driverEmail || 'Ismeretlen';
-        if (!driverGroups[email]) driverGroups[email] = [];
-        driverGroups[email].push(shift);
-      });
-
-      const sortedDriverEmails = Object.keys(driverGroups).sort((a, b) => getUsernameFromEmail(a).localeCompare(getUsernameFromEmail(b)));
-
-      closedContainer.innerHTML = sortedDriverEmails.map((driverEmail) => {
-        const driverShifts = driverGroups[driverEmail];
-        const safeDriverId = driverEmail.replace(/[^a-zA-Z0-9]/g, '_');
-        const driverName = getUsernameFromEmail(driverEmail);
-
-        const dateGroups = {};
-        driverShifts.forEach(shift => {
-          const date = shift.startDate || 'Ismeretlen';
-          if (!dateGroups[date]) dateGroups[date] = [];
-          dateGroups[date].push(shift);
-        });
-
-        const sortedDates = Object.keys(dateGroups).sort((a, b) => new Date(b) - new Date(a));
-
-        const datesHtml = sortedDates.map(date => {
-          const dayShifts = dateGroups[date];
-
-                                          <!-- HAVI TÚLÓRÁK KÁRTYA -->
+            <div class="space-y-1.5">
+              <div class="flex justify-between items-center">
+                <label class="text-xs font-semibold text-slate-400">Címzett Sofőrök:</label>
+                <div class="flex gap-2">
+                  <button type="button" onclick="selectAllAnnouncementDrivers(true)" class="text-[10px] text-sky-400 hover:underline font-bold">Mindegyik</button>
+                  <button type="button" onclick="selectAllAnnouncementDrivers(false)" class="text-[10px] text-slate-400 hover:underline">Törlés</button>
+                </div>
+              </div>
+              <div id="announcementDriversContainer" class="flex flex-wrap gap-2 max-h-[100px] overflow-y-auto bg-slate-900 p-2 rounded-lg border border-slate-800"></div>
+            </div>
+
+            <button type="submit" class="w-full bg-gradient-to-r from-sky-500 to-blue-600 hover:opacity-90 text-white py-2.5 rounded-xl text-xs font-bold shadow-md transition">
+              📢 Kötelező Üzenet Kiküldése
+            </button>
+          </form>
+
+          <div id="adminAnnouncementsList" class="space-y-2 max-h-[300px] overflow-y-auto pr-1"></div>
+        </div>
+      </div>
+
+      <!-- 4. HAVI TÚLÓRÁK KÁRTYA -->
         <div id="card_overtime" class="admin-card bg-slate-900/90 border border-indigo-500/40 rounded-xl overflow-hidden shadow-md">
           <div onclick="toggleCardAccordion('card_overtime')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-indigo-500/30">
             <div class="flex items-center gap-2">
@@ -2040,7 +218,7 @@
           </div>
         </div>
 
-        <!-- STATISZTIKA -->
+        <!-- 5. STATISZTIKA & ÖSSZESÍTŐ -->
         <div id="card_stats" class="admin-card bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-md">
           <div onclick="toggleCardAccordion('card_stats')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-slate-800/50">
             <div class="flex items-center gap-2">
@@ -2102,7 +280,7 @@
           </div>
         </div>
 
-        <!-- PDF EXPORTÁLÁS -->
+        <!-- 6. PDF EXPORTÁLÁS -->
         <div id="card_pdf" class="admin-card bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-md">
           <div onclick="toggleCardAccordion('card_pdf')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-slate-800/50">
             <div class="flex items-center gap-2">
@@ -2160,7 +338,7 @@
           </div>
         </div>
 
-        <!-- JÁRMŰPARK, HÁTTÉR ÉS TÚLFUTÁSOK -->
+        <!-- 7. JÁRMŰPARK, HÁTTÉR ÉS TÚLFUTÁSOK -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div id="card_car_manage" class="admin-card bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-md">
             <div onclick="toggleCardAccordion('card_car_manage')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-slate-800/50">
@@ -2239,7 +417,7 @@
           </div>
         </div>
 
-        <!-- MŰSZAKOK & ÓRAÁLLÁSOK -->
+        <!-- 8. MŰSZAKOK & ÓRAÁLLÁSOK -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 pt-2">
           <div id="card_closed_shifts" class="admin-card lg:col-span-2 bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-md">
             <div onclick="toggleCardAccordion('card_closed_shifts')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-slate-800/50">
@@ -2296,7 +474,7 @@
           </div>
         </div>
 
-        <!-- FŐADMIN PANEL (SZABADSÁGOK, LEDOLGOZOTT NAPOK & JOGOK) -->
+        <!-- 9. FŐADMIN PANEL (SZABADSÁGOK, LEDOLGOZOTT NAPOK & JOGOK) -->
         <div id="superAdminSection" class="hidden bg-slate-900/95 border-2 border-amber-500/60 rounded-xl overflow-hidden shadow-xl">
           <div onclick="toggleCardAccordion('superAdminSection')" class="p-3.5 bg-amber-950/40 cursor-pointer flex justify-between items-center select-none hover:bg-amber-900/40 transition border-b border-amber-500/30">
             <div class="flex items-center gap-2">
@@ -4798,7 +2976,7 @@
           dateGroups[date].push(shift);
         });
 
-   const sortedDates = Object.keys(dateGroups).sort((a, b) => new Date(b) - new Date(a));
+        const sortedDates = Object.keys(dateGroups).sort((a, b) => new Date(b) - new Date(a));
 
         const datesHtml = sortedDates.map(date => {
           const dayShifts = dateGroups[date];
@@ -4920,7 +3098,6 @@
             '</div>' +
           '</div>' +
 
-          /* LEDOLGOZOTT NAPOK FELÜLBÍRÁLÁSA ÉS SZABADNAP KERET SZERKESZTÉSE */
           '<div class="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-slate-900 p-2 rounded-lg border border-slate-800">' +
             '<div class="flex items-center justify-between gap-2">' +
               '<label class="text-[11px] font-bold text-orange-400">Ledolgozott napok (felülbírálás):</label>' +
