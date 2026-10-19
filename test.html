@@ -2259,10 +2259,6 @@
       document.getElementById('editCarOilPeriodKm').value = car.oilPeriodKm || 15000;
       document.getElementById('editOilAlertKm').value = car.oilAlertKm || 1000;
 
-      document.getElementById('editCarNextServiceText').value = car.nextServiceText || '';
-      document.getElementById('editCarNextServiceDate').value = car.nextServiceDate || '';
-      document.getElementById('editDateServiceAlertDays').value = car.dateServiceAlertDays || 4;
-
       tempModalVignettes = [...(car.vignettes || [])];
       renderModalVignettesList();
 
