@@ -1882,6 +1882,22 @@
           });
         }
 
+        // --- LEDOLGOZOTT NAPOK INCREMENTÁLÁSA ---
+        if (currentUser && currentUser.uid) {
+          const userDocRef = doc(db, "users", currentUser.uid);
+          const userSnap = await getDoc(userDocRef);
+          if (userSnap.exists()) {
+            const uData = userSnap.data();
+            const currentWorked = uData.overrideWorkedDays !== undefined && uData.overrideWorkedDays !== "" 
+              ? Number(uData.overrideWorkedDays) 
+              : null;
+            
+            if (currentWorked !== null) {
+              await updateDoc(userDocRef, { overrideWorkedDays: currentWorked + 1 });
+            }
+          }
+        }
+
         alert("🏁 Műszak sikeresen lezárva!");
       } catch (err) {
         console.error("Hiba a műszak lezárása közben:", err);
