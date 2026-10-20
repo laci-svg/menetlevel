@@ -2814,24 +2814,23 @@
     };
 
     window.adminEditTripPrompt = function(tripId) {
-      // Biztosítjuk, hogy SuperAdmin vagy beállított jog esetén elérhető legyen
-      if (!hasActionPermission('edit_trip')) {
-        return alert("Nincs jogosultságod az utak szerkesztéséhez! (Engedélyezd a Főadmin panelen az 'Utak szerkesztése' jogot)");
-      }
-      const trip = allTrips.find(t => t.id === tripId);
-      if (!trip) return alert("Az út nem található az adatbázisban!");
+  if (!hasActionPermission('edit_trip')) {
+    return alert("Nincs jogosultságod az utak szerkesztéséhez! (Engedélyezd a Főadmin panelen az 'Utak szerkesztése' jogot)");
+  }
+  const trip = allTrips.find(t => t.id === tripId);
+  if (!trip) return alert("Az út nem található az adatbázisban!");
 
-      document.getElementById('adminEditingTripId').value = trip.id;
-      document.getElementById('adminTripType').value = trip.type || 'work';
-      document.getElementById('adminTripStartLoc').value = trip.startLocation || '';
-      document.getElementById('adminTripEndLoc').value = trip.endLocation || '';
-      document.getElementById('adminTripStartKm').value = trip.startKm || 0;
-      document.getElementById('adminTripEndKm').value = trip.endKm || 0;
-      document.getElementById('adminTripPassengers').value = trip.passengerCount || 0;
-      calculateAdminTripKm();
+  document.getElementById('adminEditingTripId').value = trip.id;
+  document.getElementById('adminTripType').value = trip.type || 'work';
+  document.getElementById('adminTripStartLoc').value = trip.startLocation || '';
+  document.getElementById('adminTripEndLoc').value = trip.endLocation || '';
+  document.getElementById('adminTripStartKm').value = trip.startKm || 0;
+  document.getElementById('adminTripEndKm').value = trip.endKm || 0;
+  document.getElementById('adminTripPassengers').value = trip.passengerCount || 0;
+  calculateAdminTripKm();
 
-      document.getElementById('adminEditTripModal').classList.remove('hidden');
-    };
+  document.getElementById('adminEditTripModal').classList.remove('hidden');
+};
 
     window.closeAdminEditTripModal = function() {
       document.getElementById('adminEditTripModal').classList.add('hidden');
