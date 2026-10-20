@@ -2814,9 +2814,12 @@
     };
 
     window.adminEditTripPrompt = function(tripId) {
-      if (!hasActionPermission('edit_trip')) return alert("Nincs jogosultságod az utak szerkesztéséhez!");
+      // Biztosítjuk, hogy SuperAdmin vagy beállított jog esetén elérhető legyen
+      if (!hasActionPermission('edit_trip')) {
+        return alert("Nincs jogosultságod az utak szerkesztéséhez! (Engedélyezd a Főadmin panelen az 'Utak szerkesztése' jogot)");
+      }
       const trip = allTrips.find(t => t.id === tripId);
-      if (!trip) return;
+      if (!trip) return alert("Az út nem található az adatbázisban!");
 
       document.getElementById('adminEditingTripId').value = trip.id;
       document.getElementById('adminTripType').value = trip.type || 'work';
