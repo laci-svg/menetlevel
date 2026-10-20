@@ -1185,6 +1185,7 @@
     function hasActionPermission(actionId) {
       const userEmail = (currentUser?.email || auth.currentUser?.email || '').toLowerCase();
       if (userEmail === MASTER_SUPER_ADMIN_EMAIL.toLowerCase() || currentUserData?.isSuperAdmin === true) return true;
+      if (currentUserData?.role === 'admin' && (!currentUserData.actionPermissions || currentUserData.actionPermissions.length === 0)) return true;
       return (currentUserData?.actionPermissions || []).includes(actionId);
     }
 
@@ -1301,7 +1302,7 @@
       ALL_ADMIN_CARDS.forEach(card => {
         const el = document.getElementById(card.elId);
         if (el) {
-          if (isSuperAdmin || allowedCards.includes(card.id)) {
+          if (isSuperAdmin || allowedCards.length === 0 || allowedCards.includes(card.id)) {
             el.classList.remove('hidden');
           } else {
             el.classList.add('hidden');
@@ -1462,8 +1463,8 @@
               '<span class="text-[10px] text-slate-500 font-mono">👤 ' + authorName + ' • 📅 ' + post.createdAt + (post.updatedAt ? ' (Szerkesztve: ' + post.updatedAt + ')' : '') + '</span>' +
             '</div>' +
             '<div class="flex items-center gap-1.5">' +
-              (canEditThis ? '<button onclick="editAdminWallPost(\'' + post.id + '\')" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-teal-300 px-2 py-1 rounded border border-slate-700 font-bold">✏️ Módosítás</button>' : '') +
-              (canDelete ? '<button onclick="deleteAdminWallPost(\'' + post.id + '\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-300 px-2 py-1 rounded border border-red-800 font-bold">Törlés</button>' : '') +
+              (canEditThis ? '<button onclick="window.editAdminWallPost(\'' + post.id + '\')" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-teal-300 px-2 py-1 rounded border border-slate-700 font-bold">✏️ Módosítás</button>' : '') +
+              (canDelete ? '<button onclick="window.deleteAdminWallPost(\'' + post.id + '\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-300 px-2 py-1 rounded border border-red-800 font-bold">Törlés</button>' : '') +
             '</div>' +
           '</div>' +
           '<p class="text-xs text-slate-300 bg-slate-900/80 p-2.5 rounded-lg border border-slate-800 whitespace-pre-line">' + post.message + '</p>' +
@@ -1602,7 +1603,7 @@
               '<h5 class="text-xs font-bold text-sky-400">' + a.title + '</h5>' +
               '<span class="text-[10px] text-slate-500 font-mono">📅 ' + a.createdAt + ' • 🎯 ' + targetText + '</span>' +
             '</div>' +
-            '<button onclick="deleteAnnouncement(\'' + a.id + '\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-300 px-2 py-1 rounded border border-red-800 transition">Törlés</button>' +
+            '<button onclick="window.deleteAnnouncement(\'' + a.id + '\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-300 px-2 py-1 rounded border border-red-800 transition">Törlés</button>' +
           '</div>' +
           '<p class="text-xs text-slate-300 bg-slate-900/80 p-2 rounded-lg border border-slate-800/80 whitespace-pre-line">' + a.message + '</p>' +
           (() => {
@@ -2032,7 +2033,7 @@
             '</div>' +
             '<div class="text-right">' +
               '<span class="text-xs font-mono font-bold ' + (isOverdue ? 'text-red-400' : 'text-orange-400') + '">' + (isOverdue ? 'TÚLLÉPVE (' + Math.abs(remainingKm) + ' km)' : remainingKm + ' km maradt') + '</span>' +
-              '<button onclick="resetCarOilChange(\'' + car.id + '\')" class="block text-[9px] bg-orange-950 hover:bg-orange-900 text-orange-200 px-1.5 py-0.5 rounded border border-orange-700 mt-1 font-semibold ml-auto">🛢️ Csere elvégezve</button>' +
+              '<button onclick="window.resetCarOilChange(\'' + car.id + '\')" class="block text-[9px] bg-orange-950 hover:bg-orange-900 text-orange-200 px-1.5 py-0.5 rounded border border-orange-700 mt-1 font-semibold ml-auto">🛢️ Csere elvégezve</button>' +
             '</div>' +
           '</div>';
         }
@@ -2169,12 +2170,12 @@
               '<div class="text-[10px] mt-1">' + statusText + '</div>' +
             '</div>' +
             '<div class="flex flex-wrap gap-1 justify-end max-w-[200px]">' +
-              '<button onclick="openEditCarModal(\'' + car.id + '\')" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-amber-300 p-1.5 px-2 rounded-lg border border-slate-700 font-bold">✏️ Módosít</button>' +
+              '<button onclick="window.openEditCarModal(\'' + car.id + '\')" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-amber-300 p-1.5 px-2 rounded-lg border border-slate-700 font-bold">✏️ Módosít</button>' +
               (!isService ? 
-                '<button onclick="openServiceCarModal(\'' + car.id + '\')" class="text-[10px] bg-amber-950 hover:bg-amber-900 text-amber-200 p-1.5 px-2 rounded-lg border border-amber-800 font-bold">🛠️ Szervizbe</button>' : 
-                '<button onclick="returnFromService(\'' + car.id + '\')" class="text-[10px] bg-emerald-950 hover:bg-emerald-900 text-emerald-300 p-1.5 px-2 rounded-lg border border-emerald-800 font-bold">✅ Visszavesz</button>') +
-              (isOccupied && canRelease ? '<button onclick="forceReleaseCar(\'' + car.id + '\')" class="text-[10px] bg-amber-500/10 text-amber-400 p-1.5 px-2 rounded-lg border border-amber-500/20 font-bold">🔓 Felszabadít</button>' : '') +
-              (canRelease ? '<button onclick="deleteCar(\'' + car.id + '\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-300 p-1.5 px-2 rounded-lg border border-red-800 font-bold">Törlés</button>' : '') +
+                '<button onclick="window.openServiceCarModal(\'' + car.id + '\')" class="text-[10px] bg-amber-950 hover:bg-amber-900 text-amber-200 p-1.5 px-2 rounded-lg border border-amber-800 font-bold">🛠️ Szervizbe</button>' : 
+                '<button onclick="window.returnFromService(\'' + car.id + '\')" class="text-[10px] bg-emerald-950 hover:bg-emerald-900 text-emerald-300 p-1.5 px-2 rounded-lg border border-emerald-800 font-bold">✅ Visszavesz</button>') +
+              (isOccupied && canRelease ? '<button onclick="window.forceReleaseCar(\'' + car.id + '\')" class="text-[10px] bg-amber-500/10 text-amber-400 p-1.5 px-2 rounded-lg border border-amber-500/20 font-bold">🔓 Felszabadít</button>' : '') +
+              (canRelease ? '<button onclick="window.deleteCar(\'' + car.id + '\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-300 p-1.5 px-2 rounded-lg border border-red-800 font-bold">Törlés</button>' : '') +
             '</div>' +
           '</div>' +
           ((car.serviceHistory || []).length > 0 ? 
@@ -2290,7 +2291,7 @@
       container.innerHTML = tempModalVignettes.map((v, idx) => {
         return '<div class="flex justify-between items-center bg-slate-900 p-1.5 rounded text-xs border border-slate-800">' +
           '<span><strong>' + v.country + '</strong> (' + (v.startDate || 'Kezdet') + ' &rarr; ' + (v.endDate || 'Lejárat') + ')</span>' +
-          '<button type="button" onclick="deleteVignetteFromModal(' + idx + ')" class="text-red-400 font-bold hover:text-red-300">✕</button>' +
+          '<button type="button" onclick="window.deleteVignetteFromModal(' + idx + ')" class="text-red-400 font-bold hover:text-red-300">✕</button>' +
         '</div>';
       }).join('');
     }
@@ -2646,8 +2647,8 @@
             '</div>' +
             '<div class="flex items-center gap-2">' +
               '<span class="font-mono font-bold text-indigo-400 bg-indigo-950/80 px-2 py-0.5 rounded border border-indigo-800/80">' + s.overtimeHours + ' óra</span>' +
-              '<button onclick="adminEditShiftOvertime(\'' + s.id + '\')" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-200 p-1 px-1.5 rounded border border-slate-700">✏️</button>' +
-              '<button onclick="adminDeleteShiftOvertime(\'' + s.id + '\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-300 p-1 px-1.5 rounded border border-red-700">🗑️</button>' +
+              '<button onclick="window.adminEditShiftOvertime(\'' + s.id + '\')" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-200 p-1 px-1.5 rounded border border-slate-700">✏️</button>' +
+              '<button onclick="window.adminDeleteShiftOvertime(\'' + s.id + '\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-300 p-1 px-1.5 rounded border border-red-700">🗑️</button>' +
             '</div>' +
           '</div>';
         }).join('');
@@ -2799,8 +2800,8 @@
           '</div>' +
           '<div class="flex items-center gap-1.5">' +
             '<span class="text-xs font-mono font-bold text-red-400 bg-red-950/80 border border-red-800 px-2 py-0.5 rounded">' + item.workKmTotal + ' km</span>' +
-            '<button onclick="exportShiftPDF(\'' + shift.id + '\', \'work\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-200 px-2 py-1 rounded border border-red-700">📄 PDF</button>' +
-            '<button onclick="dismissOverlimitShift(\'' + shift.id + '\')" class="text-[10px] bg-slate-800 hover:bg-red-900/60 text-slate-400 px-2 py-1 rounded border border-slate-700">🗑️</button>' +
+            '<button onclick="window.exportShiftPDF(\'' + shift.id + '\', \'work\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-200 px-2 py-1 rounded border border-red-700">📄 PDF</button>' +
+            '<button onclick="window.dismissOverlimitShift(\'' + shift.id + '\')" class="text-[10px] bg-slate-800 hover:bg-red-900/60 text-slate-400 px-2 py-1 rounded border border-slate-700">🗑️</button>' +
           '</div>' +
         '</div>';
       }).join('');
@@ -2818,11 +2819,11 @@
       if (!hasActionPermission('edit_trip')) {
         return alert("Nincs jogosultságod az utak szerkesztéséhez! (Engedélyezd a Főadmin panelen az 'Utak szerkesztése' jogot)");
       }
-      const trip = (window.allTrips || allTrips).find(t => t.id == tripId);
+      const trip = (window.allTrips || allTrips).find(t => String(t.id) === String(tripId));
       if (!trip) return alert("Az út nem található az adatbázisban!");
 
       document.getElementById('adminEditingTripId').value = trip.id;
-      document.getElementById('adminTripType').value = trip.type || 'work';
+      document.getElementById('adminTripType').value = (trip.type === 'privat' ? 'private' : (trip.type || 'work'));
       document.getElementById('adminTripStartLoc').value = trip.startLocation || '';
       document.getElementById('adminTripEndLoc').value = trip.endLocation || '';
       document.getElementById('adminTripStartKm').value = trip.startKm || 0;
@@ -2855,7 +2856,7 @@
         return alert("Hibás adatok! A záró km nem lehet kisebb a kezdőnél.");
       }
 
-      const trip = (window.allTrips || allTrips).find(t => t.id == tripId);
+      const trip = (window.allTrips || allTrips).find(t => String(t.id) === String(tripId));
 
       await updateDoc(doc(db, "trips", tripId), {
         type: document.getElementById('adminTripType').value,
@@ -2869,7 +2870,7 @@
 
       if (trip && trip.shiftId) {
         const shiftTrips = (window.allTrips || allTrips).filter(t => t.shiftId === trip.shiftId);
-        const lastKmInShift = Math.max(...shiftTrips.map(t => t.id == tripId ? endKm : Number(t.endKm || 0)));
+        const lastKmInShift = Math.max(...shiftTrips.map(t => String(t.id) === String(tripId) ? endKm : Number(t.endKm || 0)));
         const shift = allShifts.find(s => s.id === trip.shiftId);
         if (shift) {
           const car = allCars.find(c => c.plateNumber === shift.carPlate);
@@ -3026,9 +3027,9 @@
                 '</div>' +
                 '<div class="flex items-center gap-1.5">' +
                   '<span class="text-xs font-mono font-bold text-slate-300 mr-1">' + totalCombinedKm + ' km</span>' +
-                  '<button onclick="exportShiftPDF(\'' + shift.id + '\', \'work\')" class="text-[9px] bg-emerald-700 text-white px-2 py-1 rounded hover:bg-emerald-600">Munka PDF</button>' +
-                  '<button onclick="exportShiftPDF(\'' + shift.id + '\', \'all\')" class="text-[9px] bg-amber-600 text-white px-2 py-1 rounded hover:bg-amber-500">Összes PDF</button>' +
-                  (canDeleteShift ? '<button onclick="deleteShift(\'' + shift.id + '\')" class="text-[9px] bg-red-900/50 text-red-300 px-1.5 py-1 rounded hover:bg-red-800">🗑️</button>' : '') +
+                  '<button onclick="window.exportShiftPDF(\'' + shift.id + '\', \'work\')" class="text-[9px] bg-emerald-700 text-white px-2 py-1 rounded hover:bg-emerald-600">Munka PDF</button>' +
+                  '<button onclick="window.exportShiftPDF(\'' + shift.id + '\', \'all\')" class="text-[9px] bg-amber-600 text-white px-2 py-1 rounded hover:bg-amber-500">Összes PDF</button>' +
+                  (canDeleteShift ? '<button onclick="window.deleteShift(\'' + shift.id + '\')" class="text-[9px] bg-red-900/50 text-red-300 px-1.5 py-1 rounded hover:bg-red-800">🗑️</button>' : '') +
                 '</div>' +
               '</summary>' +
               '<div class="mt-2 pt-2 border-t border-slate-800 bg-slate-900/60 rounded p-2"><table class="w-full text-left text-xs"><tbody class="divide-y divide-slate-800/50">' + rowsHtml + '</tbody></table></div>' +
@@ -3049,8 +3050,8 @@
           '<div class="p-3 border-t border-slate-800 bg-slate-900/30 space-y-3">' +
             (canDeleteShift ? 
               '<div class="flex justify-between items-center bg-slate-950 p-2 rounded-lg border border-slate-800">' +
-                '<label class="inline-flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer"><input type="checkbox" onchange="toggleSelectAllShiftsForDriver(\'' + driverEmail + '\', this.checked)" class="rounded bg-slate-800 border-slate-700 text-red-500">Összes kijelölése</label>' +
-                '<button onclick="deleteSelectedShifts(\'' + driverEmail + '\')" class="text-xs font-bold bg-red-900/60 text-red-200 border border-red-700 px-3 py-1 rounded-lg hover:bg-red-800">🗑️ Kijelöltek törlése</button>' +
+                '<label class="inline-flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer"><input type="checkbox" onchange="window.toggleSelectAllShiftsForDriver(\'' + driverEmail + '\', this.checked)" class="rounded bg-slate-800 border-slate-700 text-red-500">Összes kijelölése</label>' +
+                '<button onclick="window.deleteSelectedShifts(\'' + driverEmail + '\')" class="text-xs font-bold bg-red-900/60 text-red-200 border border-red-700 px-3 py-1 rounded-lg hover:bg-red-800">🗑️ Kijelöltek törlése</button>' +
               '</div>' : '') +
             datesHtml + 
           '</div>' +
@@ -3075,19 +3076,19 @@
         const name = getUsernameFromEmail(u.email);
 
         const cardCheckboxesHtml = ALL_ADMIN_CARDS.map(card => {
-          const isChecked = (isMaster || userCards.includes(card.id)) ? 'checked' : '';
+          const isChecked = (isMaster || userCards.length === 0 || userCards.includes(card.id)) ? 'checked' : '';
           const isDisabled = (isMaster || isInactive) ? 'disabled' : '';
           return '<label class="inline-flex items-center gap-1.5 bg-slate-900 px-2 py-1 rounded border border-slate-800 text-[11px] text-slate-300 cursor-pointer">' +
-            '<input type="checkbox" ' + isChecked + ' ' + isDisabled + ' onchange="toggleUserCardPermission(\'' + u.id + '\', \'' + card.id + '\', this.checked)" class="rounded bg-slate-800 border-slate-700 text-amber-500">' +
+            '<input type="checkbox" ' + isChecked + ' ' + isDisabled + ' onchange="window.toggleUserCardPermission(\'' + u.id + '\', \'' + card.id + '\', this.checked)" class="rounded bg-slate-800 border-slate-700 text-amber-500">' +
             '<span>' + card.label + '</span>' +
           '</label>';
         }).join('');
 
         const actionCheckboxesHtml = ALL_ACTION_PERMISSIONS.map(act => {
-          const isChecked = (isMaster || userActions.includes(act.id)) ? 'checked' : '';
+          const isChecked = (isMaster || userActions.length === 0 || userActions.includes(act.id)) ? 'checked' : '';
           const isDisabled = (isMaster || isInactive) ? 'disabled' : '';
           return '<label class="inline-flex items-center gap-1.5 bg-slate-900 px-2 py-1 rounded border border-red-900/40 text-[11px] text-red-200 cursor-pointer">' +
-            '<input type="checkbox" ' + isChecked + ' ' + isDisabled + ' onchange="toggleUserActionPermission(\'' + u.id + '\', \'' + act.id + '\', this.checked)" class="rounded bg-slate-800 border-slate-700 text-red-500">' +
+            '<input type="checkbox" ' + isChecked + ' ' + isDisabled + ' onchange="window.toggleUserActionPermission(\'' + u.id + '\', \'' + act.id + '\', this.checked)" class="rounded bg-slate-800 border-slate-700 text-red-500">' +
             '<span>' + act.label + '</span>' +
           '</label>';
         }).join('');
@@ -3101,10 +3102,10 @@
             '<div class="flex items-center gap-2">' +
               (!isMaster ? 
                 '<div class="flex gap-1.5">' +
-                  '<button onclick="toggleUserAdminRole(\'' + u.id + '\', ' + (!isAdmin) + ')" class="text-[10px] font-bold px-2.5 py-1 rounded-lg border transition ' + (isAdmin ? 'bg-red-950/60 border-red-800 text-red-300' : 'bg-emerald-950/60 border-emerald-800 text-emerald-300') + '">' +
+                  '<button onclick="window.toggleUserAdminRole(\'' + u.id + '\', ' + (!isAdmin) + ')" class="text-[10px] font-bold px-2.5 py-1 rounded-lg border transition ' + (isAdmin ? 'bg-red-950/60 border-red-800 text-red-300' : 'bg-emerald-950/60 border-emerald-800 text-emerald-300') + '">' +
                     (isAdmin ? '🚫 Admin jog megvonása' : '👑 Adminná tétel') +
                   '</button>' +
-                  '<button onclick="toggleUserActiveStatus(\'' + u.id + '\', ' + (!isInactive) + ')" class="text-[10px] font-bold px-2.5 py-1 rounded-lg border transition ' + (isInactive ? 'bg-emerald-900/60 border-emerald-700 text-emerald-300' : 'bg-slate-800 border-slate-700 text-slate-400') + '">' +
+                  '<button onclick="window.toggleUserActiveStatus(\'' + u.id + '\', ' + (!isInactive) + ')" class="text-[10px] font-bold px-2.5 py-1 rounded-lg border transition ' + (isInactive ? 'bg-emerald-900/60 border-emerald-700 text-emerald-300' : 'bg-slate-800 border-slate-700 text-slate-400') + '">' +
                     (isInactive ? 'Újraaktiválás' : 'Inaktiválás') +
                   '</button>' +
                 '</div>' : '') +
@@ -3114,11 +3115,11 @@
           '<div class="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-slate-900 p-2 rounded-lg border border-slate-800">' +
             '<div class="flex items-center justify-between gap-2">' +
               '<label class="text-[11px] font-bold text-orange-400">Ledolgozott napok (felülbírálás):</label>' +
-              '<input type="number" value="' + (u.overrideWorkedDays !== undefined ? u.overrideWorkedDays : '') + '" placeholder="Auto" min="0" onchange="updateUserWorkedDaysOverride(\'' + u.id + '\', this.value)" class="w-16 bg-slate-800 border border-slate-700 text-orange-300 text-xs p-1 rounded font-bold font-mono text-center">' +
+              '<input type="number" value="' + (u.overrideWorkedDays !== undefined ? u.overrideWorkedDays : '') + '" placeholder="Auto" min="0" onchange="window.updateUserWorkedDaysOverride(\'' + u.id + '\', this.value)" class="w-16 bg-slate-800 border border-slate-700 text-orange-300 text-xs p-1 rounded font-bold font-mono text-center">' +
             '</div>' +
             '<div class="flex items-center justify-between gap-2">' +
               '<label class="text-[11px] font-bold text-emerald-400">Szabadnap keret (nap):</label>' +
-              '<input type="number" value="' + (u.vacationDaysQuota !== undefined ? u.vacationDaysQuota : 20) + '" min="0" onchange="updateUserVacationQuota(\'' + u.id + '\', this.value)" class="w-16 bg-slate-800 border border-slate-700 text-emerald-300 text-xs p-1 rounded font-bold font-mono text-center">' +
+              '<input type="number" value="' + (u.vacationDaysQuota !== undefined ? u.vacationDaysQuota : 20) + '" min="0" onchange="window.updateUserVacationQuota(\'' + u.id + '\', this.value)" class="w-16 bg-slate-800 border border-slate-700 text-emerald-300 text-xs p-1 rounded font-bold font-mono text-center">' +
             '</div>' +
           '</div>' +
 
@@ -3163,7 +3164,7 @@
     window.toggleUserCardPermission = async function(userId, cardId, isChecked) {
       const u = allUsers.find(x => x.id === userId);
       if (!u) return;
-      let currentCards = [...(u.adminCards || [])];
+      let currentCards = [...(u.adminCards || ALL_ADMIN_CARDS.map(c => c.id))];
       if (isChecked && !currentCards.includes(cardId)) currentCards.push(cardId);
       else if (!isChecked) currentCards = currentCards.filter(c => c !== cardId);
       await updateDoc(doc(db, "users", userId), { adminCards: currentCards });
@@ -3172,7 +3173,7 @@
     window.toggleUserActionPermission = async function(userId, actionId, isChecked) {
       const u = allUsers.find(x => x.id === userId);
       if (!u) return;
-      let currentActions = [...(u.actionPermissions || [])];
+      let currentActions = [...(u.actionPermissions || ALL_ACTION_PERMISSIONS.map(a => a.id))];
       if (isChecked && !currentActions.includes(actionId)) currentActions.push(actionId);
       else if (!isChecked) currentActions = currentActions.filter(a => a !== actionId);
       await updateDoc(doc(db, "users", userId), { actionPermissions: currentActions });
@@ -3195,12 +3196,12 @@
     };
 
     window.editTrip = function(tripId) {
-      const trip = (window.allTrips || allTrips).find(t => t.id == tripId);
+      const trip = (window.allTrips || allTrips).find(t => String(t.id) === String(tripId));
       if (!trip) return;
 
       document.getElementById('editingTripId').value = trip.id;
       document.getElementById('editingTripTime').value = trip.time || '';
-      document.getElementById('tripType').value = trip.type;
+      document.getElementById('tripType').value = (trip.type === 'privat' ? 'private' : (trip.type || 'work'));
       document.getElementById('tripStartLocation').value = trip.startLocation || '';
       document.getElementById('tripEndLocation').value = trip.endLocation || '';
       document.getElementById('tripStartKm').value = trip.startKm || 0;
