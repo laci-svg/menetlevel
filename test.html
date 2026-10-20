@@ -2815,37 +2815,38 @@
       }
     };
 
-    window.adminEditTripPrompt = async function(tripId) {
+    window.adminEditTripPrompt = function(tripId) {
       if (!hasActionPermission('edit_trip')) {
-        return alert("Nincs jogosultságod az utak szerkesztéséhez! Engedélyezd a Főadmin panelen az 'Utak szerkesztése' jogot.");
+        return alert("Nincs jogosultságod az utak szerkesztéséhez! (Engedélyezd a Főadmin panelen az 'Utak szerkesztése' jogot)");
       }
-      const id = String(tripId || '').trim();
-      if (!id) return alert("Hiányzik az út azonosítója.");
+      const trip = (window.allTrips || allTrips).find(t => String(t.id) === String(tripId));
+      if (!trip) return alert("Az út nem található az adatbázisban!");
 
-      // Mindig közvetlenül a Firestore-ból olvassuk be a kiválasztott utat,
-      // így a szerkesztő nem egy esetleg elavult listából tölti az adatokat.
-      try {
-        const tripSnap = await getDoc(doc(db, 'trips', id));
-        if (!tripSnap.exists()) {
-          return alert("Ez az út már nem található az adatbázisban. Frissítsd a műszaklistát.");
-        }
-        const trip = { id: tripSnap.id, ...tripSnap.data() };
-        document.getElementById('adminEditingTripId').value = id;
+      document.getElementById('adminEditingTripId').value = trip.id;
+      document.getElementById('adminTripType').value = (trip.type === 'privat' ? 'private' : (trip.type || 'work'));
+      document.getElementById('adminTripStartLoc').value = trip.startLocation || '';
+      document.getElementById('adminTripEndLoc').value = trip.endLocation || '';
+      document.getElementById('adminTripStartKm').value = trip.startKm || 0;
+      document.getElementById('adminTripEndKm').value = trip.endKm || 0;
+      document.getElementById('adminTripPassengers').value = trip.passengerCount || 0;
+      calculateAdminTripKm();
 
-        const rawType = String(trip.type || 'work').toLowerCase();
-        document.getElementById('adminTripType').value = ['private', 'privat', 'privát'].includes(rawType) ? 'private' : 'work';
-        document.getElementById('adminTripStartLoc').value = trip.startLocation ?? '';
-        document.getElementById('adminTripEndLoc').value = trip.endLocation ?? '';
-        document.getElementById('adminTripStartKm').value = trip.startKm ?? '';
-        document.getElementById('adminTripEndKm').value = trip.endKm ?? '';
-        document.getElementById('adminTripPassengers').value = trip.passengerCount ?? 0;
-        calculateAdminTripKm();
-        document.getElementById('adminEditTripModal').classList.remove('hidden');
-      } catch (error) {
-        console.error('Út adatainak betöltése sikertelen:', error);
-        alert('Nem sikerült betölteni az út adatait. (' + (error.code || error.message || 'ismeretlen hiba') + ')');
-      }
+      document.getElementById('adminEditTripModal').classList.remove('hidden');
     };
+
+    // Delegált eseménykezelő az újrarenderelt műszaklisták szerkesztés gombjaihoz.
+    document.addEventListener('click', function(event) {
+      const button = event.target.closest('[data-edit-trip-id]');
+      if (!button) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const tripId = button.getAttribute('data-edit-trip-id');
+      try { window.adminEditTripPrompt(tripId); }
+      catch (error) {
+        console.error('Út szerkesztése nem nyitható meg:', error);
+        alert('Nem sikerült megnyitni a szerkesztést: ' + (error?.message || error));
+      }
+    }, true);
 
     window.closeAdminEditTripModal = function() {
       document.getElementById('adminEditTripModal').classList.add('hidden');
@@ -2861,94 +2862,41 @@
     };
 
     window.saveAdminTripEdit = async function() {
-      if (!hasActionPermission('edit_trip')) return alert("Nincs jogosultságod az utak szerkesztéséhez!");
+      const tripId = document.getElementById('adminEditingTripId').value;
+      const startKm = Number(document.getElementById('adminTripStartKm').value);
+      const endKm = Number(document.getElementById('adminTripEndKm').value);
 
-      const tripId = String(document.getElementById('adminEditingTripId').value || '').trim();
-      const startKmRaw = document.getElementById('adminTripStartKm').value.trim();
-      const endKmRaw = document.getElementById('adminTripEndKm').value.trim();
-      const startKm = Number(startKmRaw);
-      const endKm = Number(endKmRaw);
-      const startLocation = document.getElementById('adminTripStartLoc').value.trim();
-      const endLocation = document.getElementById('adminTripEndLoc').value.trim();
-      const selectedType = document.getElementById('adminTripType').value;
-
-      if (!tripId) return alert("Nincs kiválasztott út a mentéshez.");
-      if (startKmRaw === '' || endKmRaw === '' || !Number.isFinite(startKm) || !Number.isFinite(endKm) || startKm < 0 || endKm < startKm) {
-        return alert("Ellenőrizd a kilométereket: nem lehetnek negatívak, és a záró km nem lehet kisebb a kezdő km-nél.");
+      if (isNaN(startKm) || isNaN(endKm) || endKm < startKm) {
+        return alert("Hibás adatok! A záró km nem lehet kisebb a kezdőnél.");
       }
-      if (!['work', 'private'].includes(selectedType)) return alert('Válaszd ki az út típusát.');
 
-      const saveButton = document.querySelector('#adminEditTripModal button[onclick="saveAdminTripEdit()"]');
-      if (saveButton) { saveButton.disabled = true; saveButton.textContent = 'Mentés...'; }
-      try {
-        // Mentés előtt ismét lekérjük a dokumentumot, hogy biztosan létezzen.
-        const tripRef = doc(db, 'trips', tripId);
-        const tripSnap = await getDoc(tripRef);
-        if (!tripSnap.exists()) throw new Error('A kiválasztott út már nem létezik.');
-        const trip = { id: tripSnap.id, ...tripSnap.data() };
-        const updatedFields = {
-          type: selectedType,
-          startLocation,
-          endLocation,
-          startKm,
-          endKm,
-          workKm: endKm - startKm,
-          passengerCount: Math.max(0, Number(document.getElementById('adminTripPassengers').value) || 0)
-        };
-        await updateDoc(tripRef, updatedFields);
+      const trip = (window.allTrips || allTrips).find(t => String(t.id) === String(tripId));
 
-        // A lokális lista azonnali frissítése; a Firestore figyelő is újratölti.
-        window.allTrips = (Array.isArray(window.allTrips) ? window.allTrips : allTrips).map(t =>
-          String(t.id) === tripId ? { ...t, ...updatedFields } : t
-        );
-        allTrips = window.allTrips;
+      await updateDoc(doc(db, "trips", tripId), {
+        type: document.getElementById('adminTripType').value,
+        startLocation: document.getElementById('adminTripStartLoc').value.trim(),
+        endLocation: document.getElementById('adminTripEndLoc').value.trim(),
+        startKm: startKm,
+        endKm: endKm,
+        workKm: endKm - startKm,
+        passengerCount: Number(document.getElementById('adminTripPassengers').value) || 0
+      });
 
-        // Az autó legutolsó ismert km-állását és helyét is frissítjük, ha ez az út adja a maximumot.
-        if (trip.shiftId) {
-          const currentTrips = window.allTrips.filter(t => t.shiftId === trip.shiftId);
-          const maxTrip = currentTrips.reduce((best, t) => (Number(t.endKm) || 0) > (Number(best?.endKm) || 0) ? t : best, null);
-          const shift = allShifts.find(s => String(s.id) === String(trip.shiftId));
-          if (shift && maxTrip) {
-            const car = allCars.find(c => (c.plateNumber || '').trim().toUpperCase() === (shift.carPlate || '').trim().toUpperCase());
-            if (car) await updateDoc(doc(db, 'cars', car.id), { lastKm: Number(maxTrip.endKm) || 0, lastLocation: maxTrip.endLocation || '' });
+      if (trip && trip.shiftId) {
+        const shiftTrips = (window.allTrips || allTrips).filter(t => t.shiftId === trip.shiftId);
+        const lastKmInShift = Math.max(...shiftTrips.map(t => String(t.id) === String(tripId) ? endKm : Number(t.endKm || 0)));
+        const shift = allShifts.find(s => s.id === trip.shiftId);
+        if (shift) {
+          const car = allCars.find(c => c.plateNumber === shift.carPlate);
+          if (car && lastKmInShift > (car.lastKm || 0)) {
+            await updateDoc(doc(db, "cars", car.id), { lastKm: lastKmInShift });
           }
         }
-
-        renderAdminShifts();
-        closeAdminEditTripModal();
-        alert('💾 Az út típusa, címei és kilométeradatai sikeresen elmentve.');
-      } catch (error) {
-        console.error('Admin út szerkesztési/mentési hiba:', error);
-        const detail = error.code === 'permission-denied'
-          ? 'A Firebase biztonsági szabályai nem engedik ennek az útnak a módosítását (permission-denied).'
-          : (error.code || error.message || 'ismeretlen hiba');
-        alert('Nem sikerült elmenteni az út adatait. ' + detail);
-      } finally {
-        if (saveButton) { saveButton.disabled = false; saveButton.textContent = '💾 Mentés'; }
       }
-    };
 
-    // Biztos kattintáskezelés a műszaklisták dinamikus szerkesztés gombjaihoz.
-    // A gombok a lista újrarajzolásakor jönnek létre, ezért dokumentumszintű delegálást használunk.
-    if (!window.__adminTripEditClickHandlerBound) {
-      window.__adminTripEditClickHandlerBound = true;
-      document.addEventListener('click', function(event) {
-        const button = event.target.closest('button[onclick*="adminEditTripPrompt"]');
-        if (!button) return;
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        const match = (button.getAttribute('onclick') || '').match(/adminEditTripPrompt\(\s*['\"]([^'\"]+)['\"]\s*\)/);
-        if (!match) {
-          alert('Nem sikerült azonosítani a szerkesztendő utat. Frissítsd az oldalt, majd próbáld újra.');
-          return;
-        }
-        if (typeof window.adminEditTripPrompt !== 'function') {
-          alert('A szerkesztő nem töltődött be. Frissítsd az oldalt, majd próbáld újra.');
-          return;
-        }
-        window.adminEditTripPrompt(match[1]);
-      }, true);
-    }
+      closeAdminEditTripModal();
+      alert("💾 Út adatai sikeresen frissítve!");
+    };
 
     window.adminDeleteTripPrompt = async function(tripId) {
       if (!hasActionPermission('delete_trip')) return alert("Nincs jogosultságod az utak törléséhez!");
@@ -3016,7 +2964,7 @@
             '<div class="flex justify-between items-center text-[10px] text-slate-400 font-mono pt-0.5">' +
               '<span>' + (t.time || '') + ' | ' + t.startKm + ' - ' + t.endKm + ' km</span>' +
               '<div class="flex gap-1">' +
-                (canEditTrip ? '<button onclick="window.adminEditTripPrompt(\'' + t.id + '\')" class="bg-slate-800 hover:bg-slate-700 text-amber-300 px-1.5 py-0.5 rounded border border-slate-700 font-bold" title="Út szerkesztése">✏️ Szerkeszt</button>' : '') +
+                (canEditTrip ? '<button data-edit-trip-id="' + String(t.id) + '" class="bg-slate-800 hover:bg-slate-700 text-amber-300 px-1.5 py-0.5 rounded border border-slate-700 font-bold" title="Út szerkesztése">✏️ Szerkeszt</button>' : '') +
                 (canDeleteTrip ? '<button onclick="window.adminDeleteTripPrompt(\'' + t.id + '\')" class="bg-red-900/40 hover:bg-red-800 text-red-300 px-1.5 py-0.5 rounded border border-red-800" title="Út törlése">🗑️</button>' : '') +
               '</div>' +
             '</div>' +
@@ -3075,7 +3023,7 @@
                 '<td class="p-1 text-right font-mono text-slate-400">' + (t.startKm || 0) + ' - ' + (t.endKm || 0) + '</td>' +
                 '<td class="p-1 text-right font-mono font-semibold text-orange-400">' + (t.workKm || 0) + ' km</td>' +
                 '<td class="p-1 text-center whitespace-nowrap">' +
-                  (canEditTrip ? '<button onclick="window.adminEditTripPrompt(\'' + t.id + '\')" class="text-[9px] bg-slate-800 p-1 rounded text-amber-300 hover:bg-slate-700 mr-1" title="Út szerkesztése">✏️ Szerkeszt</button>' : '') +
+                  (canEditTrip ? '<button data-edit-trip-id="' + String(t.id) + '" class="text-[9px] bg-slate-800 p-1 rounded text-slate-300 hover:bg-slate-700 mr-1">✏️</button>' : '') +
                   (canDeleteTrip ? '<button onclick="window.adminDeleteTripPrompt(\'' + t.id + '\')" class="text-[9px] bg-red-900/40 p-1 rounded text-red-300 hover:bg-red-800">🗑️</button>' : '') +
                 '</td>' +
               '</tr>';
