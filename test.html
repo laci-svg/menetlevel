@@ -2928,6 +2928,28 @@
       }
     };
 
+    // Biztos kattintáskezelés a műszaklisták dinamikus szerkesztés gombjaihoz.
+    // A gombok a lista újrarajzolásakor jönnek létre, ezért dokumentumszintű delegálást használunk.
+    if (!window.__adminTripEditClickHandlerBound) {
+      window.__adminTripEditClickHandlerBound = true;
+      document.addEventListener('click', function(event) {
+        const button = event.target.closest('button[onclick*="adminEditTripPrompt"]');
+        if (!button) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const match = (button.getAttribute('onclick') || '').match(/adminEditTripPrompt\(\s*['\"]([^'\"]+)['\"]\s*\)/);
+        if (!match) {
+          alert('Nem sikerült azonosítani a szerkesztendő utat. Frissítsd az oldalt, majd próbáld újra.');
+          return;
+        }
+        if (typeof window.adminEditTripPrompt !== 'function') {
+          alert('A szerkesztő nem töltődött be. Frissítsd az oldalt, majd próbáld újra.');
+          return;
+        }
+        window.adminEditTripPrompt(match[1]);
+      }, true);
+    }
+
     window.adminDeleteTripPrompt = async function(tripId) {
       if (!hasActionPermission('delete_trip')) return alert("Nincs jogosultságod az utak törléséhez!");
       if (confirm("Biztosan törölni szeretnéd ezt az utat?")) {
