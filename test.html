@@ -2628,7 +2628,7 @@
           '<td class="p-2.5 text-right font-mono text-slate-400">' + (t.startKm || 0) + ' - ' + (t.endKm || 0) + '</td>' +
           '<td class="p-2.5 text-right font-mono font-semibold ' + (isPrivate ? 'text-amber-400' : '') + '">' + (t.workKm || 0) + ' km</td>' +
           '<td class="p-2.5 text-center">' +
-            '<button type="button" data-trip-id="' + String(t.id).replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '" class="driver-trip-edit-button text-xs bg-slate-800 hover:bg-slate-700 p-1 px-2 rounded border border-slate-700 text-slate-200" title="Út szerkesztése">✏️</button>' +
+            '<button type="button" onclick="window.editTrip(&quot;' + String(t.id).replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '&quot;)" class="text-xs bg-slate-800 hover:bg-slate-700 p-1 px-2 rounded border border-slate-700 text-slate-200" title="Út szerkesztése">✏️</button>' +
           '</td>' +
         '</tr>';
       }).join('');
@@ -3303,18 +3303,25 @@
       }
     };
 
-    // Delegált kattintáskezelő: az újrarenderelt útlistában is kezeli a ceruza gombot.
-    document.addEventListener('click', function(event) {
-      const button = event.target.closest && event.target.closest('.driver-trip-edit-button');
-      if (!button) return;
-      event.preventDefault();
-      event.stopPropagation();
-      if (typeof window.editDriverTripModalOpen !== 'function') {
-        alert('A szerkesztő funkció nem töltődött be. Frissítsd az oldalt, és próbáld újra.');
-        return;
-      }
-      window.editDriverTripModalOpen(button.getAttribute('data-trip-id'));
-    });
+    window.editTrip = function(tripId) {
+      const trips = Array.isArray(window.allTrips) ? window.allTrips : allTrips;
+      const trip = trips.find(t => String(t.id) === String(tripId));
+      if (!trip) return alert("A szerkesztendő út nem található.");
+      if (!activeShift || String(trip.shiftId) !== String(activeShift.id)) return alert("A sofőr felületén csak az aktuális műszak útja szerkeszthető.");
+      document.getElementById('editingTripId').value = trip.id;
+      document.getElementById('editingTripTime').value = trip.time || '';
+      document.getElementById('tripType').value = (trip.type === 'privat' ? 'private' : (trip.type || 'work'));
+      document.getElementById('tripStartLocation').value = trip.startLocation || '';
+      document.getElementById('tripEndLocation').value = trip.endLocation || '';
+      document.getElementById('tripStartKm').value = trip.startKm ?? 0;
+      document.getElementById('tripEndKm').value = trip.endKm ?? 0;
+      document.getElementById('tripPassengers').value = trip.passengerCount ?? 0;
+      calculateCalculatedKm();
+      document.getElementById('formTitle').textContent = 'Út Módosítása';
+      document.getElementById('saveTripBtn').textContent = 'Frissítés';
+      document.getElementById('cancelEditBtn').classList.remove('hidden');
+      document.getElementById('tripForm').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
 
     window.closeDriverEditTripModal = function() {
       document.getElementById('driverEditTripModal').classList.add('hidden');
