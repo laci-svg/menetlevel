@@ -13,7 +13,21 @@
         position: sticky;
         bottom: 0;
         z-index: 40;
-        box-shadow: 0 -10px 25px -5px rgba(0, 0, 0, 0.7);
+        padding: 0.5rem !important; /* 8px padding */
+        margin-bottom: 0 !important;
+        box-shadow: 0 -10px 25px -5px rgba(0, 0, 0, 0.8);
+      }
+      /* Kisebb inputok mobilon, hogy elférjenek */
+      #tripFormCard input, #tripFormCard select {
+        padding: 0.4rem 0.5rem !important;
+        font-size: 0.75rem !important;
+      }
+      #tripFormCard label {
+        font-size: 0.65rem !important;
+        margin-bottom: 0.1rem !important;
+      }
+      #tripFormCard .space-y-3 > * + * {
+        margin-top: 0.35rem !important;
       }
     }
   </style>
