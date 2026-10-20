@@ -3318,53 +3318,52 @@
       const trip = (window.allTrips || allTrips).find(t => String(t.id) === String(tripId));
       if (!trip) return;
 
-      document.getElementById('editingTripId').value = trip.id;
-      document.getElementById('editingTripTime').value = trip.time || '';
-      document.getElementById('tripType').value = (trip.type === 'privat' ? 'private' : (trip.type || 'work'));
-      document.getElementById('tripStartLocation').value = trip.startLocation || '';
-      document.getElementById('tripEndLocation').value = trip.endLocation || '';
-      document.getElementById('tripStartKm').value = trip.startKm || 0;
-      document.getElementById('tripEndKm').value = trip.endKm || 0;
-      document.getElementById('tripPassengers').value = trip.passengerCount || 0;
-      calculateCalculatedKm();
-
-      document.getElementById('formTitle').textContent = 'Út Módosítása';
-      document.getElementById('saveTripBtn').textContent = 'Frissítés';
-      document.getElementById('cancelEditBtn').classList.remove('hidden');
+      document.getElementById('driverEditingTripId').value = trip.id;
+      document.getElementById('modalDriverTripType').value = (trip.type === 'privat' ? 'private' : (trip.type || 'work'));
+      document.getElementById('modalDriverTripStartLoc').value = trip.startLocation || '';
+      document.getElementById('modalDriverTripEndLoc').value = trip.endLocation || '';
+      document.getElementById('modalDriverTripStartKm').value = trip.startKm || 0;
+      document.getElementById('modalDriverTripEndKm').value = trip.endKm || 0;
+      document.getElementById('modalDriverTripPassengers').value = trip.passengerCount || 0;
+      
+      window.calculateDriverModalTripKm();
+      document.getElementById('driverEditTripModal').classList.remove('hidden');
     };
 
-    window.toggleCustomPdfDates = function() {
-      const period = document.getElementById('pdfPeriodSelect').value;
-      const container = document.getElementById('pdfCustomDateContainer');
-      if (period === 'custom') container.classList.remove('hidden');
-      else container.classList.add('hidden');
+    window.closeDriverEditTripModal = function() {
+      document.getElementById('driverEditTripModal').classList.add('hidden');
     };
 
-    window.exportShiftPDF = function(shiftId, pdfType) {
-      const shift = allShifts.find(s => s.id === shiftId);
-      if (!shift) return alert("Műszak nem található!");
+    window.calculateDriverModalTripKm = function() {
+      const start = Number(document.getElementById('modalDriverTripStartKm').value) || 0;
+      const end = Number(document.getElementById('modalDriverTripEndKm').value) || 0;
+      const diff = end - start;
+      const el = document.getElementById('modalDriverTripCalcKm');
+      if (diff >= 0) el.value = diff + " km";
+      else el.value = "Hibás km!";
+    };
 
-      let shiftTrips = allTrips.filter(t => t.shiftId === shiftId);
-      if (pdfType === 'work') shiftTrips = shiftTrips.filter(t => t.type === 'work');
-      else if (pdfType === 'private') shiftTrips = shiftTrips.filter(t => t.type === 'private' || t.type === 'privat');
+    window.saveDriverTripModalEdit = async function() {
+      const tripId = document.getElementById('driverEditingTripId').value;
+      const startKm = Number(document.getElementById('modalDriverTripStartKm').value);
+      const endKm = Number(document.getElementById('modalDriverTripEndKm').value);
 
-      if (shiftTrips.length === 0) return alert("Nincs ilyen típusú út ebben a műszakban!");
+      if (isNaN(startKm) || isNaN(endKm) || endKm < startKm) {
+        return alert("Hibás adatok! A záró km nem lehet kisebb a kezdőnél.");
+      }
 
-      const typeTitle = pdfType === 'work' ? 'Munkakilométer Menetlevél' : (pdfType === 'private' ? 'Privát Menetlevél' : 'Összesített Menetlevél');
-      const shiftDateStr = shift.startDate || (shiftTrips.length > 0 ? shiftTrips[0].date : '');
-      const driverName = getUsernameFromEmail(shift.driverEmail);
-      const fileName = "menetlevel_" + pdfType + "_" + driverName + "_" + shiftDateStr + ".pdf";
+      await updateDoc(doc(db, "trips", tripId), {
+        type: document.getElementById('modalDriverTripType').value,
+        startLocation: document.getElementById('modalDriverTripStartLoc').value.trim(),
+        endLocation: document.getElementById('modalDriverTripEndLoc').value.trim(),
+        startKm: startKm,
+        endKm: endKm,
+        workKm: endKm - startKm,
+        passengerCount: Number(document.getElementById('modalDriverTripPassengers').value) || 0
+      });
 
-      shiftTrips = sortTripsByKmAscending(shiftTrips);
-      const firstTripTime = shiftTrips.length > 0 ? shiftTrips[0].time : '-';
-
-      generatePDFForTrips(
-        shiftTrips, 
-        typeTitle, 
-        "Sofőr: " + driverName + " | Jármű: " + (shift.carPlate || '-') + " | Dátum: " + shiftDateStr + " | Kezdés: " + firstTripTime, 
-        fileName, 
-        pdfType
-      );
+      window.closeDriverEditTripModal();
+      alert("✏️ Út sikeresen frissítve!");
     };
 
     function generatePDFForTrips(tripsArray, title, subtitle, filename, pdfType = 'all') {
