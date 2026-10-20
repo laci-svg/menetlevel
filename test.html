@@ -2815,38 +2815,60 @@
       }
     };
 
-    window.adminEditTripPrompt = function(tripId) {
-      if (!hasActionPermission('edit_trip')) {
-        return alert("Nincs jogosultságod az utak szerkesztéséhez! (Engedélyezd a Főadmin panelen az 'Utak szerkesztése' jogot)");
+    // A működő másik fájl prompt-alapú szerkesztését használjuk, de a címeket is szerkeszthetővé tesszük.
+    // Ez nem függ az admin szerkesztő modal DOM-elemeitől.
+    window.adminEditTripPrompt = async function(tripId) {
+      try {
+        if (!hasActionPermission('edit_trip')) {
+          return alert("Nincs jogosultságod az utak szerkesztéséhez! (Engedélyezd a Főadmin panelen az 'Utak szerkesztése' jogot)");
+        }
+
+        const trips = Array.isArray(window.allTrips) ? window.allTrips : allTrips;
+        const trip = trips.find(t => String(t.id) === String(tripId));
+        if (!trip) return alert("Az út nem található az adatbázisban. Frissítsd az oldalt, majd próbáld újra!");
+
+        const newStartLocation = prompt("Új INDULÁSI cím:", trip.startLocation || "");
+        if (newStartLocation === null) return;
+        const newEndLocation = prompt("Új ÉRKEZÉSI cím:", trip.endLocation || "");
+        if (newEndLocation === null) return;
+
+        const isPrivate = trip.type === 'private' || trip.type === 'privat';
+        const newTypeChoice = prompt(
+          "Út típusa:\n1 = Munkaút\n2 = Privát út",
+          isPrivate ? "2" : "1"
+        );
+        if (newTypeChoice === null) return;
+        let newType;
+        if (newTypeChoice.trim() === "1") newType = "work";
+        else if (newTypeChoice.trim() === "2") newType = "private";
+        else return alert("Hibás típusválasztás! Csak 1-est vagy 2-est írj be.");
+
+        const newStartKmStr = prompt("Új KEZDŐ kilométeróra-állás:", trip.startKm ?? 0);
+        if (newStartKmStr === null) return;
+        const newEndKmStr = prompt("Új ZÁRÓ kilométeróra-állás:", trip.endKm ?? 0);
+        if (newEndKmStr === null) return;
+
+        const newStartKm = Number(newStartKmStr);
+        const newEndKm = Number(newEndKmStr);
+        if (!newStartLocation.trim() || !newEndLocation.trim()) return alert("Az indulási és érkezési cím nem lehet üres!");
+        if (!Number.isFinite(newStartKm) || !Number.isFinite(newEndKm) || newStartKm < 0 || newEndKm < newStartKm) {
+          return alert("Hibás kilométeradat! A kilométerek nem lehetnek negatívak, a záró km pedig nem lehet kisebb a kezdőnél.");
+        }
+
+        await updateDoc(doc(db, "trips", String(tripId)), {
+          startLocation: newStartLocation.trim(),
+          endLocation: newEndLocation.trim(),
+          type: newType,
+          startKm: newStartKm,
+          endKm: newEndKm,
+          workKm: newEndKm - newStartKm
+        });
+        alert("Az út címei, kilométerei és típusa sikeresen elmentve!");
+      } catch (error) {
+        console.error("Út szerkesztési hiba:", error);
+        alert("Nem sikerült elmenteni az út adatait: " + (error && error.message ? error.message : error));
       }
-      const trip = (window.allTrips || allTrips).find(t => String(t.id) === String(tripId));
-      if (!trip) return alert("Az út nem található az adatbázisban!");
-
-      document.getElementById('adminEditingTripId').value = trip.id;
-      document.getElementById('adminTripType').value = (trip.type === 'privat' ? 'private' : (trip.type || 'work'));
-      document.getElementById('adminTripStartLoc').value = trip.startLocation || '';
-      document.getElementById('adminTripEndLoc').value = trip.endLocation || '';
-      document.getElementById('adminTripStartKm').value = trip.startKm || 0;
-      document.getElementById('adminTripEndKm').value = trip.endKm || 0;
-      document.getElementById('adminTripPassengers').value = trip.passengerCount || 0;
-      calculateAdminTripKm();
-
-      document.getElementById('adminEditTripModal').classList.remove('hidden');
     };
-
-    // Delegált eseménykezelő az újrarenderelt műszaklisták szerkesztés gombjaihoz.
-    document.addEventListener('click', function(event) {
-      const button = event.target.closest('[data-edit-trip-id]');
-      if (!button) return;
-      event.preventDefault();
-      event.stopPropagation();
-      const tripId = button.getAttribute('data-edit-trip-id');
-      try { window.adminEditTripPrompt(tripId); }
-      catch (error) {
-        console.error('Út szerkesztése nem nyitható meg:', error);
-        alert('Nem sikerült megnyitni a szerkesztést: ' + (error?.message || error));
-      }
-    }, true);
 
     window.closeAdminEditTripModal = function() {
       document.getElementById('adminEditTripModal').classList.add('hidden');
@@ -2964,7 +2986,7 @@
             '<div class="flex justify-between items-center text-[10px] text-slate-400 font-mono pt-0.5">' +
               '<span>' + (t.time || '') + ' | ' + t.startKm + ' - ' + t.endKm + ' km</span>' +
               '<div class="flex gap-1">' +
-                (canEditTrip ? '<button data-edit-trip-id="' + String(t.id) + '" class="bg-slate-800 hover:bg-slate-700 text-amber-300 px-1.5 py-0.5 rounded border border-slate-700 font-bold" title="Út szerkesztése">✏️ Szerkeszt</button>' : '') +
+                (canEditTrip ? '<button onclick="window.adminEditTripPrompt(\'' + t.id + '\')" class="bg-slate-800 hover:bg-slate-700 text-amber-300 px-1.5 py-0.5 rounded border border-slate-700 font-bold" title="Út szerkesztése">✏️ Szerkeszt</button>' : '') +
                 (canDeleteTrip ? '<button onclick="window.adminDeleteTripPrompt(\'' + t.id + '\')" class="bg-red-900/40 hover:bg-red-800 text-red-300 px-1.5 py-0.5 rounded border border-red-800" title="Út törlése">🗑️</button>' : '') +
               '</div>' +
             '</div>' +
@@ -3023,7 +3045,7 @@
                 '<td class="p-1 text-right font-mono text-slate-400">' + (t.startKm || 0) + ' - ' + (t.endKm || 0) + '</td>' +
                 '<td class="p-1 text-right font-mono font-semibold text-orange-400">' + (t.workKm || 0) + ' km</td>' +
                 '<td class="p-1 text-center whitespace-nowrap">' +
-                  (canEditTrip ? '<button data-edit-trip-id="' + String(t.id) + '" class="text-[9px] bg-slate-800 p-1 rounded text-slate-300 hover:bg-slate-700 mr-1">✏️</button>' : '') +
+                  (canEditTrip ? '<button onclick="window.adminEditTripPrompt(\'' + t.id + '\')" class="text-[9px] bg-slate-800 p-1 rounded text-slate-300 hover:bg-slate-700 mr-1">✏️</button>' : '') +
                   (canDeleteTrip ? '<button onclick="window.adminDeleteTripPrompt(\'' + t.id + '\')" class="text-[9px] bg-red-900/40 p-1 rounded text-red-300 hover:bg-red-800">🗑️</button>' : '') +
                 '</td>' +
               '</tr>';
