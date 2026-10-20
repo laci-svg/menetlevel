@@ -3339,9 +3339,10 @@
       alert("Műszak törölve!");
     };
 
-    window.editTrip = function(tripId) {
-      const trip = (window.allTrips || allTrips).find(t => String(t.id) === String(tripId));
-      if (!trip) return;
+    window.editDriverTripModalOpen = function(tripId) {
+      const trips = Array.isArray(window.allTrips) ? window.allTrips : (typeof allTrips !== 'undefined' ? allTrips : []);
+      const trip = trips.find(t => String(t.id) === String(tripId));
+      if (!trip) return alert("Az út nem található az adatbázisban!");
 
       document.getElementById('driverEditingTripId').value = trip.id;
       document.getElementById('modalDriverTripType').value = (trip.type === 'privat' ? 'private' : (trip.type || 'work'));
@@ -3352,7 +3353,13 @@
       document.getElementById('modalDriverTripPassengers').value = trip.passengerCount || 0;
       
       window.calculateDriverModalTripKm();
-      document.getElementById('driverEditTripModal').classList.remove('hidden');
+
+      const modal = document.getElementById('driverEditTripModal');
+      if (modal) {
+        modal.classList.remove('hidden');
+      } else {
+        alert("Hiba: A szerkesztő popup (driverEditTripModal) nem található a HTML-ben!");
+      }
     };
 
     window.closeDriverEditTripModal = function() {
