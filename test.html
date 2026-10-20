@@ -2097,14 +2097,15 @@
       allCars.forEach(car => {
         if (car.nextServiceDate) {
           const sDate = new Date(car.nextServiceDate);
+          sDate.setHours(0, 0, 0, 0); // Biztosítjuk, hogy a szerviz dátuma is éjfélre legyen állítva
           const diffTime = sDate - today;
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); // Math.ceil helyett Math.round
           const threshold = car.dateServiceAlertDays || alertDays;
 
           if (diffDays <= threshold) {
             dateServiceCount++;
             totalAlertsCount++;
-            const isExpired = diffDays < 0;
+            const isExpired = diffDays <= 0; // A mai nap (0) és a már elmúlt (negatív) napok is ESEDÉKES-nek számítanak
 
             dateServiceHtml += '<div class="bg-slate-900 border ' + (isExpired ? 'border-red-500' : 'border-slate-700') + ' p-2 rounded-lg flex justify-between items-center text-xs">' +
               '<div>' +
@@ -2116,7 +2117,7 @@
           }
         }
       });
-
+      
       document.getElementById('badge_date_service_alert').textContent = dateServiceCount + " autó";
       if (dateServiceContainer) dateServiceContainer.innerHTML = dateServiceHtml || '<p class="text-[11px] text-slate-500 italic text-center p-2">Nincs dátumhoz kötött szerviz ezen a határidőn belül.</p>';
 
