@@ -2136,6 +2136,20 @@
       }
     };
 
+    window.clearCarDateService = async function(carId) {
+  const car = allCars.find(c => c.id === carId);
+  if (!car) return;
+  
+  if (confirm("Biztosan törölni szeretnéd a(z) " + car.plateNumber + " autó dátumhoz kötött szerviz emlékeztetőjét?")) {
+    await updateDoc(doc(db, "cars", carId), {
+      nextServiceDate: deleteField(),
+      nextServiceText: deleteField(),
+      dateServiceAlertDays: deleteField()
+    });
+    alert("🗑️ Dátumhoz kötött szerviz emlékeztető törölve!");
+  }
+};
+    
     function renderAdminCars() {
       const container = document.getElementById('adminCarList');
       const badge = document.getElementById('badge_car_manage');
