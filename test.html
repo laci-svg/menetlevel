@@ -2463,7 +2463,8 @@
 
     function listenToTrips() {
       onSnapshot(collection(db, "trips"), (snapshot) => {
-        allTrips = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
+    window.allTrips = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
+    allTrips = window.allTrips;
         renderTripsTable();
         if (isAdminMode) {
           renderCombinedAlerts();
