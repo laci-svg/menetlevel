@@ -2,11 +2,21 @@
 <html lang="hu">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Digitális Menetlevél Rendszer</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+  <style>
+    @media (max-width: 768px) {
+      #tripFormCard {
+        position: sticky;
+        bottom: 0;
+        z-index: 40;
+        box-shadow: 0 -10px 25px -5px rgba(0, 0, 0, 0.7);
+      }
+    }
+  </style>
 </head>
 <body class="bg-slate-950 text-slate-100 font-sans min-h-screen bg-cover bg-center bg-fixed transition-all duration-500">
 
