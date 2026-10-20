@@ -1880,7 +1880,6 @@
           });
         }
 
-        // --- LEDOLGOZOTT NAPOK INCREMENTÁLÁSA ---
         if (currentUser && currentUser.uid) {
           const userDocRef = doc(db, "users", currentUser.uid);
           const userSnap = await getDoc(userDocRef);
@@ -2098,15 +2097,15 @@
       allCars.forEach(car => {
         if (car.nextServiceDate) {
           const sDate = new Date(car.nextServiceDate);
-          sDate.setHours(0, 0, 0, 0); // Biztosítjuk, hogy a szerviz dátuma is éjfélre legyen állítva
+          sDate.setHours(0, 0, 0, 0);
           const diffTime = sDate - today;
-          const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); // Math.ceil helyett Math.round
+          const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
           const threshold = car.dateServiceAlertDays || alertDays;
 
           if (diffDays <= threshold) {
             dateServiceCount++;
             totalAlertsCount++;
-            const isExpired = diffDays <= 0; // A mai nap (0) és a már elmúlt (negatív) napok is ESEDÉKES-nek számítanak
+            const isExpired = diffDays <= 0;
 
             dateServiceHtml += '<div class="bg-slate-900 border ' + (isExpired ? 'border-red-500' : 'border-slate-700') + ' p-2 rounded-lg flex justify-between items-center text-xs">' +
               '<div>' +
@@ -2463,8 +2462,8 @@
 
     function listenToTrips() {
       onSnapshot(collection(db, "trips"), (snapshot) => {
-    window.allTrips = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
-    allTrips = window.allTrips;
+        window.allTrips = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
+        allTrips = window.allTrips;
         renderTripsTable();
         if (isAdminMode) {
           renderCombinedAlerts();
@@ -2586,7 +2585,7 @@
           '<td class="p-2.5 text-right font-mono text-slate-400">' + (t.startKm || 0) + ' - ' + (t.endKm || 0) + '</td>' +
           '<td class="p-2.5 text-right font-mono font-semibold ' + (isPrivate ? 'text-amber-400' : '') + '">' + (t.workKm || 0) + ' km</td>' +
           '<td class="p-2.5 text-center">' +
-            '<button onclick="editTrip(\'' + t.id + '\')" class="text-xs bg-slate-800 hover:bg-slate-700 p-1 px-2 rounded border border-slate-700 text-slate-200">✏️</button>' +
+            '<button onclick="window.editTrip(\'' + t.id + '\')" class="text-xs bg-slate-800 hover:bg-slate-700 p-1 px-2 rounded border border-slate-700 text-slate-200">✏️</button>' +
           '</td>' +
         '</tr>';
       }).join('');
@@ -2816,23 +2815,23 @@
     };
 
     window.adminEditTripPrompt = function(tripId) {
-  if (!hasActionPermission('edit_trip')) {
-    return alert("Nincs jogosultságod az utak szerkesztéséhez! (Engedélyezd a Főadmin panelen az 'Utak szerkesztése' jogot)");
-  }
-  const trip = (window.allTrips || allTrips).find(t => t.id == tripId);
-  if (!trip) return alert("Az út nem található az adatbázisban!");
+      if (!hasActionPermission('edit_trip')) {
+        return alert("Nincs jogosultságod az utak szerkesztéséhez! (Engedélyezd a Főadmin panelen az 'Utak szerkesztése' jogot)");
+      }
+      const trip = (window.allTrips || allTrips).find(t => t.id == tripId);
+      if (!trip) return alert("Az út nem található az adatbázisban!");
 
-  document.getElementById('adminEditingTripId').value = trip.id;
-  document.getElementById('adminTripType').value = trip.type || 'work';
-  document.getElementById('adminTripStartLoc').value = trip.startLocation || '';
-  document.getElementById('adminTripEndLoc').value = trip.endLocation || '';
-  document.getElementById('adminTripStartKm').value = trip.startKm || 0;
-  document.getElementById('adminTripEndKm').value = trip.endKm || 0;
-  document.getElementById('adminTripPassengers').value = trip.passengerCount || 0;
-  calculateAdminTripKm();
+      document.getElementById('adminEditingTripId').value = trip.id;
+      document.getElementById('adminTripType').value = trip.type || 'work';
+      document.getElementById('adminTripStartLoc').value = trip.startLocation || '';
+      document.getElementById('adminTripEndLoc').value = trip.endLocation || '';
+      document.getElementById('adminTripStartKm').value = trip.startKm || 0;
+      document.getElementById('adminTripEndKm').value = trip.endKm || 0;
+      document.getElementById('adminTripPassengers').value = trip.passengerCount || 0;
+      calculateAdminTripKm();
 
-  document.getElementById('adminEditTripModal').classList.remove('hidden');
-};
+      document.getElementById('adminEditTripModal').classList.remove('hidden');
+    };
 
     window.closeAdminEditTripModal = function() {
       document.getElementById('adminEditTripModal').classList.add('hidden');
@@ -2856,7 +2855,7 @@
         return alert("Hibás adatok! A záró km nem lehet kisebb a kezdőnél.");
       }
 
-      const trip = allTrips.find(t => t.id === tripId);
+      const trip = (window.allTrips || allTrips).find(t => t.id == tripId);
 
       await updateDoc(doc(db, "trips", tripId), {
         type: document.getElementById('adminTripType').value,
@@ -2869,8 +2868,8 @@
       });
 
       if (trip && trip.shiftId) {
-        const shiftTrips = allTrips.filter(t => t.shiftId === trip.shiftId);
-        const lastKmInShift = Math.max(...shiftTrips.map(t => t.id === tripId ? endKm : Number(t.endKm || 0)));
+        const shiftTrips = (window.allTrips || allTrips).filter(t => t.shiftId === trip.shiftId);
+        const lastKmInShift = Math.max(...shiftTrips.map(t => t.id == tripId ? endKm : Number(t.endKm || 0)));
         const shift = allShifts.find(s => s.id === trip.shiftId);
         if (shift) {
           const car = allCars.find(c => c.plateNumber === shift.carPlate);
@@ -2950,8 +2949,8 @@
             '<div class="flex justify-between items-center text-[10px] text-slate-400 font-mono pt-0.5">' +
               '<span>' + (t.time || '') + ' | ' + t.startKm + ' - ' + t.endKm + ' km</span>' +
               '<div class="flex gap-1">' +
-                '<button onclick="window.adminEditTripPrompt(\'' + t.id + '\')" class="bg-slate-800 hover:bg-slate-700 text-amber-300 px-1.5 py-0.5 rounded border border-slate-700 font-bold" title="Út szerkesztése">✏️ Szerkeszt</button>' +
-'<button onclick="window.adminDeleteTripPrompt(\'' + t.id + '\')" class="bg-red-900/40 hover:bg-red-800 text-red-300 px-1.5 py-0.5 rounded border border-red-800" title="Út törlése">🗑️</button>' +
+                (canEditTrip ? '<button onclick="window.adminEditTripPrompt(\'' + t.id + '\')" class="bg-slate-800 hover:bg-slate-700 text-amber-300 px-1.5 py-0.5 rounded border border-slate-700 font-bold" title="Út szerkesztése">✏️ Szerkeszt</button>' : '') +
+                (canDeleteTrip ? '<button onclick="window.adminDeleteTripPrompt(\'' + t.id + '\')" class="bg-red-900/40 hover:bg-red-800 text-red-300 px-1.5 py-0.5 rounded border border-red-800" title="Út törlése">🗑️</button>' : '') +
               '</div>' +
             '</div>' +
           '</div>';
@@ -3009,8 +3008,8 @@
                 '<td class="p-1 text-right font-mono text-slate-400">' + (t.startKm || 0) + ' - ' + (t.endKm || 0) + '</td>' +
                 '<td class="p-1 text-right font-mono font-semibold text-orange-400">' + (t.workKm || 0) + ' km</td>' +
                 '<td class="p-1 text-center whitespace-nowrap">' +
-                  (canEditTrip ? '<button onclick="adminEditTripPrompt(\'' + t.id + '\')" class="text-[9px] bg-slate-800 p-1 rounded text-slate-300 hover:bg-slate-700 mr-1">✏️</button>' : '') +
-                  (canDeleteTrip ? '<button onclick="adminDeleteTripPrompt(\'' + t.id + '\')" class="text-[9px] bg-red-900/40 p-1 rounded text-red-300 hover:bg-red-800">🗑️</button>' : '') +
+                  (canEditTrip ? '<button onclick="window.adminEditTripPrompt(\'' + t.id + '\')" class="text-[9px] bg-slate-800 p-1 rounded text-slate-300 hover:bg-slate-700 mr-1">✏️</button>' : '') +
+                  (canDeleteTrip ? '<button onclick="window.adminDeleteTripPrompt(\'' + t.id + '\')" class="text-[9px] bg-red-900/40 p-1 rounded text-red-300 hover:bg-red-800">🗑️</button>' : '') +
                 '</td>' +
               '</tr>';
             }).join('') || '<tr><td colspan="6" class="p-2 text-[11px] text-slate-500 italic text-center">Nincs út.</td></tr>';
@@ -3196,7 +3195,7 @@
     };
 
     window.editTrip = function(tripId) {
-      const trip = allTrips.find(t => t.id === tripId);
+      const trip = (window.allTrips || allTrips).find(t => t.id == tripId);
       if (!trip) return;
 
       document.getElementById('editingTripId').value = trip.id;
