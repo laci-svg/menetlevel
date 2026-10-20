@@ -2818,7 +2818,7 @@
   if (!hasActionPermission('edit_trip')) {
     return alert("Nincs jogosultságod az utak szerkesztéséhez! (Engedélyezd a Főadmin panelen az 'Utak szerkesztése' jogot)");
   }
-  const trip = allTrips.find(t => t.id === tripId);
+  const trip = (window.allTrips || allTrips).find(t => t.id == tripId);
   if (!trip) return alert("Az út nem található az adatbázisban!");
 
   document.getElementById('adminEditingTripId').value = trip.id;
