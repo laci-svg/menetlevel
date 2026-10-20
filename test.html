@@ -3311,25 +3311,70 @@
 
     window.saveDriverTripModalEdit = async function() {
       const tripId = document.getElementById('driverEditingTripId').value;
-      const startKm = Number(document.getElementById('modalDriverTripStartKm').value);
-      const endKm = Number(document.getElementById('modalDriverTripEndKm').value);
+      const startKmRaw = document.getElementById('modalDriverTripStartKm').value;
+      const endKmRaw = document.getElementById('modalDriverTripEndKm').value;
+      const startKm = Number(startKmRaw);
+      const endKm = Number(endKmRaw);
+      const startLocation = document.getElementById('modalDriverTripStartLoc').value.trim();
+      const endLocation = document.getElementById('modalDriverTripEndLoc').value.trim();
+      const type = document.getElementById('modalDriverTripType').value;
+      const saveButton = document.querySelector('#driverEditTripModal button[onclick="window.saveDriverTripModalEdit()"]');
 
-      if (isNaN(startKm) || isNaN(endKm) || endKm < startKm) {
-        return alert("Hibás adatok! A záró km nem lehet kisebb a kezdőnél.");
+      if (!tripId) return alert("Nem található a szerkesztendő út azonosítója.");
+      if (startKmRaw === '' || endKmRaw === '' || !Number.isFinite(startKm) || !Number.isFinite(endKm) || startKm < 0 || endKm < startKm) {
+        return alert("Hibás kilométeradat! A km értékek nem lehetnek negatívak, a záró km nem lehet kisebb a kezdőnél.");
       }
+      if (!startLocation || !endLocation) return alert("Az indulási és érkezési cím megadása kötelező.");
+      if (!['work', 'private'].includes(type)) return alert("Válassz érvényes úttípust.");
 
-      await updateDoc(doc(db, "trips", tripId), {
-        type: document.getElementById('modalDriverTripType').value,
-        startLocation: document.getElementById('modalDriverTripStartLoc').value.trim(),
-        endLocation: document.getElementById('modalDriverTripEndLoc').value.trim(),
-        startKm: startKm,
-        endKm: endKm,
-        workKm: endKm - startKm,
-        passengerCount: Number(document.getElementById('modalDriverTripPassengers').value) || 0
-      });
+      if (saveButton) { saveButton.disabled = true; saveButton.textContent = "Mentés..."; }
+      try {
+        await updateDoc(doc(db, "trips", tripId), {
+          type,
+          startLocation,
+          endLocation,
+          startKm,
+          endKm,
+          workKm: endKm - startKm,
+          passengerCount: Math.max(0, Number(document.getElementById('modalDriverTripPassengers').value) || 0)
+        });
+        window.closeDriverEditTripModal();
+        alert("Az út adatai sikeresen elmentve.");
+      } catch (error) {
+        console.error("Sofőr út szerkesztési hiba:", error);
+        alert("Nem sikerült elmenteni az út adatait: " + (error?.message || error));
+      } finally {
+        if (saveButton) { saveButton.disabled = false; saveButton.textContent = "💾 Módosítás Mentése"; }
+      }
+    };
 
-      window.closeDriverEditTripModal();
-      alert("✏️ Út sikeresen frissítve!");
+    window.exportShiftPDF = function(shiftId, pdfType = 'all') {
+      try {
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+          return alert("A PDF-készítő könyvtár nem töltődött be. Frissítsd az oldalt, majd próbáld újra.");
+        }
+        const shifts = Array.isArray(window.allShifts) ? window.allShifts : allShifts;
+        const trips = Array.isArray(window.allTrips) ? window.allTrips : allTrips;
+        const shift = shifts.find(item => String(item.id) === String(shiftId));
+        if (!shift) return alert("A kiválasztott műszak nem található.");
+        let shiftTrips = trips.filter(trip => String(trip.shiftId) === String(shiftId));
+        if (pdfType === 'work') {
+          shiftTrips = shiftTrips.filter(trip => trip.type !== 'private' && trip.type !== 'privat');
+        }
+        if (!shiftTrips.length) return alert(pdfType === 'work' ? "Ebben a műszakban nincs munkakilométeres út." : "Ehhez a műszakhoz nincs rögzített út.");
+
+        const driverEmail = shift.driverEmail || shift.userEmail || shift.email || 'sofőr';
+        const driverName = (typeof getUsernameFromEmail === 'function') ? getUsernameFromEmail(driverEmail) : driverEmail;
+        const safeName = String(shift.carPlate || 'muszak').replace(/[^a-z0-9_-]/gi, '_');
+        const date = String(shift.date || shift.startDate || (shift.startTime || '').slice(0, 10) || new Date().toISOString().slice(0,10)).replace(/[^0-9-]/g, '');
+        const title = pdfType === 'work' ? 'Munkakilométer menetlevél' : 'Teljes menetlevél (munka + privát)';
+        const subtitle = 'Sofőr: ' + driverName + ' | Autó: ' + (shift.carPlate || '-') + ' | Műszak: ' + (shift.startTime || '-') + ' - ' + (shift.endTime || '-');
+        const filename = 'menetlevel_' + safeName + '_' + date + '_' + pdfType + '.pdf';
+        generatePDFForTrips(shiftTrips, title, subtitle, filename, pdfType);
+      } catch (error) {
+        console.error("Műszak PDF export hiba:", error);
+        alert("Nem sikerült elkészíteni a PDF-et: " + (error?.message || error));
+      }
     };
 
     function generatePDFForTrips(tripsArray, title, subtitle, filename, pdfType = 'all') {
