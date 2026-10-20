@@ -574,66 +574,6 @@
             ⚠️ Út rögzítéséhez előbb indítsd el a műszakot a fenti gombbal!
           </p>
 
-          <div id="driver250KmWarning" class="hidden bg-red-950/80 border border-red-600 text-red-200 p-2 rounded-xl text-xs font-bold flex items-center gap-2">
-            <span>⚠️</span>
-            <span>FIGYELEM: Elérted vagy meghaladtad a napi 250 km-es limitet!</span>
-          </div>
-
-          <form id="tripForm" class="space-y-2">
-            <input type="hidden" id="editingTripId" value="">
-            <input type="hidden" id="editingTripTime" value="">
-
-            <div class="grid grid-cols-2 gap-1.5">
-              <div>
-                <label class="block text-[11px] font-semibold text-slate-400 mb-0.5">Út Típusa</label>
-                <select id="tripType" required class="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded-lg text-xs focus:ring-1 focus:ring-orange-500">
-                  <option value="work">Munkaút</option>
-                  <option value="private">Privát út</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-[11px] font-semibold text-slate-400 mb-0.5">Utasok száma</label>
-                <input type="number" id="tripPassengers" min="0" value="0" class="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded-lg text-xs">
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-1.5">
-              <div>
-                <label class="block text-[11px] font-semibold text-slate-400 mb-0.5">Indulási Cím</label>
-                <input type="text" id="tripStartLocation" placeholder="pl. Budapest..." required class="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded-lg text-xs">
-              </div>
-              <div>
-                <label class="block text-[11px] font-semibold text-slate-400 mb-0.5">Érkezési Cím</label>
-                <input type="text" id="tripEndLocation" placeholder="pl. Debrecen..." required class="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded-lg text-xs">
-              </div>
-            </div>
-
-            <div class="grid grid-cols-3 gap-1.5 items-end">
-              <div>
-                <label class="block text-[11px] font-semibold text-slate-400 mb-0.5">Kezdő km</label>
-                <input type="number" id="tripStartKm" min="0" required oninput="syncStartKmToEndKm()" class="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded-lg text-xs font-bold text-orange-300">
-              </div>
-              <div>
-                <label class="block text-[11px] font-semibold text-slate-400 mb-0.5">Záró km</label>
-                <input type="number" id="tripEndKm" min="0" required oninput="calculateCalculatedKm()" class="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded-lg text-xs font-bold text-orange-300">
-              </div>
-              <div>
-                <input type="text" id="tripCalculatedKm" readonly class="w-full bg-slate-950 border border-slate-800 font-bold text-orange-400 p-2 rounded-lg text-xs text-center" value="0 km">
-              </div>
-            </div>
-
-            <div class="pt-1">
-              <button type="submit" id="saveTripBtn" class="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:opacity-90 text-white py-2.5 rounded-xl font-bold text-xs shadow-lg transition">
-                💾 Út Mentése
-              </button>
-            </div>
-          </form>
-        </div>
-
-          <p id="shiftWarningText" class="text-xs text-amber-400 font-semibold bg-amber-950/40 border border-amber-500/30 p-2 rounded-xl">
-            ⚠️ Út rögzítéséhez előbb indítsd el a műszakot a fenti gombbal!
-          </p>
-
           <div id="driver250KmWarning" class="hidden bg-red-950/80 border border-red-600 text-red-200 p-3 rounded-xl text-xs font-bold flex items-center gap-2">
             <span>⚠️</span>
             <span>FIGYELEM: Elérted vagy meghaladtad a napi 250 km-es munkakilométer limitet a jelenlegi műszakban!</span>
