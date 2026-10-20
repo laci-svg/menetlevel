@@ -2109,16 +2109,19 @@
             const isExpired = diffDays <= 0;
 
             dateServiceHtml += '<div class="bg-slate-900 border ' + (isExpired ? 'border-red-500' : 'border-slate-700') + ' p-2 rounded-lg flex justify-between items-center text-xs">' +
-  '<div>' +
-    '<span class="font-bold text-slate-100">' + car.plateNumber + '</span> - <span class="text-slate-300 font-semibold">' + (car.nextServiceText || 'Szerviz') + '</span>' +
-    '<div class="text-[10px] text-slate-400">Esedékes: ' + car.nextServiceDate + '</div>' +
-  '</div>' +
-  '<div class="flex items-center gap-2">' +
-    '<span class="text-xs font-mono font-bold ' + (isExpired ? 'text-red-400' : 'text-amber-400') + '">' + (isExpired ? 'ESEDÉKES!' : diffDays + ' nap maradt') + '</span>' +
-    '<button onclick="window.clearCarDateService(\'' + car.id + '\')" class="text-[10px] bg-red-950/80 hover:bg-red-800 text-red-200 p-1 px-1.5 rounded border border-red-800 transition" title="Emlékeztető törlése">🗑️</button>' +
-  '</div>' +
-'</div>';
-      
+              '<div>' +
+                '<span class="font-bold text-slate-100">' + car.plateNumber + '</span> - <span class="text-slate-300 font-semibold">' + (car.nextServiceText || 'Szerviz') + '</span>' +
+                '<div class="text-[10px] text-slate-400">Esedékes: ' + car.nextServiceDate + '</div>' +
+              '</div>' +
+              '<div class="flex items-center gap-2">' +
+                '<span class="text-xs font-mono font-bold ' + (isExpired ? 'text-red-400' : 'text-amber-400') + '">' + (isExpired ? 'ESEDÉKES!' : diffDays + ' nap maradt') + '</span>' +
+                '<button onclick="window.clearCarDateService(\'' + car.id + '\')" class="text-[10px] bg-red-950/80 hover:bg-red-800 text-red-200 p-1 px-1.5 rounded border border-red-800 transition" title="Emlékeztető törlése">🗑️</button>' +
+              '</div>' +
+            '</div>';
+          }
+        }
+      });
+
       document.getElementById('badge_date_service_alert').textContent = dateServiceCount + " autó";
       if (dateServiceContainer) dateServiceContainer.innerHTML = dateServiceHtml || '<p class="text-[11px] text-slate-500 italic text-center p-2">Nincs dátumhoz kötött szerviz ezen a határidőn belül.</p>';
 
