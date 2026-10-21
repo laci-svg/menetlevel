@@ -8,18 +8,37 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
   <style>
-    /* Letisztultabb, egységes admin megjelenés */
-    @media (min-width: 769px) {
-      #adminSection { max-width: 1440px; }
-      #adminSection > .admin-card,
-      #adminSection > #superAdminSection { box-shadow: 0 10px 28px rgba(2, 6, 23, .22); }
+    /* Letisztult, reszponzív adminfelület – az eredeti színvilág megtartásával */
+    /* Adminfelület: valódi, rendezett 12 oszlopos rács nagy képernyőn. */
+    @media (min-width: 1100px) {
+      #adminSection { max-width: 1600px; width: calc(100% - 2rem); display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 1rem; align-items: start; }
+      #adminSection.space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 0 !important; }
+      #adminSection > .flex.justify-between { grid-column: 1 / -1; margin: 0; }
+      #card_combined_alerts, #card_rural_km, #card_announcements, #card_pdf, #superAdminSection { grid-column: 1 / -1; }
+      #card_admin_wall { grid-column: span 6; }
+      #card_overtime, #card_stats, #card_car_manage, #card_bg_manage, #card_overlimit { grid-column: span 6; }
+      #card_car_live_km, #card_active_shifts { grid-column: span 4; }
+      #card_closed_shifts { grid-column: span 8; }
+      #adminSection > .grid { grid-column: 1 / -1; min-width: 0; }
+      #adminSection > .admin-card { min-width: 0; width: 100%; margin: 0; box-shadow: 0 8px 22px rgba(2, 6, 23, .22); }
+    }
+    @media (min-width: 769px) and (max-width: 1099px) {
+      #adminSection { max-width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; }
+      #adminSection.space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 0 !important; }
+      #adminSection > .flex.justify-between, #card_combined_alerts, #card_rural_km, #card_announcements, #card_pdf, #superAdminSection, #adminSection > .grid { grid-column: 1 / -1; }
+      #adminSection > .admin-card { min-width: 0; margin: 0; }
     }
     .admin-card { transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
     .admin-card:hover { border-color: rgba(100, 116, 139, .7); box-shadow: 0 12px 28px rgba(2, 6, 23, .28); }
+    .admin-card > div:first-child { min-height: 3.1rem; }
     button { transition: filter .16s ease, transform .16s ease, background-color .16s ease; }
     button:active { transform: translateY(1px); }
     input:focus, select:focus, textarea:focus { outline: 2px solid rgba(45, 212, 191, .65); outline-offset: 1px; }
     .admin-card h3 { line-height: 1.35; }
+    @media (max-width: 768px) {
+      #adminSection { display: flex; flex-direction: column; }
+      #adminSection > * { width: 100%; }
+    }
     @media (max-width: 768px) {
       #tripFormCard {
         position: sticky;
@@ -39,8 +58,11 @@
         margin-bottom: 0.1rem !important;
       }
       #tripFormCard .space-y-3 > * + * {
-        margin-top: 0.35rem !important;
+        margin-top: 0.3rem !important;
       }
+      #tripFormCard { max-height: min(62vh, 520px); overflow-y: auto; overscroll-behavior: contain; }
+      #tripFormCard .grid { gap: 0.35rem !important; }
+      #tripFormCard input, #tripFormCard select { min-height: 34px; }
     }
   </style>
 </head>
@@ -627,16 +649,12 @@
               </select>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-slate-950/70 border border-teal-900/50 rounded-xl p-3">
+            <div class="bg-slate-950/70 border border-teal-900/50 rounded-xl px-3 py-2.5">
               <label class="flex items-center gap-2 text-xs font-semibold text-teal-200 cursor-pointer">
                 <input type="checkbox" id="tripIsRural" class="rounded bg-slate-800 border-slate-700 text-teal-500">
-                Vidéki cím / vidéki út megjelölése
+                🛣️ Vidéki cím megjelölése
               </label>
-              <div>
-                <label class="block text-xs font-semibold text-slate-400 mb-1">Vidéki km (ha ismert)</label>
-                <input type="number" id="tripRuralKm" min="0" step="1" value="0" class="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded-lg text-sm" disabled>
-              </div>
-              <p class="sm:col-span-2 text-[10px] text-slate-500">Privát utak nem kerülnek bele automatikusan a havi vidéki összesítésbe. Az admin ellenőrizheti és javíthatja a kilométert.</p>
+              <p class="text-[10px] text-slate-500 mt-1">A vidéki kilométert az admin ellenőrzi és rögzíti.</p>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -2557,12 +2575,6 @@
       return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
     }
 
-    document.getElementById('tripIsRural')?.addEventListener('change', (e) => {
-      const kmInput = document.getElementById('tripRuralKm');
-      kmInput.disabled = !e.target.checked;
-      if (!e.target.checked) kmInput.value = '0';
-    });
-
     window.changeRuralKmMonth = function(delta) {
       ruralKmMonthDate = new Date(ruralKmMonthDate.getFullYear(), ruralKmMonthDate.getMonth() + delta, 1);
       renderRuralKmCard();
@@ -2591,13 +2603,15 @@
         const driver = escapeHtml(getUsernameFromEmail(t.driverEmail || 'Ismeretlen sofőr'));
         const car = escapeHtml(t.carPlate || '');
         return '<div class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex flex-col lg:flex-row lg:items-center gap-3">' +
-          '<div class="flex-1 min-w-0"><div class="text-xs font-bold text-slate-100">' + route + '</div>' +
+          '<div class="flex-1 min-w-0"><div class="text-xs font-bold text-slate-100 flex flex-wrap items-center gap-2"><span>' + route + '</span><span class="inline-flex text-[9px] text-teal-200 bg-teal-950 border border-teal-800 px-1.5 py-0.5 rounded font-extrabold">🛣️ VIDÉKI CÍM</span></div>' +
           '<div class="text-[10px] text-slate-400 mt-1">' + escapeHtml(t.date || '') + ' ' + escapeHtml(t.time || '') + ' · ' + driver + ' · ' + car + '</div>' +
-          '<div class="text-[10px] text-slate-500 mt-1">Menetlevél: ' + Number(t.workKm || 0) + ' km' + (t.type === 'private' ? ' · Privát út' : '') + '</div></div>' +
+          '<div class="text-[10px] text-slate-500 mt-1">Menetlevél: ' + Number(t.workKm || 0) + ' km' + (t.type === 'private' ? ' · Privát út' : '') + '</div>' + (t.ruralKmReviewed === true ? '<span class="inline-flex mt-1 text-[9px] text-emerald-300 bg-emerald-950/60 border border-emerald-800 px-1.5 py-0.5 rounded">✓ Admin által ellenőrizve</span>' : '<span class="inline-flex mt-1 text-[9px] text-amber-300 bg-amber-950/50 border border-amber-800 px-1.5 py-0.5 rounded">Ellenőrzésre vár</span>') + '</div>' +
           '<form class="flex items-center gap-2" onsubmit="saveRuralKm(event, \'' + t.id + '\')">' +
           '<label class="text-[11px] text-teal-200 whitespace-nowrap">Vidéki km</label>' +
           '<input type="number" min="0" step="1" id="ruralKmEdit_' + t.id + '" value="' + Math.max(0, Number(t.ruralKm || 0)) + '" class="w-24 bg-slate-800 border border-slate-700 text-white p-2 rounded-lg text-sm" required>' +
-          '<button type="submit" class="bg-teal-700 hover:bg-teal-600 text-white px-3 py-2 rounded-lg text-xs font-bold">Mentés</button></form></div>';
+          '<button type="submit" class="bg-teal-700 hover:bg-teal-600 text-white px-3 py-2 rounded-lg text-xs font-bold">Mentés</button>' +
+          (t.shiftId ? '<button type="button" onclick="window.exportShiftPDF(\'' + t.shiftId + '\', \'all\')" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap">📄 Műszak PDF</button>' : '') +
+          '</form></div>';
       }).join('');
     }
 
@@ -2671,7 +2685,9 @@
         endKm: endKm,
         workKm: calculatedKm,
         isRuralTrip: document.getElementById('tripIsRural').checked && tripType !== 'private',
-        ruralKm: document.getElementById('tripIsRural').checked && tripType !== 'private' ? Math.max(0, Number(document.getElementById('tripRuralKm').value || 0)) : 0,
+        ruralKm: document.getElementById('tripIsRural').checked && tripType !== 'private'
+          ? (editingId ? Math.max(0, Number((allTrips.find(t => String(t.id) === String(editingId)) || {}).ruralKm || 0)) : 0)
+          : 0,
         passengerCount: Number(document.getElementById('tripPassengers').value),
         driverUid: currentUser.uid,
         driverEmail: currentUser.email,
@@ -2698,8 +2714,6 @@
       document.getElementById('editingTripId').value = '';
       document.getElementById('editingTripTime').value = '';
       document.getElementById('tripIsRural').checked = false;
-      document.getElementById('tripRuralKm').value = '0';
-      document.getElementById('tripRuralKm').disabled = true;
       document.getElementById('formTitle').textContent = 'Új Út Rögzítése';
       document.getElementById('saveTripBtn').textContent = 'Mentés';
       document.getElementById('cancelEditBtn').classList.add('hidden');
@@ -2743,7 +2757,7 @@
         return '<tr class="' + rowClass + '">' +
           '<td class="p-2.5 font-bold ' + (isPrivate ? 'text-amber-400' : 'text-slate-400') + '">' + (index + 1) + '.</td>' +
           '<td class="p-2.5 font-mono">' + (t.time || '') + '</td>' +
-          '<td class="p-2.5 font-medium">' + (t.startLocation || '') + ' &rarr; ' + (t.endLocation || '') + (isPrivate ? ' <span class="text-xs bg-amber-900/60 text-amber-300 px-1.5 py-0.5 rounded ml-2 font-normal">Privát</span>' : '') + '</td>' +
+          '<td class="p-2.5 font-medium">' + (t.startLocation || '') + ' &rarr; ' + (t.endLocation || '') + (isPrivate ? ' <span class="text-xs bg-amber-900/60 text-amber-300 px-1.5 py-0.5 rounded ml-2 font-normal">Privát</span>' : '') + (t.isRuralTrip === true && !isPrivate ? ' <span class="inline-flex items-center gap-1 text-[10px] bg-teal-950 text-teal-200 border border-teal-700 px-1.5 py-0.5 rounded-md ml-1 font-bold">🛣️ VIDÉKI CÍM · ' + Math.max(0, Number(t.ruralKm || 0)) + ' km</span>' : '') + '</td>' +
           '<td class="p-2.5 text-right font-mono text-slate-400">' + (t.startKm || 0) + ' - ' + (t.endKm || 0) + '</td>' +
           '<td class="p-2.5 text-right font-mono font-semibold ' + (isPrivate ? 'text-amber-400' : '') + '">' + (t.workKm || 0) + ' km</td>' +
           '<td class="p-2.5 text-center">' +
@@ -3141,7 +3155,7 @@
           const isPriv = (t.type === 'private' || t.type === 'privat');
           return '<div class="border-b border-slate-800/50 pb-1.5 space-y-0.5 text-[11px]">' +
             '<div class="flex justify-between items-center">' +
-              '<span>' + (idx+1) + '. ' + t.startLocation + ' &rarr; ' + t.endLocation + (isPriv ? ' <span class="text-[9px] text-amber-400 bg-amber-950 px-1 rounded font-bold">Privát</span>' : '') + '</span>' +
+              '<span>' + (idx+1) + '. ' + t.startLocation + ' &rarr; ' + t.endLocation + (isPriv ? ' <span class="text-[9px] text-amber-400 bg-amber-950 px-1 rounded font-bold">Privát</span>' : '') + (t.isRuralTrip === true && !isPriv ? ' <span class="text-[9px] text-teal-200 bg-teal-950 border border-teal-800 px-1 rounded font-bold">🛣️ VIDÉKI CÍM · ' + Math.max(0, Number(t.ruralKm || 0)) + ' km</span>' : '') + '</span>' +
               '<span class="font-mono text-orange-400 font-bold">' + t.workKm + ' km</span>' +
             '</div>' +
             '<div class="flex justify-between items-center text-[10px] text-slate-400 font-mono pt-0.5">' +
@@ -3202,7 +3216,7 @@
               return '<tr class="' + (isPriv ? 'bg-amber-950/40 text-amber-200' : '') + '">' +
                 '<td class="p-1 font-bold text-slate-500">' + (tIdx + 1) + '.</td>' +
                 '<td class="p-1 font-mono text-slate-400">' + (t.time || '') + '</td>' +
-                '<td class="p-1">' + (t.startLocation || '') + ' &rarr; ' + (t.endLocation || '') + '</td>' +
+                '<td class="p-1">' + (t.startLocation || '') + ' &rarr; ' + (t.endLocation || '') + (t.isRuralTrip === true && !isPriv ? ' <span class="inline-block text-[9px] text-teal-200 bg-teal-950 border border-teal-800 px-1 py-0.5 rounded font-bold whitespace-nowrap">🛣️ VIDÉKI CÍM · ' + Math.max(0, Number(t.ruralKm || 0)) + ' km</span>' : '') + '</td>' +
                 '<td class="p-1 text-right font-mono text-slate-400">' + (t.startKm || 0) + ' - ' + (t.endKm || 0) + '</td>' +
                 '<td class="p-1 text-right font-mono font-semibold text-orange-400">' + (t.workKm || 0) + ' km</td>' +
                 '<td class="p-1 text-center whitespace-nowrap">' +
@@ -3434,6 +3448,7 @@
         field('modalDriverTripStartKm').value = trip.startKm ?? 0;
         field('modalDriverTripEndKm').value = trip.endKm ?? 0;
         field('modalDriverTripPassengers').value = trip.passengerCount ?? 0;
+        field('modalDriverTripIsRural').checked = trip.isRuralTrip === true && trip.type !== 'private' && trip.type !== 'privat';
         window.calculateDriverModalTripKm();
 
         const modal = document.getElementById('driverEditTripModal');
@@ -3455,8 +3470,6 @@
       document.getElementById('editingTripTime').value = trip.time || '';
       document.getElementById('tripType').value = (trip.type === 'privat' ? 'private' : (trip.type || 'work'));
       document.getElementById('tripIsRural').checked = trip.isRuralTrip === true;
-      document.getElementById('tripRuralKm').value = Math.max(0, Number(trip.ruralKm || 0));
-      document.getElementById('tripRuralKm').disabled = !trip.isRuralTrip;
       document.getElementById('tripStartLocation').value = trip.startLocation || '';
       document.getElementById('tripEndLocation').value = trip.endLocation || '';
       document.getElementById('tripStartKm').value = trip.startKm ?? 0;
@@ -3494,6 +3507,10 @@
       const saveButton = document.querySelector('#driverEditTripModal button[onclick="window.saveDriverTripModalEdit()"]');
 
       if (!tripId) return alert("Nem található a szerkesztendő út azonosítója.");
+      const existingTrip = (Array.isArray(window.allTrips) ? window.allTrips : allTrips).find(t => String(t.id) === String(tripId));
+      if (!existingTrip) return alert("Az út már nem található. Frissítsd az oldalt, majd próbáld újra.");
+      if (!currentUser || existingTrip.driverUid !== currentUser.uid) return alert("Csak a saját menetleveledet szerkesztheted.");
+      if (!activeShift || String(existingTrip.shiftId) !== String(activeShift.id)) return alert("A sofőr a jelenlegi aktív műszak útjait szerkesztheti. Lezárt műszaknál kérd az admin segítségét.");
       if (startKmRaw === '' || endKmRaw === '' || !Number.isFinite(startKm) || !Number.isFinite(endKm) || startKm < 0 || endKm < startKm) {
         return alert("Hibás kilométeradat! A km értékek nem lehetnek negatívak, a záró km nem lehet kisebb a kezdőnél.");
       }
@@ -3509,7 +3526,9 @@
           startKm,
           endKm,
           workKm: endKm - startKm,
-          passengerCount: Math.max(0, Number(document.getElementById('modalDriverTripPassengers').value) || 0)
+          passengerCount: Math.max(0, Number(document.getElementById('modalDriverTripPassengers').value) || 0),
+          isRuralTrip: document.getElementById('modalDriverTripIsRural').checked && type === 'work',
+          ruralKm: document.getElementById('modalDriverTripIsRural').checked && type === 'work' ? Math.max(0, Number(existingTrip.ruralKm || 0)) : 0
         });
         window.closeDriverEditTripModal();
         alert("Az út adatai sikeresen elmentve.");
@@ -3580,7 +3599,8 @@
       const headers = rawHeaders.map(h => sanitizeText(h));
 
       const rows = tripsArray.map((t, idx) => {
-        const route = sanitizeText((idx + 1) + ". " + (t.startLocation || '-') + " > " + (t.endLocation || '-'));
+        const ruralTag = (t.isRuralTrip === true && t.type !== 'private' && t.type !== 'privat') ? ' [VIDÉKI CÍM · ' + Math.max(0, Number(t.ruralKm || 0)) + ' vidéki km]' : '';
+        const route = sanitizeText((idx + 1) + ". " + (t.startLocation || '-') + " > " + (t.endLocation || '-') + ruralTag);
         const isPriv = (t.type === 'private' || t.type === 'privat');
         const kmText = sanitizeText(t.workKm + " km" + (isPriv ? ' (Privát)' : ''));
         const passText = sanitizeText((t.passengerCount || 0) + " fő");
@@ -3688,6 +3708,13 @@
             <label class="block text-xs font-semibold text-slate-400 mb-1">Utasok száma</label>
             <input type="number" id="modalDriverTripPassengers" min="0" class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs">
           </div>
+        </div>
+        <div class="bg-teal-950/40 border border-teal-800/70 rounded-xl p-3">
+          <label class="flex items-center gap-2 text-xs font-bold text-teal-200 cursor-pointer">
+            <input type="checkbox" id="modalDriverTripIsRural" class="rounded border-teal-700 bg-slate-800">
+            🛣️ Vidéki cím megjelölése
+          </label>
+          <p class="text-[10px] text-slate-400 mt-1">A kilométert az admin ellenőrzi és rögzíti.</p>
         </div>
       </div>
 
