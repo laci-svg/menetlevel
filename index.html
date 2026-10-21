@@ -9,16 +9,24 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
   <style>
     /* Letisztult, reszponzív adminfelület – az eredeti színvilág megtartásával */
+    /* Adminfelület: valódi, rendezett 12 oszlopos rács nagy képernyőn. */
     @media (min-width: 1100px) {
-      #adminSection { max-width: 1500px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; align-items: start; }
-      #adminSection > .flex.justify-between { grid-column: 1 / -1; margin-bottom: 0; }
-      #card_combined_alerts, #card_admin_wall, #card_announcements, #card_pdf, #superAdminSection { grid-column: 1 / -1; }
-      #card_overtime, #card_stats, #card_rural_km { grid-column: span 1; min-width: 0; }
+      #adminSection { max-width: 1600px; width: calc(100% - 2rem); display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 1rem; align-items: start; }
+      #adminSection.space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 0 !important; }
+      #adminSection > .flex.justify-between { grid-column: 1 / -1; margin: 0; }
+      #card_combined_alerts, #card_rural_km, #card_announcements, #card_pdf, #superAdminSection { grid-column: 1 / -1; }
+      #card_admin_wall { grid-column: span 6; }
+      #card_overtime, #card_stats, #card_car_manage, #card_bg_manage, #card_overlimit { grid-column: span 6; }
+      #card_car_live_km, #card_active_shifts { grid-column: span 4; }
+      #card_closed_shifts { grid-column: span 8; }
       #adminSection > .grid { grid-column: 1 / -1; min-width: 0; }
-      #adminSection > .admin-card { min-width: 0; box-shadow: 0 8px 22px rgba(2, 6, 23, .22); }
+      #adminSection > .admin-card { min-width: 0; width: 100%; margin: 0; box-shadow: 0 8px 22px rgba(2, 6, 23, .22); }
     }
     @media (min-width: 769px) and (max-width: 1099px) {
-      #adminSection { max-width: 100%; }
+      #adminSection { max-width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; }
+      #adminSection.space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 0 !important; }
+      #adminSection > .flex.justify-between, #card_combined_alerts, #card_rural_km, #card_announcements, #card_pdf, #superAdminSection, #adminSection > .grid { grid-column: 1 / -1; }
+      #adminSection > .admin-card { min-width: 0; margin: 0; }
     }
     .admin-card { transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
     .admin-card:hover { border-color: rgba(100, 116, 139, .7); box-shadow: 0 12px 28px rgba(2, 6, 23, .28); }
@@ -2602,7 +2610,7 @@
         const driver = escapeHtml(getUsernameFromEmail(t.driverEmail || 'Ismeretlen sofőr'));
         const car = escapeHtml(t.carPlate || '');
         return '<div class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex flex-col lg:flex-row lg:items-center gap-3">' +
-          '<div class="flex-1 min-w-0"><div class="text-xs font-bold text-slate-100">' + route + '</div>' +
+          '<div class="flex-1 min-w-0"><div class="text-xs font-bold text-slate-100 flex flex-wrap items-center gap-2"><span>' + route + '</span><span class="inline-flex text-[9px] text-teal-200 bg-teal-950 border border-teal-800 px-1.5 py-0.5 rounded font-extrabold">🛣️ VIDÉKI CÍM</span></div>' +
           '<div class="text-[10px] text-slate-400 mt-1">' + escapeHtml(t.date || '') + ' ' + escapeHtml(t.time || '') + ' · ' + driver + ' · ' + car + '</div>' +
           '<div class="text-[10px] text-slate-500 mt-1">Menetlevél: ' + Number(t.workKm || 0) + ' km' + (t.type === 'private' ? ' · Privát út' : '') + '</div></div>' +
           '<form class="flex items-center gap-2" onsubmit="saveRuralKm(event, \'' + t.id + '\')">' +
@@ -2754,7 +2762,7 @@
         return '<tr class="' + rowClass + '">' +
           '<td class="p-2.5 font-bold ' + (isPrivate ? 'text-amber-400' : 'text-slate-400') + '">' + (index + 1) + '.</td>' +
           '<td class="p-2.5 font-mono">' + (t.time || '') + '</td>' +
-          '<td class="p-2.5 font-medium">' + (t.startLocation || '') + ' &rarr; ' + (t.endLocation || '') + (isPrivate ? ' <span class="text-xs bg-amber-900/60 text-amber-300 px-1.5 py-0.5 rounded ml-2 font-normal">Privát</span>' : '') + '</td>' +
+          '<td class="p-2.5 font-medium">' + (t.startLocation || '') + ' &rarr; ' + (t.endLocation || '') + (isPrivate ? ' <span class="text-xs bg-amber-900/60 text-amber-300 px-1.5 py-0.5 rounded ml-2 font-normal">Privát</span>' : '') + (t.isRuralTrip === true && !isPrivate ? ' <span class="inline-flex items-center gap-1 text-[10px] bg-teal-950 text-teal-200 border border-teal-700 px-1.5 py-0.5 rounded-md ml-1 font-bold">🛣️ VIDÉKI CÍM · ' + Math.max(0, Number(t.ruralKm || 0)) + ' km</span>' : '') + '</td>' +
           '<td class="p-2.5 text-right font-mono text-slate-400">' + (t.startKm || 0) + ' - ' + (t.endKm || 0) + '</td>' +
           '<td class="p-2.5 text-right font-mono font-semibold ' + (isPrivate ? 'text-amber-400' : '') + '">' + (t.workKm || 0) + ' km</td>' +
           '<td class="p-2.5 text-center">' +
@@ -3152,7 +3160,7 @@
           const isPriv = (t.type === 'private' || t.type === 'privat');
           return '<div class="border-b border-slate-800/50 pb-1.5 space-y-0.5 text-[11px]">' +
             '<div class="flex justify-between items-center">' +
-              '<span>' + (idx+1) + '. ' + t.startLocation + ' &rarr; ' + t.endLocation + (isPriv ? ' <span class="text-[9px] text-amber-400 bg-amber-950 px-1 rounded font-bold">Privát</span>' : '') + '</span>' +
+              '<span>' + (idx+1) + '. ' + t.startLocation + ' &rarr; ' + t.endLocation + (isPriv ? ' <span class="text-[9px] text-amber-400 bg-amber-950 px-1 rounded font-bold">Privát</span>' : '') + (t.isRuralTrip === true && !isPriv ? ' <span class="text-[9px] text-teal-200 bg-teal-950 border border-teal-800 px-1 rounded font-bold">🛣️ VIDÉKI CÍM · ' + Math.max(0, Number(t.ruralKm || 0)) + ' km</span>' : '') + '</span>' +
               '<span class="font-mono text-orange-400 font-bold">' + t.workKm + ' km</span>' +
             '</div>' +
             '<div class="flex justify-between items-center text-[10px] text-slate-400 font-mono pt-0.5">' +
@@ -3213,7 +3221,7 @@
               return '<tr class="' + (isPriv ? 'bg-amber-950/40 text-amber-200' : '') + '">' +
                 '<td class="p-1 font-bold text-slate-500">' + (tIdx + 1) + '.</td>' +
                 '<td class="p-1 font-mono text-slate-400">' + (t.time || '') + '</td>' +
-                '<td class="p-1">' + (t.startLocation || '') + ' &rarr; ' + (t.endLocation || '') + '</td>' +
+                '<td class="p-1">' + (t.startLocation || '') + ' &rarr; ' + (t.endLocation || '') + (t.isRuralTrip === true && !isPriv ? ' <span class="inline-block text-[9px] text-teal-200 bg-teal-950 border border-teal-800 px-1 py-0.5 rounded font-bold whitespace-nowrap">🛣️ VIDÉKI CÍM · ' + Math.max(0, Number(t.ruralKm || 0)) + ' km</span>' : '') + '</td>' +
                 '<td class="p-1 text-right font-mono text-slate-400">' + (t.startKm || 0) + ' - ' + (t.endKm || 0) + '</td>' +
                 '<td class="p-1 text-right font-mono font-semibold text-orange-400">' + (t.workKm || 0) + ' km</td>' +
                 '<td class="p-1 text-center whitespace-nowrap">' +
