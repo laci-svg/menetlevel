@@ -2628,7 +2628,7 @@
           '<td class="p-2.5 text-right font-mono text-slate-400">' + (t.startKm || 0) + ' - ' + (t.endKm || 0) + '</td>' +
           '<td class="p-2.5 text-right font-mono font-semibold ' + (isPrivate ? 'text-amber-400' : '') + '">' + (t.workKm || 0) + ' km</td>' +
           '<td class="p-2.5 text-center">' +
-            '<button type="button" onclick="window.editTrip(&quot;' + String(t.id).replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '&quot;)" class="text-xs bg-slate-800 hover:bg-slate-700 p-1 px-2 rounded border border-slate-700 text-slate-200" title="Út szerkesztése">✏️</button>' +
+            '<button type="button" onclick="window.editDriverTripModalOpen(&quot;' + String(t.id).replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '&quot;)" class="text-xs bg-slate-800 hover:bg-slate-700 p-1 px-2 rounded border border-slate-700 text-slate-200" title="Út szerkesztése">✏️</button>' +
           '</td>' +
         '</tr>';
       }).join('');
@@ -3154,7 +3154,7 @@
         const name = getUsernameFromEmail(u.email);
 
         const cardCheckboxesHtml = ALL_ADMIN_CARDS.map(card => {
-          const isChecked = (isMaster || userCards.length === 0 || userCards.includes(card.id)) ? 'checked' : '';
+          const isChecked = (isMaster || (u.adminCards === undefined ? true : userCards.includes(card.id))) ? 'checked' : '';
           const isDisabled = (isMaster || isInactive) ? 'disabled' : '';
           return '<label class="inline-flex items-center gap-1.5 bg-slate-900 px-2 py-1 rounded border border-slate-800 text-[11px] text-slate-300 cursor-pointer">' +
             '<input type="checkbox" ' + isChecked + ' ' + isDisabled + ' onchange="window.toggleUserCardPermission(\'' + u.id + '\', \'' + card.id + '\', this.checked)" class="rounded bg-slate-800 border-slate-700 text-amber-500">' +
@@ -3163,7 +3163,7 @@
         }).join('');
 
         const actionCheckboxesHtml = ALL_ACTION_PERMISSIONS.map(act => {
-          const isChecked = (isMaster || userActions.length === 0 || userActions.includes(act.id)) ? 'checked' : '';
+          const isChecked = (isMaster || (u.actionPermissions === undefined ? true : userActions.includes(act.id))) ? 'checked' : '';
           const isDisabled = (isMaster || isInactive) ? 'disabled' : '';
           return '<label class="inline-flex items-center gap-1.5 bg-slate-900 px-2 py-1 rounded border border-red-900/40 text-[11px] text-red-200 cursor-pointer">' +
             '<input type="checkbox" ' + isChecked + ' ' + isDisabled + ' onchange="window.toggleUserActionPermission(\'' + u.id + '\', \'' + act.id + '\', this.checked)" class="rounded bg-slate-800 border-slate-700 text-red-500">' +
@@ -3239,22 +3239,46 @@
       });
     };
 
+    // A jogosultságokat azonnal frissítjük a memóriában is, így gyors egymás utáni
+    // kattintások nem írják felül egymás módosításait a régi allUsers adatokkal.
+    async function saveUserPermissionArray(userId, fieldName, value) {
+      const u = allUsers.find(x => x.id === userId);
+      if (!u) return;
+      const previous = Array.isArray(u[fieldName]) ? [...u[fieldName]] : undefined;
+      u[fieldName] = [...value];
+      renderSuperAdminPermissionsPanel();
+      try {
+        await updateDoc(doc(db, "users", userId), { [fieldName]: [...value] });
+      } catch (error) {
+        if (previous === undefined) delete u[fieldName]; else u[fieldName] = previous;
+        renderSuperAdminPermissionsPanel();
+        console.error('Jogosultság mentési hiba:', error);
+        alert('Nem sikerült elmenteni a jogosultságot. Ellenőrizd a kapcsolatot és a Firebase jogosultságokat, majd próbáld újra.');
+      }
+    }
+
     window.toggleUserCardPermission = async function(userId, cardId, isChecked) {
       const u = allUsers.find(x => x.id === userId);
       if (!u) return;
-      let currentCards = [...(u.adminCards || ALL_ADMIN_CARDS.map(c => c.id))];
-      if (isChecked && !currentCards.includes(cardId)) currentCards.push(cardId);
-      else if (!isChecked) currentCards = currentCards.filter(c => c !== cardId);
-      await updateDoc(doc(db, "users", userId), { adminCards: currentCards });
+      const currentCards = u.adminCards === undefined
+        ? ALL_ADMIN_CARDS.map(c => c.id)
+        : [...(u.adminCards || [])];
+      const nextCards = isChecked
+        ? [...new Set([...currentCards, cardId])]
+        : currentCards.filter(id => id !== cardId);
+      await saveUserPermissionArray(userId, 'adminCards', nextCards);
     };
 
     window.toggleUserActionPermission = async function(userId, actionId, isChecked) {
       const u = allUsers.find(x => x.id === userId);
       if (!u) return;
-      let currentActions = [...(u.actionPermissions || ALL_ACTION_PERMISSIONS.map(a => a.id))];
-      if (isChecked && !currentActions.includes(actionId)) currentActions.push(actionId);
-      else if (!isChecked) currentActions = currentActions.filter(a => a !== actionId);
-      await updateDoc(doc(db, "users", userId), { actionPermissions: currentActions });
+      const currentActions = u.actionPermissions === undefined
+        ? ALL_ACTION_PERMISSIONS.map(a => a.id)
+        : [...(u.actionPermissions || [])];
+      const nextActions = isChecked
+        ? [...new Set([...currentActions, actionId])]
+        : currentActions.filter(id => id !== actionId);
+      await saveUserPermissionArray(userId, 'actionPermissions', nextActions);
     };
 
     window.deleteShift = async function(shiftId) {
