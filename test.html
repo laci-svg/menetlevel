@@ -3251,7 +3251,7 @@
           '<summary class="flex items-center justify-between p-3 cursor-pointer hover:bg-slate-800/50 transition select-none">' +
             '<div>' +
               '<div class="text-xs font-bold text-slate-200">' + getUsernameFromEmail(shift.driverEmail) + '</div>' +
-              '<div class="text-[10px] text-emerald-400 font-semibold mt-0.5">🚗 ' + (shift.carPlate || '') + ' • 📅 ' + shift.startDate + ' ' + shift.startTime + '</div>' +
+             '<div class="text-[10px] text-emerald-400 font-semibold mt-0.5 flex items-center gap-1.5"><span>🏎️ ' + (shift.carPlate || '') + '</span><span class="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.2 rounded-full font-bold">📍 ' + shiftTrips.length + '. út</span><span>• 🗓️ ' + shift.startDate + ' ' + shift.startTime + '</span></div>' +
             '</div>' +
             '<span class="text-xs font-mono font-bold text-orange-400">' + totalKm + ' km</span>' +
           '</summary>' +
