@@ -3540,6 +3540,7 @@
     };
 
     window.editTrip = function(tripId) {
+  alert("Gomb megnyomva! Keresett út ID: " + tripId);
   const trips = Array.isArray(window.allTrips) ? window.allTrips : (typeof allTrips !== 'undefined' ? allTrips : []);
   const trip = trips.find(t => String(t.id) === String(tripId));
 
