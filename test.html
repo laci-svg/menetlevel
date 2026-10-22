@@ -3569,62 +3569,67 @@
   if (modal) modal.classList.remove('hidden');
 };
 
-    window.closeDriverEditTripModal = function() {
-      document.getElementById('driverEditTripModal').classList.add('hidden');
-    };
+   // Modal bezárása
+window.closeDriverEditTripModal = function() {
+  const modal = document.getElementById('driverEditTripModal');
+  if (modal) modal.classList.add('hidden');
+};
 
-    window.calculateDriverModalTripKm = function() {
-      const start = Number(document.getElementById('modalDriverTripStartKm').value) || 0;
-      const end = Number(document.getElementById('modalDriverTripEndKm').value) || 0;
-      const diff = end - start;
-      const el = document.getElementById('modalDriverTripCalcKm');
-      if (diff >= 0) el.value = diff + " km";
-      else el.value = "Hibás km!";
-    };
+// Megtett km dinamikus kiszámítása a modalban
+window.calculateDriverModalTripKm = function() {
+  const start = Number(document.getElementById('modalDriverTripStartKm').value) || 0;
+  const end = Number(document.getElementById('modalDriverTripEndKm').value) || 0;
+  const calcField = document.getElementById('modalDriverTripCalcKm');
+  
+  if (calcField) {
+    const diff = end - start;
+    calcField.value = diff >= 0 ? diff + ' km' : 'Hibás km!';
+  }
+};
 
-    window.saveDriverTripModalEdit = async function() {
-      const tripId = document.getElementById('driverEditingTripId').value;
-      const startKmRaw = document.getElementById('modalDriverTripStartKm').value;
-      const endKmRaw = document.getElementById('modalDriverTripEndKm').value;
-      const startKm = Number(startKmRaw);
-      const endKm = Number(endKmRaw);
-      const startLocation = document.getElementById('modalDriverTripStartLoc').value.trim();
-      const endLocation = document.getElementById('modalDriverTripEndLoc').value.trim();
-      const type = document.getElementById('modalDriverTripType').value;
-      const saveButton = document.querySelector('#driverEditTripModal button[onclick="window.saveDriverTripModalEdit()"]');
+// Módosítások elmentése a Firebase-be
+window.saveDriverTripModalEdit = async function() {
+  const tripId = document.getElementById('driverEditingTripId').value;
+  if (!tripId) return alert("A szerkesztendő út nem található.");
 
-      if (!tripId) return alert("Nem található a szerkesztendő út azonosítója.");
-      const existingTrip = (Array.isArray(window.allTrips) ? window.allTrips : allTrips).find(t => String(t.id) === String(tripId));
-      if (!existingTrip) return alert("Az út már nem található. Frissítsd az oldalt, majd próbáld újra.");
-      if (!currentUser || existingTrip.driverUid !== currentUser.uid) return alert("Csak a saját menetleveledet szerkesztheted.");
-      if (startKmRaw === '' || endKmRaw === '' || !Number.isFinite(startKm) || !Number.isFinite(endKm) || startKm < 0 || endKm < startKm) {
-        return alert("Hibás kilométeradat! A km értékek nem lehetnek negatívak, a záró km nem lehet kisebb a kezdőnél.");
-      }
-      if (!startLocation || !endLocation) return alert("Az indulási és érkezési cím megadása kötelező.");
-      if (!['work', 'private'].includes(type)) return alert("Válassz érvényes úttípust.");
+  const startKm = Number(document.getElementById('modalDriverTripStartKm').value) || 0;
+  const endKm = Number(document.getElementById('modalDriverTripEndKm').value) || 0;
+  const workKm = Math.max(0, endKm - startKm);
+  const type = document.getElementById('modalDriverTripType').value;
+  const isRural = document.getElementById('modalDriverTripIsRural').checked;
 
-      if (saveButton) { saveButton.disabled = true; saveButton.textContent = "Mentés..."; }
-      try {
-        await updateDoc(doc(db, "trips", tripId), {
-          type,
-          startLocation,
-          endLocation,
-          startKm,
-          endKm,
-          workKm: endKm - startKm,
-          passengerCount: Math.max(0, Number(document.getElementById('modalDriverTripPassengers').value) || 0),
-          isRuralTrip: document.getElementById('modalDriverTripIsRural').checked && type === 'work',
-          ruralKm: document.getElementById('modalDriverTripIsRural').checked && type === 'work' ? Math.max(0, Number(existingTrip.ruralKm || 0)) : 0
-        });
-        window.closeDriverEditTripModal();
-        alert("Az út adatai sikeresen elmentve.");
-      } catch (error) {
-        console.error("Sofőr út szerkesztési hiba:", error);
-        alert("Nem sikerült elmenteni az út adatait: " + (error?.message || error));
-      } finally {
-        if (saveButton) { saveButton.disabled = false; saveButton.textContent = "💾 Módosítás Mentése"; }
-      }
-    };
+  const saveButton = document.querySelector('#driverEditTripModal button[onclick="window.saveDriverTripModalEdit()"]');
+  if (saveButton) {
+    saveButton.disabled = true;
+    saveButton.textContent = "Mentés...";
+  }
+
+  try {
+    const existingTrip = (Array.isArray(window.allTrips) ? window.allTrips : allTrips).find(t => String(t.id) === String(tripId));
+
+    await db.collection('trips').doc(tripId).update({
+      type: type,
+      startLocation: document.getElementById('modalDriverTripStartLoc').value.trim(),
+      endLocation: document.getElementById('modalDriverTripEndLoc').value.trim(),
+      startKm: startKm,
+      endKm: endKm,
+      workKm: workKm,
+      passengerCount: Math.max(0, Number(document.getElementById('modalDriverTripPassengers').value) || 0),
+      isRuralTrip: isRural && type === 'work',
+      ruralKm: isRural && type === 'work' ? Math.max(0, Number(existingTrip?.ruralKm || 0)) : 0
+    });
+
+    window.closeDriverEditTripModal();
+  } catch (error) {
+    console.error("Sofőr út szerkesztési hiba:", error);
+    alert("Nem sikerült elmenteni az út adatait: " + (error?.message || error));
+  } finally {
+    if (saveButton) {
+      saveButton.disabled = false;
+      saveButton.textContent = "💾 Módosítás Mentése";
+    }
+  }
+};
 
     window.exportShiftPDF = function(shiftId, pdfType = 'all') {
       try {
