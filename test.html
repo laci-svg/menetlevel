@@ -3541,20 +3541,24 @@
     };
 
     window.editTrip = function(tripId) {
-  const trips = Array.isArray(window.allTrips) ? window.allTrips : allTrips;
+  const trips = Array.isArray(window.allTrips) ? window.allTrips : (typeof allTrips !== 'undefined' ? allTrips : []);
   const trip = trips.find(t => String(t.id) === String(tripId));
 
   if (!trip) return alert("A szerkesztendő út nem található.");
-  if (!activeShift || String(trip.shiftId) !== String(activeShift.id)) return alert("A sofőr felületén csak az aktuális műszak útja szerkeszthető.");
 
   // Popup mezőinek feltöltése
-  document.getElementById('driverEditingTripId').value = trip.id;
-  document.getElementById('modalDriverTripType').value = (trip.type === 'privat' ? 'private' : (trip.type || 'work'));
-  document.getElementById('modalDriverTripStartLoc').value = trip.startLocation || '';
-  document.getElementById('modalDriverTripEndLoc').value = trip.endLocation || '';
-  document.getElementById('modalDriverTripStartKm').value = trip.startKm ?? 0;
-  document.getElementById('modalDriverTripEndKm').value = trip.endKm ?? 0;
-  document.getElementById('modalDriverTripPassengers').value = trip.passengerCount ?? trip.passengers ?? 0;
+  const setVal = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.value = val;
+  };
+
+  setVal('driverEditingTripId', trip.id);
+  setVal('modalDriverTripType', (trip.type === 'privat' ? 'private' : (trip.type || 'work')));
+  setVal('modalDriverTripStartLoc', trip.startLocation || '');
+  setVal('modalDriverTripEndLoc', trip.endLocation || '');
+  setVal('modalDriverTripStartKm', trip.startKm ?? 0);
+  setVal('modalDriverTripEndKm', trip.endKm ?? 0);
+  setVal('modalDriverTripPassengers', trip.passengerCount ?? trip.passengers ?? 0);
   
   const isRuralCheck = document.getElementById('modalDriverTripIsRural');
   if (isRuralCheck) isRuralCheck.checked = (trip.isRuralTrip === true);
@@ -3564,15 +3568,23 @@
     window.calculateDriverModalTripKm();
   }
 
-  // Popup megjelenítése
+  // Popup megjelenítése (megnyitja és eltünteti a rejtést)
   const modal = document.getElementById('driverEditTripModal');
-  if (modal) modal.classList.remove('hidden');
+  if (modal) {
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+  } else {
+    alert("Hiba: A felugró ablak nem található a HTML-ben!");
+  }
 };
 
-   // Modal bezárása
+// Modal bezárása
 window.closeDriverEditTripModal = function() {
   const modal = document.getElementById('driverEditTripModal');
-  if (modal) modal.classList.add('hidden');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.style.display = 'none';
+  }
 };
 
 // Megtett km dinamikus kiszámítása a modalban
