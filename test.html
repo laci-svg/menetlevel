@@ -3229,6 +3229,8 @@
       activeContainer.innerHTML = sortedActiveShifts.map((shift) => {
         let shiftTrips = sortTripsByKmAscending(allTrips.filter(t => t.shiftId === shift.id));
         const totalKm = shiftTrips.reduce((sum, t) => sum + Number(t.workKm || 0), 0);
+        // Az elmentett utak száma a műszak összecsukott fejlécében is látszik.
+        const savedTripCount = shiftTrips.length;
 
         const tripsHtml = shiftTrips.map((t, idx) => {
           const isPriv = (t.type === 'private' || t.type === 'privat');
@@ -3250,7 +3252,7 @@
         return '<details class="group border border-emerald-500/40 bg-slate-950 rounded-xl overflow-hidden">' +
           '<summary class="flex items-center justify-between p-3 cursor-pointer hover:bg-slate-800/50 transition select-none">' +
             '<div>' +
-              '<div class="text-xs font-bold text-slate-200">' + getUsernameFromEmail(shift.driverEmail) + '</div>' +
+              '<div class="flex flex-wrap items-center gap-2"><span class="text-xs font-bold text-slate-200">' + getUsernameFromEmail(shift.driverEmail) + '</span><span class="inline-flex items-center rounded-full border border-teal-700 bg-teal-950/70 px-2 py-0.5 text-[10px] font-bold text-teal-300">' + savedTripCount + ' ' + (savedTripCount === 1 ? 'cím' : 'cím') + '</span></div>' +
               '<div class="text-[10px] text-emerald-400 font-semibold mt-0.5">🚗 ' + (shift.carPlate || '') + ' • 📅 ' + shift.startDate + ' ' + shift.startTime + '</div>' +
             '</div>' +
             '<span class="text-xs font-mono font-bold text-orange-400">' + totalKm + ' km</span>' +
