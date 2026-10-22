@@ -8,21 +8,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
   <style>
-    /* A fő fejléc mobilon is elérhető marad, az adminváltó gomb nem szorulhat ki. */
-    #appScreen > div:first-child {
-      position: sticky;
-      top: max(0px, env(safe-area-inset-top));
-      z-index: 60;
-      gap: .65rem;
-      flex-wrap: wrap;
-    }
-    #appScreen > div:first-child > div:first-child { min-width: 0; flex: 1 1 8rem; }
-    #appScreen > div:first-child > div:last-child { flex: 0 0 auto; margin-left: auto; }
-    #toggleAdminBtn, #appScreen > div:first-child button[onclick="logout()"] { flex-shrink: 0; white-space: nowrap; }
-    @media (max-width: 420px) {
-      #appScreen > div:first-child { padding: .55rem; }
-      #toggleAdminBtn, #appScreen > div:first-child button[onclick="logout()"] { padding: .45rem .55rem; font-size: .68rem; }
-    }
     /* Admin kártyák: asztali gépen rendezett, egymás melletti oszlopok. */
     #adminSection.hidden, #driverViewContainer.hidden { display: none !important; }
     @media (min-width: 1100px) {
@@ -2804,19 +2789,17 @@
         const rowClass = isPrivate ? "border-b border-amber-900/40 bg-amber-950/30 text-amber-200" : "border-b border-slate-800 hover:bg-slate-800/50";
 
         return '<tr class="' + rowClass + '">' +
-      '<td class="p-2.5 font-bold ' + (isPrivate ? 'text-amber-400' : 'text-slate-400') + '">' + (index + 1) + '.</td>' +
-      '<td class="p-2.5 font-mono">' + (t.time || '') + '</td>' +
-      '<td class="p-2.5 font-medium">' + (t.startLocation || '') + ' &rarr; ' + (t.endLocation || '') + (isPrivate ? ' <span class="text-xs bg-amber-900/60 text-amber-300 px-1.5 py-0.5 rounded ml-2 font-normal">Privát</span>' : '') + (t.isRuralTrip === true && !isPrivate ? ' <span class="inline-flex items-center gap-1 text-[10px] bg-teal-950 text-teal-200 border border-teal-700 px-1.5 py-0.5 rounded-md ml-1 font-bold">🛣️ VIDÉKI CÍM · ' + Math.max(0, Number(t.ruralKm || 0)) + ' km</span>' : '') + '</td>' +
-      '<td class="p-2.5 text-right font-mono text-slate-400">' + (t.startKm || 0) + ' - ' + (t.endKm || 0) + '</td>' +
-      '<td class="p-2.5 text-right font-mono font-semibold ' + (isPrivate ? 'text-amber-400' : '') + '">' + (t.workKm || 0) + ' km</td>' +
-      '<td class="p-2.5 text-center">' +
-        '<button type="button" onclick="window.editDriverTripModalOpen(\'' + t.id + '\')" class="text-xs bg-slate-800 hover:bg-slate-700 p-1 px-2 rounded border border-slate-700 text-slate-200" title="Út szerkesztése">✏️</button>' +
-      '</td>' +
-    '</tr>';
-  }).join('');
-};
-
-window.changeShiftHoursMonth = function(direction) {
+          '<td class="p-2.5 font-bold ' + (isPrivate ? 'text-amber-400' : 'text-slate-400') + '">' + (index + 1) + '.</td>' +
+          '<td class="p-2.5 font-mono">' + (t.time || '') + '</td>' +
+          '<td class="p-2.5 font-medium">' + (t.startLocation || '') + ' &rarr; ' + (t.endLocation || '') + (isPrivate ? ' <span class="text-xs bg-amber-900/60 text-amber-300 px-1.5 py-0.5 rounded ml-2 font-normal">Privát</span>' : '') + (t.isRuralTrip === true && !isPrivate ? ' <span class="inline-flex items-center gap-1 text-[10px] bg-teal-950 text-teal-200 border border-teal-700 px-1.5 py-0.5 rounded-md ml-1 font-bold">🛣️ VIDÉKI CÍM · ' + Math.max(0, Number(t.ruralKm || 0)) + ' km</span>' : '') + '</td>' +
+          '<td class="p-2.5 text-right font-mono text-slate-400">' + (t.startKm || 0) + ' - ' + (t.endKm || 0) + '</td>' +
+          '<td class="p-2.5 text-right font-mono font-semibold ' + (isPrivate ? 'text-amber-400' : '') + '">' + (t.workKm || 0) + ' km</td>' +
+          '<td class="p-2.5 text-center">' +
+            '<button type="button" onclick="window.editDriverTripModalOpen(&quot;' + String(t.id).replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '&quot;)" class="text-xs bg-slate-800 hover:bg-slate-700 p-1 px-2 rounded border border-slate-700 text-slate-200" title="Út szerkesztése">✏️</button>' +
+          '</td>' +
+        '</tr>';
+      }).join('');
+    };
     
     window.changeShiftHoursMonth = function(direction) {
       selectedShiftHoursMonthDate = new Date(selectedShiftHoursMonthDate.getFullYear(), selectedShiftHoursMonthDate.getMonth() + direction, 1);
@@ -3244,10 +3227,8 @@ window.changeShiftHoursMonth = function(direction) {
       const sortedActiveShifts = [...activeShifts].sort((a, b) => getUsernameFromEmail(a.driverEmail).localeCompare(getUsernameFromEmail(b.driverEmail)));
 
       activeContainer.innerHTML = sortedActiveShifts.map((shift) => {
-        let shiftTrips = sortTripsByKmAscending(allTrips.filter(t => String(t.shiftId) === String(shift.id)));
+        let shiftTrips = sortTripsByKmAscending(allTrips.filter(t => t.shiftId === shift.id));
         const totalKm = shiftTrips.reduce((sum, t) => sum + Number(t.workKm || 0), 0);
-        // Az elmentett címek száma a műszak összecsukott fejlécében is látszik.
-        const savedTripCount = shiftTrips.length;
 
         const tripsHtml = shiftTrips.map((t, idx) => {
           const isPriv = (t.type === 'private' || t.type === 'privat');
@@ -3269,7 +3250,7 @@ window.changeShiftHoursMonth = function(direction) {
         return '<details class="group border border-emerald-500/40 bg-slate-950 rounded-xl overflow-hidden">' +
           '<summary class="flex items-center justify-between p-3 cursor-pointer hover:bg-slate-800/50 transition select-none">' +
             '<div>' +
-              '<div class="flex flex-wrap items-center gap-2"><span class="text-xs font-bold text-slate-200">' + getUsernameFromEmail(shift.driverEmail) + '</span><span class="inline-flex items-center rounded-full border border-teal-700 bg-teal-950/70 px-2 py-0.5 text-[10px] font-bold text-teal-300">' + savedTripCount + ' cím</span></div>' +
+              '<div class="text-xs font-bold text-slate-200">' + getUsernameFromEmail(shift.driverEmail) + '</div>' +
               '<div class="text-[10px] text-emerald-400 font-semibold mt-0.5">🚗 ' + (shift.carPlate || '') + ' • 📅 ' + shift.startDate + ' ' + shift.startTime + '</div>' +
             '</div>' +
             '<span class="text-xs font-mono font-bold text-orange-400">' + totalKm + ' km</span>' +
@@ -3553,14 +3534,6 @@ window.changeShiftHoursMonth = function(direction) {
         if (!modal) throw new Error('A szerkesztőablak (driverEditTripModal) nem található.');
         modal.classList.remove('hidden');
         modal.classList.add('flex');
-        const panel = document.getElementById('driverEditTripModalPanel');
-        if (panel) {
-          panel.scrollTop = 0;
-          const vv = window.visualViewport;
-          const visibleHeight = vv ? vv.height : window.innerHeight;
-          panel.style.maxHeight = Math.max(180, visibleHeight - 16) + 'px';
-          modal.style.paddingTop = (vv ? Math.max(0, vv.offsetTop) : 0) + 'px';
-        }
       } catch (error) {
         console.error('Sofőr út szerkesztő megnyitási hiba:', error);
         alert('Nem sikerült megnyitni az út szerkesztését: ' + (error && error.message ? error.message : error));
@@ -3589,38 +3562,8 @@ window.changeShiftHoursMonth = function(direction) {
     };
 
     window.closeDriverEditTripModal = function() {
-      const modal = document.getElementById('driverEditTripModal');
-      if (modal) {
-        modal.classList.add('hidden');
-        modal.style.paddingTop = '';
-      }
+      document.getElementById('driverEditTripModal').classList.add('hidden');
     };
-
-    // A mobil billentyűzet megjelenésekor a szerkesztőablak a látható területhez igazodik.
-    (function bindDriverEditViewport() {
-      const adjust = () => {
-        const modal = document.getElementById('driverEditTripModal');
-        const panel = document.getElementById('driverEditTripModalPanel');
-        if (!modal || !panel || modal.classList.contains('hidden')) return;
-        const vv = window.visualViewport;
-        const visibleHeight = vv ? vv.height : window.innerHeight;
-        panel.style.maxHeight = Math.max(180, visibleHeight - 16) + 'px';
-        modal.style.paddingTop = (vv ? Math.max(0, vv.offsetTop) : 0) + 'px';
-      };
-      if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', adjust);
-        window.visualViewport.addEventListener('scroll', adjust);
-      }
-      window.addEventListener('resize', adjust);
-      document.addEventListener('focusin', (event) => {
-        if (!event.target || !event.target.closest || !event.target.closest('#driverEditTripModal')) return;
-        setTimeout(() => {
-          adjust();
-          const panel = document.getElementById('driverEditTripModalPanel');
-          if (panel && event.target.scrollIntoView) event.target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-        }, 120);
-      });
-    })();
 
     window.calculateDriverModalTripKm = function() {
       const start = Number(document.getElementById('modalDriverTripStartKm').value) || 0;
@@ -3645,15 +3588,7 @@ window.changeShiftHoursMonth = function(direction) {
       if (!tripId) return alert("Nem található a szerkesztendő út azonosítója.");
       const existingTrip = (Array.isArray(window.allTrips) ? window.allTrips : allTrips).find(t => String(t.id) === String(tripId));
       if (!existingTrip) return alert("Az út már nem található. Frissítsd az oldalt, majd próbáld újra.");
-      if (!currentUser) return alert("A szerkesztéshez be kell jelentkezned.");
-      const linkedShift = (Array.isArray(allShifts) ? allShifts : []).find(sh => String(sh.id) === String(existingTrip.shiftId));
-      const belongsToCurrentDriver = existingTrip.driverUid === currentUser.uid
-        || (!!currentUser.email && String(existingTrip.driverEmail || '').toLowerCase() === String(currentUser.email).toLowerCase())
-        || (!!linkedShift && (linkedShift.driverUid === currentUser.uid
-          || (!!currentUser.email && String(linkedShift.driverEmail || '').toLowerCase() === String(currentUser.email).toLowerCase())))
-        // Régi adatoknál hiányozhat a sofőr azonosítója; az aktív műszak saját útjai ettől még szerkeszthetők.
-        || (!!activeShift && String(existingTrip.shiftId) === String(activeShift.id));
-      if (!belongsToCurrentDriver) return alert("Csak a saját menetleveledet szerkesztheted.");
+      if (!currentUser || existingTrip.driverUid !== currentUser.uid) return alert("Csak a saját menetleveledet szerkesztheted.");
       if (startKmRaw === '' || endKmRaw === '' || !Number.isFinite(startKm) || !Number.isFinite(endKm) || startKm < 0 || endKm < startKm) {
         return alert("Hibás kilométeradat! A km értékek nem lehetnek negatívak, a záró km nem lehet kisebb a kezdőnél.");
       }
@@ -3800,8 +3735,8 @@ window.changeShiftHoursMonth = function(direction) {
   </script>
 
   <!-- SOFŐR ÚT SZERKESZTŐ POPUP MODAL (A SCRIPT TAG-EN KÍVÜL) -->
-  <div id="driverEditTripModal" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-[100] hidden flex items-start sm:items-center justify-center p-2 sm:p-4" style="overscroll-behavior:contain;">
-    <div id="driverEditTripModalPanel" class="bg-slate-900 border-2 border-orange-500/60 rounded-2xl max-w-sm w-full overflow-y-auto overscroll-contain p-3 sm:p-5 space-y-3 shadow-2xl" style="max-height:calc(100dvh - 16px);-webkit-overflow-scrolling:touch;">
+  <div id="driverEditTripModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-2 sm:p-4">
+    <div class="bg-slate-900 border-2 border-orange-500/60 rounded-2xl max-w-md w-full max-h-[92dvh] overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-4 shadow-2xl">
       <div class="border-b border-slate-800 pb-2 flex justify-between items-center">
         <h3 class="text-base font-bold text-orange-400 flex items-center gap-2">
           <span>✏️</span> Út Módosítása
@@ -3861,7 +3796,7 @@ window.changeShiftHoursMonth = function(direction) {
         </div>
       </div>
 
-      <div id="driverEditTripModalActions" class="pt-2 flex gap-2 sticky bottom-0 bg-slate-900/95 pb-1">
+      <div class="pt-2 flex gap-2">
         <button type="button" onclick="window.saveDriverTripModalEdit()" class="flex-1 bg-gradient-to-r from-orange-500 to-red-600 hover:opacity-90 text-white py-2.5 rounded-xl font-bold text-xs shadow-lg transition">
           💾 Módosítás Mentése
         </button>
