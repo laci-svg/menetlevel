@@ -3540,6 +3540,8 @@
     };
 
 window.editTrip = function(tripId) {
+  if (!tripId) return;
+
   const trips = Array.isArray(window.allTrips) ? window.allTrips : (typeof allTrips !== 'undefined' ? allTrips : []);
   const trip = trips.find(t => String(t.id) === String(tripId));
 
@@ -3548,7 +3550,7 @@ window.editTrip = function(tripId) {
     return;
   }
 
-  // Popup mezőinek feltöltése
+  // Mezők feltöltése
   const setVal = function(id, val) {
     const el = document.getElementById(id);
     if (el) el.value = val;
@@ -3575,8 +3577,6 @@ window.editTrip = function(tripId) {
   if (modal) {
     modal.classList.remove('hidden');
     modal.style.display = 'flex';
-  } else {
-    alert("Hiba: A felugró ablak nem található a HTML-ben!");
   }
 };
 
