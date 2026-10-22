@@ -76,7 +76,18 @@
       #tripFormCard .grid { gap: 0.35rem !important; }
       #tripFormCard input, #tripFormCard select { min-height: 34px; }
     }
-  </style>
+  #driverEditTripModal .driver-edit-panel { box-sizing:border-box; }
+    #driverEditTripModal input:not([type="checkbox"]),
+    #driverEditTripModal select { min-width:0; }
+    @media (max-width: 640px) {
+      #driverEditTripModal .driver-edit-panel { width:100%; max-width:360px; padding:10px; gap:8px; }
+      #driverEditTripModal .driver-edit-panel .space-y-3 > :not([hidden]) ~ :not([hidden]) { margin-top:8px; }
+      #driverEditTripModal .driver-edit-panel input:not([type="checkbox"]),
+      #driverEditTripModal .driver-edit-panel select { padding:8px; font-size:14px; }
+      #driverEditTripModal .driver-edit-panel label { margin-bottom:3px; }
+      #driverEditTripModal .driver-edit-panel button { padding-top:9px; padding-bottom:9px; }
+    }
+</style>
 </head>
 <body class="bg-slate-950 text-slate-100 font-sans min-h-screen bg-cover bg-center bg-fixed transition-all duration-500">
 
@@ -3229,8 +3240,6 @@
       activeContainer.innerHTML = sortedActiveShifts.map((shift) => {
         let shiftTrips = sortTripsByKmAscending(allTrips.filter(t => t.shiftId === shift.id));
         const totalKm = shiftTrips.reduce((sum, t) => sum + Number(t.workKm || 0), 0);
-        // Az elmentett utak száma a műszak összecsukott fejlécében is látszik.
-        const savedTripCount = shiftTrips.length;
 
         const tripsHtml = shiftTrips.map((t, idx) => {
           const isPriv = (t.type === 'private' || t.type === 'privat');
@@ -3252,7 +3261,7 @@
         return '<details class="group border border-emerald-500/40 bg-slate-950 rounded-xl overflow-hidden">' +
           '<summary class="flex items-center justify-between p-3 cursor-pointer hover:bg-slate-800/50 transition select-none">' +
             '<div>' +
-              '<div class="flex flex-wrap items-center gap-2"><span class="text-xs font-bold text-slate-200">' + getUsernameFromEmail(shift.driverEmail) + '</span><span class="inline-flex items-center rounded-full border border-teal-700 bg-teal-950/70 px-2 py-0.5 text-[10px] font-bold text-teal-300">' + savedTripCount + ' ' + (savedTripCount === 1 ? 'cím' : 'cím') + '</span></div>' +
+              '<div class="text-xs font-bold text-slate-200">' + getUsernameFromEmail(shift.driverEmail) + '</div>' +
               '<div class="text-[10px] text-emerald-400 font-semibold mt-0.5">🚗 ' + (shift.carPlate || '') + ' • 📅 ' + shift.startDate + ' ' + shift.startTime + '</div>' +
             '</div>' +
             '<span class="text-xs font-mono font-bold text-orange-400">' + totalKm + ' km</span>' +
@@ -3516,6 +3525,7 @@
         const trips = Array.isArray(window.allTrips) ? window.allTrips : (typeof allTrips !== 'undefined' ? allTrips : []);
         const trip = trips.find(t => String(t.id) === String(tripId));
         if (!trip) return alert("Az út nem található a betöltött utak között. Frissítsd az oldalt, majd próbáld újra!");
+        if (activeShift && String(trip.shiftId) !== String(activeShift.id)) return alert("Csak az aktuális műszak útja szerkeszthető ezen a felületen.");
 
         const field = (id) => {
           const el = document.getElementById(id);
@@ -3536,6 +3546,9 @@
         if (!modal) throw new Error('A szerkesztőablak (driverEditTripModal) nem található.');
         modal.classList.remove('hidden');
         modal.classList.add('flex');
+        document.body.dataset.driverEditPreviousOverflow = document.body.style.overflow || '';
+        document.body.style.overflow = 'hidden';
+        if (window.adjustDriverEditModalViewport) requestAnimationFrame(window.adjustDriverEditModalViewport);
       } catch (error) {
         console.error('Sofőr út szerkesztő megnyitási hiba:', error);
         alert('Nem sikerült megnyitni az út szerkesztését: ' + (error && error.message ? error.message : error));
@@ -3565,7 +3578,44 @@
 
     window.closeDriverEditTripModal = function() {
       document.getElementById('driverEditTripModal').classList.add('hidden');
+      document.body.style.overflow = document.body.dataset.driverEditPreviousOverflow || '';
     };
+
+    window.adjustDriverEditModalViewport = function() {
+      const modal = document.getElementById('driverEditTripModal');
+      const panel = modal && modal.querySelector('.driver-edit-panel');
+      if (!modal || !panel || modal.classList.contains('hidden')) return;
+      const viewportHeight = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+      modal.style.height = viewportHeight + 'px';
+      panel.style.maxHeight = Math.max(180, viewportHeight - 16) + 'px';
+      const focused = document.activeElement;
+      if (focused && panel.contains(focused)) {
+        requestAnimationFrame(() => {
+          const fieldRect = focused.getBoundingClientRect();
+          const panelRect = panel.getBoundingClientRect();
+          if (fieldRect.bottom > panelRect.bottom - 12) panel.scrollTop += fieldRect.bottom - panelRect.bottom + 24;
+          else if (fieldRect.top < panelRect.top + 8) panel.scrollTop -= panelRect.top - fieldRect.top + 12;
+        });
+      }
+    };
+
+    (function bindDriverEditMobileViewport() {
+      const modal = document.getElementById('driverEditTripModal');
+      if (!modal) return;
+      modal.addEventListener('focusin', function() {
+        setTimeout(() => {
+          window.adjustDriverEditModalViewport();
+          const panel = modal.querySelector('.driver-edit-panel');
+          const focused = document.activeElement;
+          if (panel && focused && panel.contains(focused)) focused.scrollIntoView({block:'nearest', behavior:'smooth'});
+        }, 120);
+      });
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', window.adjustDriverEditModalViewport);
+        window.visualViewport.addEventListener('scroll', window.adjustDriverEditModalViewport);
+      }
+      window.addEventListener('resize', window.adjustDriverEditModalViewport);
+    })();
 
     window.calculateDriverModalTripKm = function() {
       const start = Number(document.getElementById('modalDriverTripStartKm').value) || 0;
@@ -3590,7 +3640,12 @@
       if (!tripId) return alert("Nem található a szerkesztendő út azonosítója.");
       const existingTrip = (Array.isArray(window.allTrips) ? window.allTrips : allTrips).find(t => String(t.id) === String(tripId));
       if (!existingTrip) return alert("Az út már nem található. Frissítsd az oldalt, majd próbáld újra.");
-      if (!currentUser || existingTrip.driverUid !== currentUser.uid) return alert("Csak a saját menetleveledet szerkesztheted.");
+      if (!currentUser) return alert("A szerkesztéshez be kell jelentkezned.");
+      const owningShift = (Array.isArray(window.allShifts) ? window.allShifts : allShifts).find(sh => String(sh.id) === String(existingTrip.shiftId));
+      const ownerUid = existingTrip.driverUid || (owningShift && owningShift.driverUid);
+      const ownerEmail = existingTrip.driverEmail || (owningShift && owningShift.driverEmail);
+      const isOwnTrip = (ownerUid && ownerUid === currentUser.uid) || (ownerEmail && currentUser.email && ownerEmail.toLowerCase() === currentUser.email.toLowerCase());
+      if (!isOwnTrip) return alert("Csak a saját menetleveledet szerkesztheted.");
       if (startKmRaw === '' || endKmRaw === '' || !Number.isFinite(startKm) || !Number.isFinite(endKm) || startKm < 0 || endKm < startKm) {
         return alert("Hibás kilométeradat! A km értékek nem lehetnek negatívak, a záró km nem lehet kisebb a kezdőnél.");
       }
@@ -3737,8 +3792,8 @@
   </script>
 
   <!-- SOFŐR ÚT SZERKESZTŐ POPUP MODAL (A SCRIPT TAG-EN KÍVÜL) -->
-  <div id="driverEditTripModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-2 sm:p-4">
-    <div class="bg-slate-900 border-2 border-orange-500/60 rounded-2xl max-w-md w-full max-h-[92dvh] overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-4 shadow-2xl">
+  <div id="driverEditTripModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-start sm:items-center justify-center p-2 sm:p-4 overflow-y-auto" style="height:100dvh; overscroll-behavior:contain;">
+    <div class="driver-edit-panel bg-slate-900 border-2 border-orange-500/60 rounded-2xl max-w-sm w-full p-3 sm:p-4 space-y-3 shadow-2xl my-1 sm:my-4 overflow-y-auto overscroll-contain" style="max-height:calc(100dvh - 1rem); -webkit-overflow-scrolling:touch;">
       <div class="border-b border-slate-800 pb-2 flex justify-between items-center">
         <h3 class="text-base font-bold text-orange-400 flex items-center gap-2">
           <span>✏️</span> Út Módosítása
