@@ -3539,14 +3539,17 @@
       }
     };
 
-   window.editTrip = function(tripId) {
+window.editTrip = function(tripId) {
   const trips = Array.isArray(window.allTrips) ? window.allTrips : (typeof allTrips !== 'undefined' ? allTrips : []);
   const trip = trips.find(t => String(t.id) === String(tripId));
 
-  if (!trip) return alert("A szerkesztendő út nem található.");
+  if (!trip) {
+    alert("A szerkesztendő út nem található.");
+    return;
+  }
 
   // Popup mezőinek feltöltése
-  const setVal = (id, val) => {
+  const setVal = function(id, val) {
     const el = document.getElementById(id);
     if (el) el.value = val;
   };
@@ -3562,12 +3565,12 @@
   const isRuralCheck = document.getElementById('modalDriverTripIsRural');
   if (isRuralCheck) isRuralCheck.checked = (trip.isRuralTrip === true);
 
-  // Kiszámolt km frissítése a modalban
+  // Kiszámolt km frissítése
   if (typeof window.calculateDriverModalTripKm === 'function') {
     window.calculateDriverModalTripKm();
   }
 
-  // Popup megjelenítése
+  // Popup megnyitása
   const modal = document.getElementById('driverEditTripModal');
   if (modal) {
     modal.classList.remove('hidden');
