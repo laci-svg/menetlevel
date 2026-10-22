@@ -76,81 +76,8 @@
       #tripFormCard .grid { gap: 0.35rem !important; }
       #tripFormCard input, #tripFormCard select { min-height: 34px; }
     }
-
-    /* Modern admin dashboard: fixed sidebar on desktop, existing card logic remains intact. */
-    @media (min-width: 1100px) {
-      #adminSection { position: relative; padding-left: 228px; max-width: 1740px; }
-      #adminModernSidebar { position: absolute; top: 0; left: 0; width: 210px; min-height: 100%; }
-    }
-    .admin-modern-sidebar { background: linear-gradient(165deg, rgba(7,26,47,.98), rgba(8,19,36,.98)); border: 1px solid rgba(34,211,238,.22); border-radius: 18px; padding: 14px 10px; box-shadow: 0 18px 40px rgba(0,0,0,.28); display:flex; flex-direction:column; gap:5px; align-self:stretch; }
-    .admin-sidebar-brand { display:flex; align-items:center; gap:10px; padding:7px 7px 16px; margin-bottom:6px; border-bottom:1px solid rgba(148,163,184,.15); }
-    .admin-brand-icon { display:grid; place-items:center; width:38px; height:38px; border-radius:12px; background:linear-gradient(135deg,rgba(6,182,212,.28),rgba(20,184,166,.12)); border:1px solid rgba(45,212,191,.3); font-size:20px; }
-    .admin-sidebar-brand strong { display:block; color:#e2faff; font-size:13px; letter-spacing:.01em; }
-    .admin-sidebar-brand small { display:block; color:#7f9bb2; font-size:10px; margin-top:3px; }
-    .admin-sidebar-label { color:#5e829b; font-size:9px; font-weight:800; letter-spacing:.16em; padding:8px 10px 4px; }
-    .admin-nav-item { display:flex; align-items:center; gap:10px; width:100%; text-align:left; border:1px solid transparent; border-radius:10px; padding:10px 11px; color:#b8cadd; font-size:11px; font-weight:650; background:transparent; }
-    .admin-nav-item span { width:19px; text-align:center; color:#6ccfdf; font-size:15px; }
-    .admin-nav-item:hover { color:#f0fdff; background:rgba(15,118,145,.16); border-color:rgba(34,211,238,.15); }
-    .admin-nav-item.active { color:#ecfeff; background:linear-gradient(100deg,rgba(8,145,178,.35),rgba(13,148,136,.17)); border-color:rgba(45,212,191,.35); box-shadow:inset 3px 0 #2dd4bf; }
-    .admin-nav-item.active span { color:#5eead4; }
-    .admin-sidebar-footer { margin-top:auto; padding:14px 8px 3px; color:#68869b; font-size:9px; border-top:1px solid rgba(148,163,184,.13); }
-    .admin-status-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:#2dd4bf; margin-right:6px; box-shadow:0 0 8px rgba(45,212,191,.6); }
-    #adminSection > .flex.justify-between { background:linear-gradient(100deg,rgba(8,47,73,.9),rgba(15,23,42,.92)) !important; border-color:rgba(34,211,238,.25) !important; border-radius:15px !important; min-height:58px; }
-    .admin-card { border-radius:15px !important; backdrop-filter:blur(10px); }
-    .admin-card > div:first-child { background:linear-gradient(100deg,rgba(15,35,58,.97),rgba(15,23,42,.9)); }
-    @media (max-width:1099px) { #adminModernSidebar { display:none; } #adminSection { padding-left:0; } }
-    @media (max-width:768px) { #adminModernSidebar { display:none !important; } #adminSection { padding-left:0 !important; } }
-  </style>
-
-  <style id="admin-modern-layout-correction">
-    /* Javított admin-elrendezés: a régi, teljes szélességű kártyák ne törjék szét a rácsot. */
-    body { background-color:#061321 !important; background-image:radial-gradient(ellipse at 85% 0%, rgba(8,145,178,.18), transparent 38%), linear-gradient(145deg,#061321,#0b1728 58%,#071b2a) !important; background-attachment:fixed !important; }
-    @media (min-width:1100px) {
-      #adminSection { display:grid !important; grid-template-columns:repeat(3,minmax(0,1fr)) !important; align-items:start !important; gap:14px !important; width:calc(100% - 28px) !important; max-width:none !important; margin:12px 14px 28px 14px !important; padding-left:230px !important; box-sizing:border-box !important; }
-      #adminModernSidebar { position:absolute !important; left:0 !important; top:0 !important; width:210px !important; min-height:100% !important; box-sizing:border-box !important; }
-      #adminSection > .flex.justify-between { grid-column:1 / -1 !important; width:100% !important; min-width:0 !important; }
-      #adminSection > .admin-card { grid-column:auto !important; width:100% !important; min-width:0 !important; margin:0 !important; align-self:start !important; }
-      #card_combined_alerts, #card_rural_km, #card_announcements, #card_pdf { grid-column:auto !important; }
-      #superAdminSection, #adminSection > .grid { grid-column:1 / -1 !important; min-width:0 !important; }
-      #card_vehicle_management, #card_vehicle_status, #card_active_shifts, #card_closed_shifts, #card_shift_hours, #card_stats, #card_km_stats, #card_admin_wall, #card_driver_wall, #card_overruns, #card_rural_km, #card_pdf { min-width:0 !important; }
-    }
-    @media (min-width:769px) and (max-width:1099px) {
-      #adminSection { display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)) !important; gap:12px !important; width:calc(100% - 24px) !important; margin:12px !important; padding-left:0 !important; }
-      #adminSection > .flex.justify-between, #superAdminSection, #adminSection > .grid { grid-column:1 / -1 !important; }
-      #adminSection > .admin-card { grid-column:auto !important; width:100% !important; min-width:0 !important; margin:0 !important; }
-      #adminModernSidebar { display:none !important; }
-    }
-    @media (max-width:768px) {
-      #adminSection { display:flex !important; flex-direction:column !important; gap:10px !important; width:calc(100% - 20px) !important; margin:10px !important; padding-left:0 !important; }
-      #adminSection > * { width:100% !important; min-width:0 !important; }
-      #adminModernSidebar { display:none !important; }
-    }
-    #adminSection > .admin-card { overflow:hidden; border-radius:14px !important; background:rgba(7,20,36,.96) !important; border-color:rgba(34,211,238,.22) !important; box-shadow:0 8px 24px rgba(0,0,0,.18) !important; }
-    #adminSection > .admin-card > div:first-child { min-width:0; overflow-wrap:anywhere; }
-    #adminSection > .admin-card > div:first-child h3 { font-size:12px !important; }
-    #adminSection > .flex.justify-between { backdrop-filter:blur(12px); }
-    .admin-nav-highlight { outline:2px solid rgba(45,212,191,.8); outline-offset:2px; }
   </style>
 </head>
-
-  <script>
-    function adminNavigateTo(id, button) {
-      const target = document.getElementById(id);
-      if (!target) return;
-      if (button) {
-        document.querySelectorAll('.admin-nav-item').forEach(item => item.classList.remove('active'));
-        button.classList.add('active');
-      }
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      target.classList.add('admin-nav-highlight');
-      window.setTimeout(() => target.classList.remove('admin-nav-highlight'), 900);
-    }
-  </script>
-  <style>
-    .admin-nav-highlight { animation: adminNavHighlight .85s ease-out; }
-    @keyframes adminNavHighlight { 0% { box-shadow: 0 0 0 2px rgba(45,212,191,.7), 0 0 25px rgba(45,212,191,.22); } 100% { box-shadow: none; } }
-  </style>
-
 <body class="bg-slate-950 text-slate-100 font-sans min-h-screen bg-cover bg-center bg-fixed transition-all duration-500">
 
   <!-- BEJELENTKEZÉSI KÉPERNYŐ -->
@@ -203,20 +130,7 @@
 
     <!-- ADMIN FELÜLET CONTAINER -->
     <div id="adminSection" class="hidden max-w-6xl mx-auto space-y-4">
-      <aside id="adminModernSidebar" aria-label="Admin menü" class="admin-modern-sidebar">
-        <div class="admin-sidebar-brand"><span class="admin-brand-icon">🚐</span><div><strong>Admin felület</strong><small>Menetlevél rendszer</small></div></div>
-        <div class="admin-sidebar-label">MENÜ</div>
-        <button type="button" class="admin-nav-item active" onclick="adminNavigateTo('card_stats', this)"><span>▦</span> Áttekintés</button>
-        <button type="button" class="admin-nav-item" onclick="adminNavigateTo('card_active_shifts', this)"><span>◷</span> Élő műszakok</button>
-        <button type="button" class="admin-nav-item" onclick="adminNavigateTo('card_closed_shifts', this)"><span>▣</span> Lezárt műszakok</button>
-        <button type="button" class="admin-nav-item" onclick="adminNavigateTo('card_shift_hours', this)"><span>◴</span> Műszakórák</button>
-        <button type="button" class="admin-nav-item" onclick="adminNavigateTo('card_rural_km', this)"><span>⌖</span> Vidéki kilométerek</button>
-        <button type="button" class="admin-nav-item" onclick="adminNavigateTo('card_combined_alerts', this)"><span>⚠</span> Figyelmeztetések</button>
-        <button type="button" class="admin-nav-item" onclick="adminNavigateTo('card_admin_wall', this)"><span>▤</span> Admin üzenőfal</button>
-        <button type="button" class="admin-nav-item" onclick="adminNavigateTo('card_pdf', this)"><span>▧</span> PDF-ek</button>
-        <button type="button" class="admin-nav-item" onclick="adminNavigateTo('superAdminSection', this)"><span>⚙</span> Jogosultságok</button>
-        <div class="admin-sidebar-footer"><span class="admin-status-dot"></span> Rendszer áttekintés</div>
-      </aside>
+      
       <div class="flex justify-between items-center bg-slate-900/80 p-3 rounded-xl border border-slate-800">
         <h2 class="text-sm font-bold text-amber-400 flex items-center gap-2">
           <span>👑</span> Adminisztrációs Vezérlőpult
