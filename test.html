@@ -8,27 +8,21 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
   <style>
-    /* A Tailwind .hidden osztályt az ID-szintű admin grid CSS nem írhatja felül. */
+    /* Admin kártyák: asztali gépen rendezett, egymás melletti oszlopok. */
     #adminSection.hidden, #driverViewContainer.hidden { display: none !important; }
-    /* Letisztult, reszponzív adminfelület – az eredeti színvilág megtartásával */
-    /* Adminfelület: valódi, rendezett 12 oszlopos rács nagy képernyőn. */
     @media (min-width: 1100px) {
-      #adminSection { max-width: 1600px; width: calc(100% - 2rem); display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 1rem; align-items: start; }
+      #adminSection { max-width: 1600px; width: calc(100% - 2rem); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; align-items: start; }
       #adminSection.space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 0 !important; }
       #adminSection > .flex.justify-between { grid-column: 1 / -1; margin: 0; }
-      #card_combined_alerts, #card_rural_km, #card_announcements, #card_pdf, #superAdminSection { grid-column: 1 / -1; }
-      #card_admin_wall { grid-column: span 6; }
-      #card_overtime, #card_stats, #card_car_manage, #card_bg_manage, #card_overlimit { grid-column: span 6; }
-      #card_car_live_km, #card_active_shifts { grid-column: span 4; }
-      #card_closed_shifts { grid-column: span 8; }
-      #adminSection > .grid { grid-column: 1 / -1; min-width: 0; }
-      #adminSection > .admin-card { min-width: 0; width: 100%; margin: 0; box-shadow: 0 8px 22px rgba(2, 6, 23, .22); }
+      #card_combined_alerts, #card_rural_km, #card_announcements, #card_pdf, #superAdminSection, #adminSection > .grid { grid-column: 1 / -1; min-width: 0; }
+      #adminSection > .admin-card { grid-column: span 1; min-width: 0; width: 100%; margin: 0; box-shadow: 0 8px 22px rgba(2, 6, 23, .22); }
+      #card_closed_shifts, #card_active_shifts { grid-column: span 1; }
     }
     @media (min-width: 769px) and (max-width: 1099px) {
-      #adminSection { max-width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; }
+      #adminSection { max-width: 100%; width: calc(100% - 1.5rem); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; }
       #adminSection.space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 0 !important; }
       #adminSection > .flex.justify-between, #card_combined_alerts, #card_rural_km, #card_announcements, #card_pdf, #superAdminSection, #adminSection > .grid { grid-column: 1 / -1; }
-      #adminSection > .admin-card { min-width: 0; margin: 0; }
+      #adminSection > .admin-card { min-width: 0; margin: 0; width: 100%; }
     }
     .admin-card { transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
     .admin-card:hover { border-color: rgba(100, 116, 139, .7); box-shadow: 0 12px 28px rgba(2, 6, 23, .28); }
