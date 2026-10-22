@@ -101,6 +101,36 @@
     @media (max-width:1099px) { #adminModernSidebar { display:none; } #adminSection { padding-left:0; } }
     @media (max-width:768px) { #adminModernSidebar { display:none !important; } #adminSection { padding-left:0 !important; } }
   </style>
+
+  <style id="admin-modern-layout-correction">
+    /* Javított admin-elrendezés: a régi, teljes szélességű kártyák ne törjék szét a rácsot. */
+    body { background-color:#061321 !important; background-image:radial-gradient(ellipse at 85% 0%, rgba(8,145,178,.18), transparent 38%), linear-gradient(145deg,#061321,#0b1728 58%,#071b2a) !important; background-attachment:fixed !important; }
+    @media (min-width:1100px) {
+      #adminSection { display:grid !important; grid-template-columns:repeat(3,minmax(0,1fr)) !important; align-items:start !important; gap:14px !important; width:calc(100% - 28px) !important; max-width:none !important; margin:12px 14px 28px 14px !important; padding-left:230px !important; box-sizing:border-box !important; }
+      #adminModernSidebar { position:absolute !important; left:0 !important; top:0 !important; width:210px !important; min-height:100% !important; box-sizing:border-box !important; }
+      #adminSection > .flex.justify-between { grid-column:1 / -1 !important; width:100% !important; min-width:0 !important; }
+      #adminSection > .admin-card { grid-column:auto !important; width:100% !important; min-width:0 !important; margin:0 !important; align-self:start !important; }
+      #card_combined_alerts, #card_rural_km, #card_announcements, #card_pdf { grid-column:auto !important; }
+      #superAdminSection, #adminSection > .grid { grid-column:1 / -1 !important; min-width:0 !important; }
+      #card_vehicle_management, #card_vehicle_status, #card_active_shifts, #card_closed_shifts, #card_shift_hours, #card_stats, #card_km_stats, #card_admin_wall, #card_driver_wall, #card_overruns, #card_rural_km, #card_pdf { min-width:0 !important; }
+    }
+    @media (min-width:769px) and (max-width:1099px) {
+      #adminSection { display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)) !important; gap:12px !important; width:calc(100% - 24px) !important; margin:12px !important; padding-left:0 !important; }
+      #adminSection > .flex.justify-between, #superAdminSection, #adminSection > .grid { grid-column:1 / -1 !important; }
+      #adminSection > .admin-card { grid-column:auto !important; width:100% !important; min-width:0 !important; margin:0 !important; }
+      #adminModernSidebar { display:none !important; }
+    }
+    @media (max-width:768px) {
+      #adminSection { display:flex !important; flex-direction:column !important; gap:10px !important; width:calc(100% - 20px) !important; margin:10px !important; padding-left:0 !important; }
+      #adminSection > * { width:100% !important; min-width:0 !important; }
+      #adminModernSidebar { display:none !important; }
+    }
+    #adminSection > .admin-card { overflow:hidden; border-radius:14px !important; background:rgba(7,20,36,.96) !important; border-color:rgba(34,211,238,.22) !important; box-shadow:0 8px 24px rgba(0,0,0,.18) !important; }
+    #adminSection > .admin-card > div:first-child { min-width:0; overflow-wrap:anywhere; }
+    #adminSection > .admin-card > div:first-child h3 { font-size:12px !important; }
+    #adminSection > .flex.justify-between { backdrop-filter:blur(12px); }
+    .admin-nav-highlight { outline:2px solid rgba(45,212,191,.8); outline-offset:2px; }
+  </style>
 </head>
 
   <script>
