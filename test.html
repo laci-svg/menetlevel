@@ -24,6 +24,22 @@
       #adminSection > .flex.justify-between, #card_combined_alerts, #card_rural_km, #card_announcements, #card_pdf, #superAdminSection, #adminSection > .grid { grid-column: 1 / -1; }
       #adminSection > .admin-card { min-width: 0; margin: 0; width: 100%; }
     }
+    /* Minden admin fül tartalma külön, korlátozott magasságú görgetőterület legyen. */
+    [id^="content_card_"] {
+      max-height: min(62vh, 620px);
+      overflow-y: auto;
+      overflow-x: auto;
+      overscroll-behavior: contain;
+      scrollbar-gutter: stable;
+      -webkit-overflow-scrolling: touch;
+    }
+    [id^="content_card_"]::-webkit-scrollbar { width: 9px; height: 9px; }
+    [id^="content_card_"]::-webkit-scrollbar-track { background: rgba(15, 23, 42, .72); border-radius: 8px; }
+    [id^="content_card_"]::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, .8); border-radius: 8px; border: 2px solid rgba(15, 23, 42, .72); }
+    [id^="content_card_"]::-webkit-scrollbar-thumb:hover { background: rgba(45, 212, 191, .8); }
+    /* A kártya fejléce látható marad, miközben csak a belső tartalom görgethető. */
+    .admin-card { min-width: 0; }
+    .admin-card > div:first-child { position: relative; z-index: 1; }
     .admin-card { transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
     .admin-card:hover { border-color: rgba(100, 116, 139, .7); box-shadow: 0 12px 28px rgba(2, 6, 23, .28); }
     .admin-card > div:first-child { min-height: 3.1rem; }
