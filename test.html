@@ -2788,16 +2788,18 @@
         const isPrivate = (t.type === 'private' || t.type === 'privat');
         const rowClass = isPrivate ? "border-b border-amber-900/40 bg-amber-950/30 text-amber-200" : "border-b border-slate-800 hover:bg-slate-800/50";
 
-       return '<tr class="' + rowClass + '">' +
+        return '<tr class="' + rowClass + '">' +
           '<td class="p-2.5 font-bold ' + (isPrivate ? 'text-amber-400' : 'text-slate-400') + '">' + (index + 1) + '.</td>' +
           '<td class="p-2.5 font-mono">' + (t.time || '') + '</td>' +
-          '<td class="p-2.5 font-medium">' + (index + 1) + '. ' + (t.startLocation || '') + ' &rarr; ' + (t.endLocation || '') + (isPrivate ? ' <span class="text-xs bg-amber-900/60 text-amber-300 px-1.5 py-0.5 rounded ml-2 font-normal">Privát</span>' : '') + (t.isRuralTrip === true && !isPrivate ? ' <span class="inline-flex items-center gap-1 text-[10px] bg-teal-950 text-teal-200 border border-teal-700 px-1.5 py-0.5 rounded-md ml-1 font-bold">🛣️ VIDÉK · ' + Math.max(0, Number(t.ruralKm || 0)) + ' km</span>' : '') + '</td>' +
+          '<td class="p-2.5 font-medium">' + (index + 1) + '. ' + (t.startLocation || '') + ' &rarr; ' + (t.endLocation || '') + (isPrivate ? ' <span class="text-xs bg-amber-900/60 text-amber-300 px-1.5 py-0.5 rounded ml-2 font-normal">Privát</span>' : '') + (t.isRuralTrip === true && !isPrivate ? ' <span class="inline-flex items-center gap-1 text-[10px] bg-teal-950 text-teal-200 border border-teal-700 px-1.5 py-0.5 rounded-md ml-1 font-bold">VIDÉK · ' + Math.max(0, Number(t.ruralKm || 0)) + ' km</span>' : '') + '</td>' +
           '<td class="p-2.5 text-right font-mono text-slate-400">' + (t.startKm || 0) + ' - ' + (t.endKm || 0) + '</td>' +
           '<td class="p-2.5 text-right font-mono font-semibold ' + (isPrivate ? 'text-amber-400' : '') + '">' + (t.workKm || 0) + ' km</td>' +
           '<td class="p-2.5 text-center">' +
             '<button onclick="editTrip(\'' + t.id + '\')" class="text-xs bg-slate-800 hover:bg-slate-700 p-1 px-2 rounded border border-slate-700 text-slate-200" title="Szerkesztés">✏️</button>' +
           '</td>' +
         '</tr>';
+      }).join('');
+    };
     
     window.changeShiftHoursMonth = function(direction) {
       selectedShiftHoursMonthDate = new Date(selectedShiftHoursMonthDate.getFullYear(), selectedShiftHoursMonthDate.getMonth() + direction, 1);
