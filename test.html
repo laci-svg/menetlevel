@@ -3539,8 +3539,7 @@
       }
     };
 
-    window.editTrip = function(tripId) {
-  alert("Gomb megnyomva! Keresett út ID: " + tripId);
+   window.editTrip = function(tripId) {
   const trips = Array.isArray(window.allTrips) ? window.allTrips : (typeof allTrips !== 'undefined' ? allTrips : []);
   const trip = trips.find(t => String(t.id) === String(tripId));
 
@@ -3568,7 +3567,7 @@
     window.calculateDriverModalTripKm();
   }
 
-  // Popup megjelenítése (megnyitja és eltünteti a rejtést)
+  // Popup megjelenítése
   const modal = document.getElementById('driverEditTripModal');
   if (modal) {
     modal.classList.remove('hidden');
