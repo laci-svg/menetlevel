@@ -3809,7 +3809,6 @@ function processSosSend(reason, note, lat, lng, mapsUrl, channel) {
   // 3. Viber vagy SMS megnyitása
   if (channel === 'viber') {
     window.location.href = `viber://forward?text=${encodeURIComponent(text)}`;
-  } else if (channel === 'sms') {
     } else if (channel === 'sms') {
   window.location.href = `sms:${ACTIVE_DISPATCHER_NUMBERS}?body=${encodeURIComponent(text)}`;
 }
