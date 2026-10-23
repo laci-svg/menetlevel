@@ -3627,6 +3627,99 @@ window.closeDriverEditTripModal = function() {
   }
 };
 
+    // ==========================================
+// 🚨 SOS SEGÍTSÉGKÉRÉS LOGIKA
+// ==========================================
+
+// Címzett telefonszámok SMS küldéshez (írd át a saját számodra)
+const DISPATCHER_NUMBERS = "+36301234567"; 
+
+// 1. Modal Megnyitása
+window.triggerSOS = function() {
+  const modal = document.getElementById('sosModal');
+  if (modal) {
+    const noteElem = document.getElementById('sosNote');
+    if (noteElem) noteElem.value = '';
+    modal.classList.remove('hidden');
+  }
+};
+
+// 2. Modal Bezárása
+window.closeSosModal = function() {
+  const modal = document.getElementById('sosModal');
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+};
+
+// 3. SOS Beküldése (GPS -> Adatbázis -> App megnyitás)
+window.submitSOS = function(channel) {
+  const reason = document.getElementById('sosReason')?.value || 'Műszaki hiba';
+  const note = document.getElementById('sosNote')?.value || '';
+
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const mapsUrl = `https://maps.google.com/?q=${lat},${lng}`;
+        processSosSend(reason, note, lat, lng, mapsUrl, channel);
+      },
+      (err) => {
+        console.warn("GPS elutasítva/hiba:", err);
+        processSosSend(reason, note, null, null, null, channel);
+      },
+      { enableHighAccuracy: true, timeout: 7000 }
+    );
+  } else {
+    processSosSend(reason, note, null, null, null, channel);
+  }
+};
+
+function processSosSend(reason, note, lat, lng, mapsUrl, channel) {
+  const driverName = (window.currentUser && window.currentUser.displayName) 
+    ? window.currentUser.displayName 
+    : 'Sofőr';
+    
+  const now = new Date().toLocaleString('hu-HU');
+
+  // Adatbázis rekord
+  const sosData = {
+    driverName: driverName,
+    reason: reason,
+    note: note,
+    lat: lat,
+    lng: lng,
+    mapsUrl: mapsUrl,
+    timestamp: new Date().toISOString(),
+    status: 'PENDING'
+  };
+
+  // 1. Mentés Firestore-ba
+  if (typeof db !== 'undefined' && db.collection) {
+    db.collection('sos_alerts').add(sosData)
+      .then(() => console.log("SOS rögzítve a Firestore-ban."))
+      .catch(e => console.error("SOS mentési hiba:", e));
+  }
+
+  // 2. Üzenet összeállítása
+  let text = `🚨 SOS RIASZTÁS!\n`;
+  text += `👤 Sofőr: ${driverName}\n`;
+  text += `⚠️ Ok: ${reason}\n`;
+  if (note) text += `📝 Megjegyzés: ${note}\n`;
+  if (mapsUrl) text += `📍 GPS: ${mapsUrl}\n`;
+  text += `🕒 Időpont: ${now}`;
+
+  window.closeSosModal();
+
+  // 3. Viber vagy SMS megnyitása
+  if (channel === 'viber') {
+    window.location.href = `viber://forward?text=${encodeURIComponent(text)}`;
+  } else if (channel === 'sms') {
+    window.location.href = `sms:${DISPATCHER_NUMBERS}?body=${encodeURIComponent(text)}`;
+  }
+}
+
 // Megtett km dinamikus kiszámítása a modalban
 window.calculateDriverModalTripKm = function() {
   const start = Number(document.getElementById('modalDriverTripStartKm').value) || 0;
