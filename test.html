@@ -2795,8 +2795,9 @@
           '<td class="p-2.5 text-right font-mono text-slate-400">' + (t.startKm || 0) + ' - ' + (t.endKm || 0) + '</td>' +
           '<td class="p-2.5 text-right font-mono font-semibold ' + (isPrivate ? 'text-amber-400' : '') + '">' + (t.workKm || 0) + ' km</td>' +
           '<td class="p-2.5 text-center">' +
-         '<button onclick="window.editTrip(\'' + (t.id || t.tripId || t.docId || '') + '\')" class="text-xs bg-slate-800 hover:bg-slate-700 p-1 px-2 rounded border border-slate-700 text-slate-200" title="Szerkesztés">✏️</button>' +
-        '</tr>';
+          '<button type="button" data-edit-trip-id="' + String(t.tripId || t.id || t.docId || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '" onclick="window.editDriverTripModalOpen(this.getAttribute(\'data-edit-trip-id\'))" class="text-xs bg-slate-800 hover:bg-slate-700 p-1 px-2 rounded border border-slate-700 text-slate-200" title="Út szerkesztése">✏️</button>' +
+          '</td>' +
+          '</tr>';
       }).join('');
     };
     
@@ -3077,7 +3078,7 @@
         }
 
         const trips = Array.isArray(window.allTrips) ? window.allTrips : allTrips;
-        const trip = trips.find(t => String(t.id ?? '') === String(tripId) || String(t.tripId ?? '') === String(tripId) || String(t.docId ?? '') === String(tripId));
+        const trip = trips.find(t => String(t.id) === String(tripId));
         if (!trip) return alert("Az út nem található az adatbázisban. Frissítsd az oldalt, majd próbáld újra!");
 
         const newStartLocation = prompt("Új INDULÁSI cím:", trip.startLocation || "");
@@ -3540,15 +3541,56 @@
     };
 
 window.editTrip = function(tripId) {
-  if (tripId === undefined || tripId === null || String(tripId).trim() === '') {
-    alert("Hiba: hiányzó út azonosító!");
-    return;
+  if (!tripId) return alert("Hiba: hiányzó út azonosító!");
+
+  // Megkeressük az utat az összes lehetséges helyen (allTrips, activeShift.trips, vagy sima trips)
+  let trips = [];
+  if (Array.isArray(window.allTrips)) {
+    trips = window.allTrips;
+  } else if (typeof allTrips !== 'undefined' && Array.isArray(allTrips)) {
+    trips = allTrips;
+  } else if (window.activeShift && Array.isArray(window.activeShift.trips)) {
+    trips = window.activeShift.trips;
+  } else if (typeof activeShift !== 'undefined' && activeShift && Array.isArray(activeShift.trips)) {
+    trips = activeShift.trips;
   }
-  if (typeof window.editDriverTripModalOpen !== 'function') {
-    alert("A szerkesztőablak funkciója nem töltődött be. Frissítsd az oldalt!");
-    return;
+
+  const trip = trips.find(t => String(t.id) === String(tripId));
+
+  if (!trip) {
+    return alert("A szerkesztendő út nem található a memóriában! (Keresett ID: " + tripId + ")");
   }
-  window.editDriverTripModalOpen(String(tripId));
+
+  // Mezők feltöltése a modalban
+  const setVal = function(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.value = val;
+  };
+
+  setVal('driverEditingTripId', trip.id);
+  setVal('modalDriverTripType', (trip.type === 'privat' ? 'private' : (trip.type || 'work')));
+  setVal('modalDriverTripStartLoc', trip.startLocation || '');
+  setVal('modalDriverTripEndLoc', trip.endLocation || '');
+  setVal('modalDriverTripStartKm', trip.startKm ?? 0);
+  setVal('modalDriverTripEndKm', trip.endKm ?? 0);
+  setVal('modalDriverTripPassengers', trip.passengerCount ?? trip.passengers ?? 0);
+  
+  const isRuralCheck = document.getElementById('modalDriverTripIsRural');
+  if (isRuralCheck) isRuralCheck.checked = (trip.isRuralTrip === true);
+
+  // Kiszámolt km frissítése
+  if (typeof window.calculateDriverModalTripKm === 'function') {
+    window.calculateDriverModalTripKm();
+  }
+
+  // Popup megjelenítése
+  const modal = document.getElementById('driverEditTripModal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    modal.style.setProperty('display', 'flex', 'important');
+  } else {
+    alert("Hiba: A felugró ablak (driverEditTripModal) nem található a HTML-ben!");
+  }
 };
     
 // Modal bezárása
