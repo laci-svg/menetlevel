@@ -3810,8 +3810,8 @@ function processSosSend(reason, note, lat, lng, mapsUrl, channel) {
   if (channel === 'viber') {
     window.location.href = `viber://forward?text=${encodeURIComponent(text)}`;
   } else if (channel === 'sms') {
-    window.location.href = `sms:${DISPATCHER_NUMBERS}?body=${encodeURIComponent(text)}`;
-  }
+    } else if (channel === 'sms') {
+  window.location.href = `sms:${ACTIVE_DISPATCHER_NUMBERS}?body=${encodeURIComponent(text)}`;
 }
 
 // Megtett km dinamikus kiszámítása a modalban
