@@ -3811,8 +3811,8 @@ function processSosSend(reason, note, lat, lng, mapsUrl, channel) {
     window.location.href = `viber://forward?text=${encodeURIComponent(text)}`;
     } else if (channel === 'sms') {
   window.location.href = `sms:${ACTIVE_DISPATCHER_NUMBERS}?body=${encodeURIComponent(text)}`;
+  }
 }
-
 // Megtett km dinamikus kiszámítása a modalban
 window.calculateDriverModalTripKm = function() {
   const start = Number(document.getElementById('modalDriverTripStartKm').value) || 0;
