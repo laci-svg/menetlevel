@@ -3540,17 +3540,27 @@
     };
 
 window.editTrip = function(tripId) {
-  if (!tripId) return;
+  if (!tripId) return alert("Hiba: hiányzó út azonosító!");
 
-  const trips = Array.isArray(window.allTrips) ? window.allTrips : (typeof allTrips !== 'undefined' ? allTrips : []);
+  // Megkeressük az utat az összes lehetséges helyen (allTrips, activeShift.trips, vagy sima trips)
+  let trips = [];
+  if (Array.isArray(window.allTrips)) {
+    trips = window.allTrips;
+  } else if (typeof allTrips !== 'undefined' && Array.isArray(allTrips)) {
+    trips = allTrips;
+  } else if (window.activeShift && Array.isArray(window.activeShift.trips)) {
+    trips = window.activeShift.trips;
+  } else if (typeof activeShift !== 'undefined' && activeShift && Array.isArray(activeShift.trips)) {
+    trips = activeShift.trips;
+  }
+
   const trip = trips.find(t => String(t.id) === String(tripId));
 
   if (!trip) {
-    alert("A szerkesztendő út nem található.");
-    return;
+    return alert("A szerkesztendő út nem található a memóriában! (Keresett ID: " + tripId + ")");
   }
 
-  // Mezők feltöltése
+  // Mezők feltöltése a modalban
   const setVal = function(id, val) {
     const el = document.getElementById(id);
     if (el) el.value = val;
@@ -3572,14 +3582,16 @@ window.editTrip = function(tripId) {
     window.calculateDriverModalTripKm();
   }
 
-  // Popup megnyitása
+  // Popup megjelenítése
   const modal = document.getElementById('driverEditTripModal');
   if (modal) {
     modal.classList.remove('hidden');
-    modal.style.display = 'flex';
+    modal.style.setProperty('display', 'flex', 'important');
+  } else {
+    alert("Hiba: A felugró ablak (driverEditTripModal) nem található a HTML-ben!");
   }
 };
-
+    
 // Modal bezárása
 window.closeDriverEditTripModal = function() {
   const modal = document.getElementById('driverEditTripModal');
