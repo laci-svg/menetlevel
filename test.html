@@ -162,6 +162,35 @@
   <div id="adminSosList" class="space-y-3"></div>
 </div>
 
+      <!-- ⚙️ SOS TELEFONSZÁM BEÁLLÍTÁSOK KÁRTYA (ADMIN) -->
+<div id="card_sos_settings" class="admin-card bg-slate-900/90 border border-slate-700/80 rounded-xl overflow-hidden shadow-md mb-4">
+  <div onclick="window.toggleCardAccordion('card_sos_settings')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-slate-700/60">
+    <div class="flex items-center gap-2">
+      <h3 class="text-sm font-bold text-red-400 flex items-center gap-1.5">
+        <span>⚙️</span> SOS Riasztási Telefonszámok Beállítása
+      </h3>
+    </div>
+    <span id="arrow_card_sos_settings" class="text-xs text-slate-400 font-bold transition-transform">▼</span>
+  </div>
+
+  <div id="content_card_sos_settings" class="hidden p-4 space-y-3 border-t border-slate-800/80">
+    <p class="text-xs text-slate-400">
+      Adja meg azokat a telefonszámokat (nemzetközi formátumban, pl. <code class="text-red-300">+36301234567</code>), amelyekre a sofőrök SOS üzeneteit küldje a rendszer. Több szám esetén vesszővel válassza el őket!
+    </p>
+
+    <div class="space-y-1">
+      <label class="block text-xs font-semibold text-slate-300">Címzett telefonszámok (SMS/Viber):</label>
+      <input type="text" id="adminSosPhoneNumbers" placeholder="+36301234567, +36709876543" class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-red-500 outline-none">
+    </div>
+
+    <div class="flex justify-end">
+      <button onclick="window.saveSosPhoneNumbers()" class="bg-red-600 hover:bg-red-500 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-md transition flex items-center gap-1.5">
+        <span>💾</span> Számok Mentése
+      </button>
+    </div>
+  </div>
+</div>
+
       <!-- 1. JÁRMŰPARK FIGYELMEZTETÉSEK & TEENDŐK -->
       <div id="card_combined_alerts" class="admin-card bg-slate-900/90 border border-amber-500/40 rounded-xl overflow-hidden shadow-md">
         <div onclick="toggleCardAccordion('card_combined_alerts')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-amber-500/30">
