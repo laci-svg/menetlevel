@@ -53,12 +53,15 @@
     }
     @media (max-width: 768px) {
       #tripFormCard {
-        position: sticky;
-        bottom: 0;
-        z-index: 40;
+        /* Ne legyen külön, belső görgetőfelület: a teljes sofőroldal görgessen. */
+        position: relative;
+        bottom: auto;
+        z-index: auto;
         padding: 0.5rem !important; /* 8px padding */
         margin-bottom: 0 !important;
-        box-shadow: 0 -10px 25px -5px rgba(0, 0, 0, 0.8);
+        box-shadow: 0 8px 20px -5px rgba(0, 0, 0, 0.45);
+        max-height: none !important;
+        overflow: visible !important;
       }
       /* Kisebb inputok mobilon, hogy elférjenek */
       #tripFormCard input, #tripFormCard select {
@@ -72,7 +75,7 @@
       #tripFormCard .space-y-3 > * + * {
         margin-top: 0.3rem !important;
       }
-      #tripFormCard { max-height: min(62vh, 520px); overflow-y: auto; overscroll-behavior: contain; }
+      #tripFormCard { max-height: none !important; overflow: visible !important; overscroll-behavior: auto; }
       #tripFormCard .grid { gap: 0.35rem !important; }
       #tripFormCard input, #tripFormCard select { min-height: 34px; }
     }
