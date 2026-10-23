@@ -2795,8 +2795,7 @@
           '<td class="p-2.5 text-right font-mono text-slate-400">' + (t.startKm || 0) + ' - ' + (t.endKm || 0) + '</td>' +
           '<td class="p-2.5 text-right font-mono font-semibold ' + (isPrivate ? 'text-amber-400' : '') + '">' + (t.workKm || 0) + ' km</td>' +
           '<td class="p-2.5 text-center">' +
-          '<button type="button" data-edit-trip-id="' + String(t.tripId || t.id || t.docId || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '" onclick="window.editDriverTripModalOpen(this.getAttribute(\'data-edit-trip-id\'))" class="text-xs bg-slate-800 hover:bg-slate-700 p-1 px-2 rounded border border-slate-700 text-slate-200" title="Út szerkesztése">✏️</button>' +
-          '</td>' +
+         '<button type="button" onclick="window.editDriverTripModalOpen(\'" + String(t.id || t.tripId || t.docId || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "\')" class="text-xs bg-slate-800 hover:bg-slate-700 p-1 px-2 rounded border border-slate-700 text-slate-200" title="Út szerkesztése">✏️</button>' +
           '</tr>';
       }).join('');
     };
@@ -3634,7 +3633,7 @@ window.saveDriverTripModalEdit = async function() {
   try {
     const existingTrip = (Array.isArray(window.allTrips) ? window.allTrips : allTrips).find(t => String(t.id) === String(tripId));
 
-    await db.collection('trips').doc(tripId).update({
+    await updateDoc(doc(db, 'trips', String(tripId)), {
       type: type,
       startLocation: document.getElementById('modalDriverTripStartLoc').value.trim(),
       endLocation: document.getElementById('modalDriverTripEndLoc').value.trim(),
