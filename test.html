@@ -3673,8 +3673,60 @@ window.closeDriverEditTripModal = function() {
 // 🚨 SOS SEGÍTSÉGKÉRÉS LOGIKA
 // ==========================================
 
-// Címzett telefonszámok SMS küldéshez (írd át a saját számodra)
-const DISPATCHER_NUMBERS = "+36301234567"; 
+// --- SOS Telefonszámok dinamikus kezelése ---
+let ACTIVE_DISPATCHER_NUMBERS = "+36301234567"; // Alapértelmezett, ha nincs mentve semmi
+
+// 1. Telefonszámok betöltése Firestore-ból
+function loadSosPhoneNumbers() {
+  if (typeof db === 'undefined' || !db.collection) return;
+
+  db.collection('system_settings').doc('sos_config').get()
+    .then((doc) => {
+      if (doc.exists && doc.data().phoneNumbers) {
+        ACTIVE_DISPATCHER_NUMBERS = doc.data().phoneNumbers;
+      }
+      // Ha létezik az admin input mező, feltöltjük az értékkel
+      const input = document.getElementById('adminSosPhoneNumbers');
+      if (input) {
+        input.value = ACTIVE_DISPATCHER_NUMBERS;
+      }
+    })
+    .catch(e => console.error("Hiba az SOS telefonszámok betöltésekor:", e));
+}
+
+// 2. Telefonszámok mentése az Admin felületről
+window.saveSosPhoneNumbers = function() {
+  const input = document.getElementById('adminSosPhoneNumbers');
+  if (!input) return;
+
+  const newNumbers = input.value.trim();
+  if (!newNumbers) {
+    alert("Kérjük, adjon meg legalább egy telefonszámot!");
+    return;
+  }
+
+  if (typeof db !== 'undefined' && db.collection) {
+    db.collection('system_settings').doc('sos_config').set({
+      phoneNumbers: newNumbers,
+      updatedAt: new Date().toISOString()
+    }, { merge: true })
+    .then(() => {
+      ACTIVE_DISPATCHER_NUMBERS = newNumbers;
+      alert("✅ SOS telefonszámok sikeresen elmentve!");
+    })
+    .catch(e => {
+      console.error("Hiba a mentés során:", e);
+      alert("Hiba történt a mentés során!");
+    });
+  }
+};
+
+// Automatikus betöltés az oldal indulásakor
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', loadSosPhoneNumbers);
+} else {
+  loadSosPhoneNumbers();
+}
 
 // 1. Modal Megnyitása
 window.triggerSOS = function() {
