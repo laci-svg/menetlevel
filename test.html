@@ -2795,10 +2795,27 @@
           '<td class="p-2.5 text-right font-mono text-slate-400">' + (t.startKm || 0) + ' - ' + (t.endKm || 0) + '</td>' +
           '<td class="p-2.5 text-right font-mono font-semibold ' + (isPrivate ? 'text-amber-400' : '') + '">' + (t.workKm || 0) + ' km</td>' +
           '<td class="p-2.5 text-center">' +
-         '<button onclick="window.editTrip(\'' + (t.tripId || t.id || t.docId || '') + '\')" class="text-xs bg-slate-800 hover:bg-slate-700 p-1 px-2 rounded border border-slate-700 text-slate-200" title="Szerkesztés">✏️</button>' +
+          '<button type="button" data-edit-trip-id="' + String(t.id || t.tripId || t.docId || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '" class="js-driver-edit-trip text-xs bg-slate-800 hover:bg-slate-700 p-1 px-2 rounded border border-slate-700 text-slate-200" title="Út szerkesztése">✏️</button>' +
           '</tr>';
       }).join('');
     };
+
+    // Delegált eseménykezelő: a dinamikusan újrarajzolt táblázat ceruzagombja
+    // akkor is működik, ha az inline onclick kezelő valamiért nem fut le.
+    document.addEventListener('click', function(event) {
+      const button = event.target && event.target.closest ? event.target.closest('#tripsTableBody [data-edit-trip-id]') : null;
+      if (!button) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const tripId = button.getAttribute('data-edit-trip-id');
+      if (typeof window.editDriverTripModalOpen === 'function') {
+        window.editDriverTripModalOpen(tripId);
+      } else if (typeof window.editTrip === 'function') {
+        window.editTrip(tripId);
+      } else {
+        alert('A szerkesztőfunkció nem töltődött be. Frissítsd az oldalt, és ha a hiba megmarad, küldd el a konzol hibáját.');
+      }
+    });
     
     window.changeShiftHoursMonth = function(direction) {
       selectedShiftHoursMonthDate = new Date(selectedShiftHoursMonthDate.getFullYear(), selectedShiftHoursMonthDate.getMonth() + direction, 1);
