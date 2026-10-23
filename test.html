@@ -3871,5 +3871,49 @@ window.saveDriverTripModalEdit = async function() {
       </div>
     </div>
   </div>
+
+  <!-- SOS RIASZTÁS MODAL -->
+<div id="sosModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-slate-900 border border-red-500/50 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl text-slate-100">
+    
+    <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+      <h3 class="text-lg font-bold text-red-500 flex items-center gap-2">
+        <span>🚨</span> SOS Segítségkérés
+      </h3>
+      <button onclick="window.closeSosModal()" class="text-slate-400 hover:text-white font-bold text-xl px-2">&times;</button>
+    </div>
+
+    <p class="text-xs text-slate-400">Válaszd ki a probléma típusát és küldd el a riasztást. A rendszer rögzíti a GPS helyzetedet is!</p>
+
+    <!-- Probléma típusa -->
+    <div class="space-y-1">
+      <label class="block text-xs font-semibold text-slate-300">Probléma oka:</label>
+      <select id="sosReason" class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-3 text-sm focus:ring-2 focus:ring-red-500 outline-none">
+        <option value="Műszaki hiba / Defekt">🛠️ Műszaki hiba / Defekt</option>
+        <option value="Baleset">🚗 Baleset</option>
+        <option value="Üzemanyag / Lerobbanás">⛽ Üzemanyag / Lerobbanás</option>
+        <option value="Egyéb vészhelyzet">⚠️ Egyéb vészhelyzet</option>
+      </select>
+    </div>
+
+    <!-- Megjegyzés -->
+    <div class="space-y-1">
+      <label class="block text-xs font-semibold text-slate-300">Rövid megjegyzés (opcionális):</label>
+      <textarea id="sosNote" rows="2" placeholder="Pl. Jobb hátsó kerék durrdefekt, M0-s 12-es km..." class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-3 text-sm focus:ring-2 focus:ring-red-500 outline-none"></textarea>
+    </div>
+
+    <!-- Küldés gombok -->
+    <div class="pt-2 space-y-2">
+      <button onclick="window.submitSOS('viber')" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl text-sm shadow-lg flex items-center justify-center gap-2 transition">
+        <span>💬</span> Küldés Viberen + Mentés
+      </button>
+
+      <button onclick="window.submitSOS('sms')" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl text-sm shadow-lg flex items-center justify-center gap-2 transition">
+        <span>📱</span> Küldés SMS-ben + Mentés
+      </button>
+    </div>
+
+  </div>
+</div>
 </body>
 </html>
