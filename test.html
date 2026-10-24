@@ -570,12 +570,17 @@
                 <span id="arrow_card_overlimit" class="text-xs text-slate-400 font-bold transition-transform">▼</span>
               </div>
 
-              <div id="content_card_overlimit" class="hidden p-4 space-y-3 border-t border-slate-800/80">
-                <div id="overlimitShiftsContainer" class="space-y-2 max-h-[350px] overflow-y-auto pr-1"></div>
-              </div>
-            </div>
-          </div>
-        </div>
+             <div id="content_card_overlimit" class="hidden p-4 space-y-3 border-t border-slate-800/80">
+  <!-- Havi Léptető Fejléc -->
+  <div class="flex items-center justify-between gap-2 bg-slate-950 p-2 rounded-xl border border-slate-800">
+    <button onclick="window.changeOverlimitMonth(-1)" class="bg-slate-800 hover:bg-slate-700 text-red-300 px-3 py-1.5 rounded-lg text-xs font-bold">◄ Előző</button>
+    <span id="overlimitMonthLabel" class="text-sm font-extrabold text-red-400 text-center font-mono uppercase tracking-wide"></span>
+    <button onclick="window.changeOverlimitMonth(1)" class="bg-slate-800 hover:bg-slate-700 text-red-300 px-3 py-1.5 rounded-lg text-xs font-bold">Következő ►</button>
+  </div>
+
+  <!-- Túlfutásos műszakok listája -->
+  <div id="overlimitShiftsContainer" class="space-y-2 max-h-[350px] overflow-y-auto pr-1"></div>
+</div>
 
         <!-- 8. MŰSZAKOK & ÓRAÁLLÁSOK -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 pt-2">
