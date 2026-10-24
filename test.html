@@ -3792,14 +3792,19 @@ async function processSosSend(reason, note, lat, lng, mapsUrl, channel) {
     console.error("SOS mentési hiba:", e);
   }
 
-  // Üzenet összeállítása
+  // Autó rendszámának kinyerése az aktív műszakból
+  const carPlate = (typeof activeShift !== 'undefined' && activeShift && activeShift.carPlate) 
+    ? activeShift.carPlate 
+    : 'Nincs aktív műszakban';
+
+  // 2. Üzenet összeállítása (Rendszámmal kiegészítve)
   let text = `🚨 SOS RIASZTÁS!\n`;
   text += `👤 Sofőr: ${driverName}\n`;
+  text += `🚗 Rendszám: ${carPlate}\n`;
   text += `⚠️ Ok: ${reason}\n`;
   if (note) text += `📝 Megjegyzés: ${note}\n`;
   if (mapsUrl) text += `📍 GPS: ${mapsUrl}\n`;
   text += `🕒 Időpont: ${now}`;
-
   window.closeSosModal();
 
  // 3. Viber vagy SMS megnyitása
