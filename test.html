@@ -3669,33 +3669,30 @@ window.closeDriverEditTripModal = function() {
   }
 };
 
-    // ==========================================
-// 🚨 SOS SEGÍTSÉGKÉRÉS LOGIKA
+   // ==========================================
+// 🚨 SOS SEGÍTSÉGKÉRÉS LOGIKA (JAVÍTOTT)
 // ==========================================
 
-// --- SOS Telefonszámok dinamikus kezelése ---
-let ACTIVE_DISPATCHER_NUMBERS = "+36301234567"; // Alapértelmezett, ha nincs mentve semmi
+let ACTIVE_DISPATCHER_NUMBERS = "+36301234567";
 
-// 1. Telefonszámok betöltése Firestore-ból
-function loadSosPhoneNumbers() {
-  if (typeof db === 'undefined' || !db.collection) return;
-
-  db.collection('system_settings').doc('sos_config').get()
-    .then((doc) => {
-      if (doc.exists && doc.data().phoneNumbers) {
-        ACTIVE_DISPATCHER_NUMBERS = doc.data().phoneNumbers;
-      }
-      // Ha létezik az admin input mező, feltöltjük az értékkel
-      const input = document.getElementById('adminSosPhoneNumbers');
-      if (input) {
-        input.value = ACTIVE_DISPATCHER_NUMBERS;
-      }
-    })
-    .catch(e => console.error("Hiba az SOS telefonszámok betöltésekor:", e));
+// 1. Telefonszámok betöltése Firestore-ból (Firebase v10)
+async function loadSosPhoneNumbers() {
+  try {
+    const docSnap = await getDoc(doc(db, "system_settings", "sos_config"));
+    if (docSnap.exists() && docSnap.data().phoneNumbers) {
+      ACTIVE_DISPATCHER_NUMBERS = docSnap.data().phoneNumbers;
+    }
+    const input = document.getElementById('adminSosPhoneNumbers');
+    if (input) {
+      input.value = ACTIVE_DISPATCHER_NUMBERS;
+    }
+  } catch (e) {
+    console.error("Hiba az SOS telefonszámok betöltésekor:", e);
+  }
 }
 
-// 2. Telefonszámok mentése az Admin felületről
-window.saveSosPhoneNumbers = function() {
+// 2. Telefonszámok mentése az Admin felületről (Firebase v10)
+window.saveSosPhoneNumbers = async function() {
   const input = document.getElementById('adminSosPhoneNumbers');
   if (!input) return;
 
@@ -3705,30 +3702,21 @@ window.saveSosPhoneNumbers = function() {
     return;
   }
 
-  if (typeof db !== 'undefined' && db.collection) {
-    db.collection('system_settings').doc('sos_config').set({
+  try {
+    await setDoc(doc(db, "system_settings", "sos_config"), {
       phoneNumbers: newNumbers,
       updatedAt: new Date().toISOString()
-    }, { merge: true })
-    .then(() => {
-      ACTIVE_DISPATCHER_NUMBERS = newNumbers;
-      alert("✅ SOS telefonszámok sikeresen elmentve!");
-    })
-    .catch(e => {
-      console.error("Hiba a mentés során:", e);
-      alert("Hiba történt a mentés során!");
-    });
+    }, { merge: true });
+
+    ACTIVE_DISPATCHER_NUMBERS = newNumbers;
+    alert("✅ SOS telefonszámok sikeresen elmentve!");
+  } catch (e) {
+    console.error("Hiba a mentés során:", e);
+    alert("Hiba történt a mentés során: " + e.message);
   }
 };
 
-// Automatikus betöltés az oldal indulásakor
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', loadSosPhoneNumbers);
-} else {
-  loadSosPhoneNumbers();
-}
-
-// 1. Modal Megnyitása
+// 3. Modal kezelés
 window.triggerSOS = function() {
   const modal = document.getElementById('sosModal');
   if (modal) {
@@ -3738,7 +3726,6 @@ window.triggerSOS = function() {
   }
 };
 
-// 2. Modal Bezárása
 window.closeSosModal = function() {
   const modal = document.getElementById('sosModal');
   if (modal) {
@@ -3746,7 +3733,7 @@ window.closeSosModal = function() {
   }
 };
 
-// 3. SOS Beküldése (GPS -> Adatbázis -> App megnyitás)
+// 4. SOS Beküldése
 window.submitSOS = function(channel) {
   const reason = document.getElementById('sosReason')?.value || 'Műszaki hiba';
   const note = document.getElementById('sosNote')?.value || '';
@@ -3770,16 +3757,18 @@ window.submitSOS = function(channel) {
   }
 };
 
-function processSosSend(reason, note, lat, lng, mapsUrl, channel) {
-  const driverName = (window.currentUser && window.currentUser.displayName) 
-    ? window.currentUser.displayName 
-    : 'Sofőr';
-    
+async function processSosSend(reason, note, lat, lng, mapsUrl, channel) {
+  // Sofőr nevének kinyerése az emailből
+  let driverName = 'Ismeretlen Sofőr';
+  if (currentUser && currentUser.email) {
+    driverName = getUsernameFromEmail(currentUser.email);
+  }
+
   const now = new Date().toLocaleString('hu-HU');
 
-  // Adatbázis rekord
   const sosData = {
     driverName: driverName,
+    driverEmail: currentUser ? currentUser.email : '',
     reason: reason,
     note: note,
     lat: lat,
@@ -3789,14 +3778,15 @@ function processSosSend(reason, note, lat, lng, mapsUrl, channel) {
     status: 'PENDING'
   };
 
-  // 1. Mentés Firestore-ba
-  if (typeof db !== 'undefined' && db.collection) {
-    db.collection('sos_alerts').add(sosData)
-      .then(() => console.log("SOS rögzítve a Firestore-ban."))
-      .catch(e => console.error("SOS mentési hiba:", e));
+  // Mentés Firestore-ba (Firebase v10)
+  try {
+    await addDoc(collection(db, "sos_alerts"), sosData);
+    console.log("SOS rögzítve a Firestore-ban.");
+  } catch (e) {
+    console.error("SOS mentési hiba:", e);
   }
 
-  // 2. Üzenet összeállítása
+  // Üzenet összeállítása
   let text = `🚨 SOS RIASZTÁS!\n`;
   text += `👤 Sofőr: ${driverName}\n`;
   text += `⚠️ Ok: ${reason}\n`;
@@ -3806,13 +3796,14 @@ function processSosSend(reason, note, lat, lng, mapsUrl, channel) {
 
   window.closeSosModal();
 
-  // 3. Viber vagy SMS megnyitása
+  // Viber vagy SMS megnyitása
   if (channel === 'viber') {
     window.location.href = `viber://forward?text=${encodeURIComponent(text)}`;
-    } else if (channel === 'sms') {
-  window.location.href = `sms:${ACTIVE_DISPATCHER_NUMBERS}?body=${encodeURIComponent(text)}`;
+  } else if (channel === 'sms') {
+    window.location.href = `sms:${ACTIVE_DISPATCHER_NUMBERS}?body=${encodeURIComponent(text)}`;
   }
 }
+    
 // Megtett km dinamikus kiszámítása a modalban
 window.calculateDriverModalTripKm = function() {
   const start = Number(document.getElementById('modalDriverTripStartKm').value) || 0;
