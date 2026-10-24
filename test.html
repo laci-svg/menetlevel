@@ -3193,60 +3193,50 @@
       }
     };
 
-    // A működő másik fájl prompt-alapú szerkesztését használjuk, de a címeket is szerkeszthetővé tesszük.
-    // Ez nem függ az admin szerkesztő modal DOM-elemeitől.
     window.adminEditTripPrompt = async function(tripId) {
-      try {
-        if (!hasActionPermission('edit_trip')) {
-          return alert("Nincs jogosultságod az utak szerkesztéséhez! (Engedélyezd a Főadmin panelen az 'Utak szerkesztése' jogot)");
-        }
+  const trip = (allTrips || []).find(t => String(t.id) === String(tripId));
+  if (!trip) return alert("Az út nem található.");
 
-        const trips = Array.isArray(window.allTrips) ? window.allTrips : allTrips;
-        const trip = trips.find(t => String(t.id) === String(tripId));
-        if (!trip) return alert("Az út nem található az adatbázisban. Frissítsd az oldalt, majd próbáld újra!");
+  const typeChoice = prompt("Út típusa:\n1 = Munkaút\n2 = Privát út", trip.type === 'private' ? '2' : '1');
+  if (!typeChoice) return;
 
-        const newStartLocation = prompt("Új INDULÁSI cím:", trip.startLocation || "");
-        if (newStartLocation === null) return;
-        const newEndLocation = prompt("Új ÉRKEZÉSI cím:", trip.endLocation || "");
-        if (newEndLocation === null) return;
+  const newType = typeChoice === '2' ? 'private' : 'work';
 
-        const isPrivate = trip.type === 'private' || trip.type === 'privat';
-        const newTypeChoice = prompt(
-          "Út típusa:\n1 = Munkaút\n2 = Privát út",
-          isPrivate ? "2" : "1"
-        );
-        if (newTypeChoice === null) return;
-        let newType;
-        if (newTypeChoice.trim() === "1") newType = "work";
-        else if (newTypeChoice.trim() === "2") newType = "private";
-        else return alert("Hibás típusválasztás! Csak 1-est vagy 2-est írj be.");
+  // Vidéki út opció megkérdezése
+  let isRural = trip.isRuralTrip || false;
+  if (newType === 'work') {
+    const ruralChoice = prompt("Vidéki út legyen?\n1 = Igen\n2 = Nem", isRural ? '1' : '2');
+    if (ruralChoice) {
+      isRural = (ruralChoice === '1');
+    }
+  } else {
+    isRural = false; // Privát út nem lehet vidéki
+  }
 
-        const newStartKmStr = prompt("Új KEZDŐ kilométeróra-állás:", trip.startKm ?? 0);
-        if (newStartKmStr === null) return;
-        const newEndKmStr = prompt("Új ZÁRÓ kilométeróra-állás:", trip.endKm ?? 0);
-        if (newEndKmStr === null) return;
-
-        const newStartKm = Number(newStartKmStr);
-        const newEndKm = Number(newEndKmStr);
-        if (!newStartLocation.trim() || !newEndLocation.trim()) return alert("Az indulási és érkezési cím nem lehet üres!");
-        if (!Number.isFinite(newStartKm) || !Number.isFinite(newEndKm) || newStartKm < 0 || newEndKm < newStartKm) {
-          return alert("Hibás kilométeradat! A kilométerek nem lehetnek negatívak, a záró km pedig nem lehet kisebb a kezdőnél.");
-        }
-
-        await updateDoc(doc(db, "trips", String(tripId)), {
-          startLocation: newStartLocation.trim(),
-          endLocation: newEndLocation.trim(),
-          type: newType,
-          startKm: newStartKm,
-          endKm: newEndKm,
-          workKm: newEndKm - newStartKm
-        });
-        alert("Az út címei, kilométerei és típusa sikeresen elmentve!");
-      } catch (error) {
-        console.error("Út szerkesztési hiba:", error);
-        alert("Nem sikerült elmenteni az út adatait: " + (error && error.message ? error.message : error));
-      }
+  try {
+    const updatedData = {
+      type: newType,
+      isRuralTrip: isRural,
+      ruralKm: isRural ? (trip.ruralKm || trip.workKm || 0) : 0
     };
+
+    await updateDoc(doc(db, 'trips', String(tripId)), updatedData);
+
+    // Memória frissítése
+    Object.assign(trip, updatedData);
+
+    alert("Út sikeresen frissítve!");
+    
+    // Nézetek újrarajzolása
+    if (typeof renderRuralKmCard === 'function') renderRuralKmCard();
+    if (typeof renderTripsTable === 'function') renderTripsTable();
+    if (typeof renderAdminShifts === 'function') renderAdminShifts();
+
+  } catch (err) {
+    console.error("Hiba az út szerkesztésekor:", err);
+    alert("Nem sikerült elmenteni a módosítást.");
+  }
+};
 
     window.closeAdminEditTripModal = function() {
       document.getElementById('adminEditTripModal').classList.add('hidden');
