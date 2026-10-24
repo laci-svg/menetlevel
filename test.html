@@ -131,7 +131,7 @@
   <span class="font-bold">SOS</span>
 </button>
         <button onclick="logout()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2 rounded-xl text-xs font-semibold border border-slate-700 transition">
-          ⏻
+          Kijelentkezés
         </button>
       </div>
     </div>
@@ -570,17 +570,12 @@
                 <span id="arrow_card_overlimit" class="text-xs text-slate-400 font-bold transition-transform">▼</span>
               </div>
 
-             <div id="content_card_overlimit" class="hidden p-4 space-y-3 border-t border-slate-800/80">
-  <!-- Havi Léptető Fejléc -->
-  <div class="flex items-center justify-between gap-2 bg-slate-950 p-2 rounded-xl border border-slate-800">
-    <button onclick="window.changeOverlimitMonth(-1)" class="bg-slate-800 hover:bg-slate-700 text-red-300 px-3 py-1.5 rounded-lg text-xs font-bold">◄ Előző</button>
-    <span id="overlimitMonthLabel" class="text-sm font-extrabold text-red-400 text-center font-mono uppercase tracking-wide"></span>
-    <button onclick="window.changeOverlimitMonth(1)" class="bg-slate-800 hover:bg-slate-700 text-red-300 px-3 py-1.5 rounded-lg text-xs font-bold">Következő ►</button>
-  </div>
-
-  <!-- Túlfutásos műszakok listája -->
-  <div id="overlimitShiftsContainer" class="space-y-2 max-h-[350px] overflow-y-auto pr-1"></div>
-</div>
+              <div id="content_card_overlimit" class="hidden p-4 space-y-3 border-t border-slate-800/80">
+                <div id="overlimitShiftsContainer" class="space-y-2 max-h-[350px] overflow-y-auto pr-1"></div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <!-- 8. MŰSZAKOK & ÓRAÁLLÁSOK -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 pt-2">
@@ -2800,6 +2795,21 @@
       }
     };
 
+    window.saveRuralKm = async function(event, tripId) {
+      event.preventDefault();
+      const input = document.getElementById('ruralKmEdit_' + tripId);
+      const value = Number(input?.value);
+      if (!Number.isFinite(value) || value < 0) return alert('Adj meg érvényes, nem negatív kilométerértéket.');
+      try {
+        await updateDoc(doc(db, 'trips', tripId), { ruralKm: value, ruralKmReviewed: true, ruralKmReviewedBy: currentUser?.email || '', ruralKmReviewedAt: new Date().toISOString() });
+        alert('A vidéki kilométer mentve.');
+        renderRuralKmCard();
+      } catch (error) {
+        console.error('Vidéki kilométer mentési hiba:', error);
+        alert('Nem sikerült menteni a vidéki kilométert. Ellenőrizd a jogosultságokat és a kapcsolatot.');
+      }
+    };
+
     function listenToTrips() {
       onSnapshot(collection(db, "trips"), (snapshot) => {
         window.allTrips = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
@@ -3174,78 +3184,39 @@
       }).join('') || '<p class="text-[11px] text-slate-500 text-center">Nincs adat.</p>';
     };
 
-   let selectedOverlimitMonthDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-
-    window.changeOverlimitMonth = function(direction) {
-      selectedOverlimitMonthDate = new Date(selectedOverlimitMonthDate.getFullYear(), selectedOverlimitMonthDate.getMonth() + direction, 1);
-      renderOverlimitShifts();
-    };
-
-   let selectedOverlimitMonthDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-
-    window.changeOverlimitMonth = function(direction) {
-      selectedOverlimitMonthDate = new Date(selectedOverlimitMonthDate.getFullYear(), selectedOverlimitMonthDate.getMonth() + direction, 1);
-      renderOverlimitShifts();
-    };
-
     function renderOverlimitShifts() {
       const container = document.getElementById('overlimitShiftsContainer');
       const badgeContainer = document.getElementById('badge_overlimit');
-      const label = document.getElementById('overlimitMonthLabel');
       if (!container) return;
 
-      const year = selectedOverlimitMonthDate.getFullYear();
-      const month = selectedOverlimitMonthDate.getMonth();
-      const monthStr = year + "-" + String(month + 1).padStart(2, '0');
-
-      if (label) {
-        label.textContent = selectedOverlimitMonthDate.toLocaleDateString('hu-HU', { year: 'numeric', month: 'long' });
-      }
-
-      let overlimitList = [];
-      const shiftsArr = Array.isArray(window.allShifts) ? window.allShifts : (typeof allShifts !== 'undefined' ? allShifts : []);
-      const tripsArr = Array.isArray(window.allTrips) ? window.allTrips : (typeof allTrips !== 'undefined' ? allTrips : []);
-
-      shiftsArr.forEach(shift => {
+      const overlimitList = [];
+      allShifts.forEach(shift => {
         if (dismissedOverlimits.includes(shift.id)) return;
-
-        // Szűrés az adott hónapra (startDate vagy date alapján)
-        const sDate = String(shift.startDate || shift.date || '');
-        if (sDate && !sDate.startsWith(monthStr)) return;
-
-        const shiftTrips = tripsArr.filter(t => String(t.shiftId) === String(shift.id));
+        const shiftTrips = allTrips.filter(t => t.shiftId === shift.id);
         const workKmTotal = shiftTrips.filter(t => t.type === 'work').reduce((sum, t) => sum + Number(t.workKm || 0), 0);
         if (workKmTotal >= 250) {
-          overlimitList.push({ shift, workKmTotal, firstTripId: shiftTrips[0]?.id });
+          overlimitList.push({ shift, workKmTotal });
         }
-      });
-
-      // SORRENDBE ÁLLÍTÁS: Legújabb dátum/kezdés szerint csökkenő sorrend (legfrissebb legfelül)
-      overlimitList.sort((a, b) => {
-        const dateA = String(a.shift.startDate || a.shift.date || '') + ' ' + String(a.shift.startTime || '');
-        const dateB = String(b.shift.startDate || b.shift.date || '') + ' ' + String(b.shift.startTime || '');
-        return dateB.localeCompare(dateA);
       });
 
       if (badgeContainer) badgeContainer.textContent = overlimitList.length + " eset";
 
       if (overlimitList.length === 0) {
-        container.innerHTML = '<div class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-center text-xs text-slate-500">Ebben a hónapban nincs 250 km feletti műszak.</div>';
+        container.innerHTML = '<p class="text-xs text-slate-500 text-center p-3 bg-slate-950/60 rounded-lg">Nincs rögzített 250 km feletti műszak.</p>';
         return;
       }
 
       container.innerHTML = overlimitList.map(item => {
         const shift = item.shift;
-        const driverName = getUsernameFromEmail(shift.driverEmail || shift.userEmail);
+        const driverName = getUsernameFromEmail(shift.driverEmail);
 
-        return '<div class="bg-slate-950 border border-red-900/50 rounded-lg p-2.5 flex justify-between items-center text-xs shadow-sm hover:border-red-600/50 transition">' +
+        return '<div class="bg-slate-950 border border-red-900/50 rounded-lg p-2.5 flex justify-between items-center text-xs">' +
           '<div>' +
-            '<div class="font-bold text-slate-200">👤 ' + driverName + '</div>' +
-            '<div class="text-[10px] text-slate-400">📅 ' + (shift.startDate || shift.date || '-') + ' • 🚗 ' + (shift.carPlate || '-') + '</div>' +
+            '<div class="font-bold text-slate-200">' + driverName + '</div>' +
+            '<div class="text-[10px] text-slate-400">📅 ' + (shift.startDate || '-') + ' • ' + (shift.carPlate || '-') + '</div>' +
           '</div>' +
           '<div class="flex items-center gap-1.5">' +
             '<span class="text-xs font-mono font-bold text-red-400 bg-red-950/80 border border-red-800 px-2 py-0.5 rounded">' + item.workKmTotal + ' km</span>' +
-            (item.firstTripId ? '<button onclick="window.editDriverTripModalOpen(\'' + item.firstTripId + '\')" class="text-[10px] bg-amber-600/80 hover:bg-amber-500 text-white px-2 py-1 rounded border border-amber-600 font-medium">✏️ Szerkesztés</button>' : '') +
             '<button onclick="window.exportShiftPDF(\'' + shift.id + '\', \'work\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-200 px-2 py-1 rounded border border-red-700">📄 PDF</button>' +
             '<button onclick="window.dismissOverlimitShift(\'' + shift.id + '\')" class="text-[10px] bg-slate-800 hover:bg-red-900/60 text-slate-400 px-2 py-1 rounded border border-slate-700">🗑️</button>' +
           '</div>' +
@@ -3980,79 +3951,68 @@ window.saveDriverTripModalEdit = async function() {
   }
 };
 
-  // ==========================================
-    // 🚨 ADMIN: SOS RIASZTÁSOK VALÓS IDEJŰ FIGYELÉSE (Firebase v10)
     // ==========================================
-    function initAdminSosListener() {
-      if (typeof db === 'undefined') return;
+// 🚨 ADMIN: SOS RIASZTÁSOK VALÓS IDEJŰ FIGYELÉSE
+// ==========================================
+function initAdminSosListener() {
+  if (typeof db === 'undefined' || !db.collection) return;
 
-      onSnapshot(collection(db, "sos_alerts"), (snapshot) => {
-        const container = document.getElementById('adminSosContainer');
-        const listElem = document.getElementById('adminSosList');
-        const countBadge = document.getElementById('sosBadgeCount');
+  // Figyeljük az aktív (PENDING) riasztásokat a Firestore-ban
+  db.collection('sos_alerts')
+    .where('status', '==', 'PENDING')
+    .onSnapshot((snapshot) => {
+      const container = document.getElementById('adminSosContainer');
+      const listElem = document.getElementById('adminSosList');
+      const countBadge = document.getElementById('sosBadgeCount');
 
-        if (!container || !listElem) return;
+      if (!container || !listElem) return;
 
-        const pendingAlerts = snapshot.docs.filter(d => d.data().status === 'PENDING');
-
-        if (pendingAlerts.length === 0) {
-          container.classList.add('hidden');
-          listElem.innerHTML = '';
-          return;
-        }
-
-        container.classList.remove('hidden');
-        if (countBadge) countBadge.textContent = String(pendingAlerts.length);
-
-        let html = '';
-        pendingAlerts.forEach((docSnap) => {
-          const data = docSnap.data();
-          const id = docSnap.id;
-          const timeStr = data.timestamp ? new Date(data.timestamp).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' }) : '';
-
-          html += `
-            <div class="bg-slate-900/90 border border-red-500/50 rounded-xl p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-              <div class="space-y-1">
-                <div class="flex items-center gap-2">
-                  <span class="font-extrabold text-white text-sm">👤 ${escapeHtml(data.driverName || 'Sofőr')}</span>
-                  <span class="bg-red-500/20 text-red-300 text-[10px] font-bold px-2 py-0.5 rounded-lg border border-red-500/40">${escapeHtml(data.reason || 'SOS')}</span>
-                  <span class="text-slate-400 text-xs">${timeStr}</span>
-                </div>
-                ${data.note ? `<p class="text-xs text-slate-300 italic">" ${escapeHtml(data.note)} "</p>` : ''}
-              </div>
-
-              <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
-                ${data.mapsUrl ? `
-                  <a href="${data.mapsUrl}" target="_blank" class="bg-blue-600/80 hover:bg-blue-600 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 transition">
-                    📍 GPS Térkép
-                  </a>
-                ` : ''}
-
-                <button onclick="window.resolveSosAlert('${id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 transition">
-                  ✓ Megoldva / Lezárás
-                </button>
-              </div>
-            </div>
-          `;
-        });
-
-        listElem.innerHTML = html;
-      });
-    }
-
-    // SOS Riasztás lezárása az Admin által (Firebase v10)
-    window.resolveSosAlert = async function(alertId) {
-      if (!confirm("Biztosan lezárod ezt az SOS riasztást?")) return;
-
-      try {
-        await updateDoc(doc(db, "sos_alerts", alertId), {
-          status: 'RESOLVED',
-          resolvedAt: new Date().toISOString()
-        });
-      } catch (e) {
-        console.error("Hiba az SOS lezárásakor:", e);
+      // Ha nincs aktív riasztás, elrejtjük a kártyát
+      if (snapshot.empty) {
+        container.classList.add('hidden');
+        listElem.innerHTML = '';
+        return;
       }
-    };
+
+      // Ha van aktív riasztás, megjelenítjük a dobozt
+      container.classList.remove('hidden');
+      if (countBadge) countBadge.textContent = snapshot.docs.length;
+
+      let html = '';
+      snapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        const id = doc.id;
+        const timeStr = data.timestamp ? new Date(data.timestamp).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' }) : '';
+
+        html += `
+          <div class="bg-slate-900/90 border border-red-500/50 rounded-xl p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <span class="font-extrabold text-white text-sm">👤 ${data.driverName || 'Sofőr'}</span>
+                <span class="bg-red-500/20 text-red-300 text-[10px] font-bold px-2 py-0.5 rounded-lg border border-red-500/40">${data.reason || 'SOS'}</span>
+                <span class="text-slate-400 text-xs">${timeStr}</span>
+              </div>
+              ${data.note ? `<p class="text-xs text-slate-300 italic">" ${data.note} "</p>` : ''}
+            </div>
+
+            <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+              ${data.mapsUrl ? `
+                <a href="${data.mapsUrl}" target="_blank" class="bg-blue-600/80 hover:bg-blue-600 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 transition">
+                  📍 GPS Térkép
+                </a>
+              ` : ''}
+
+              <button onclick="window.resolveSosAlert('${id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 transition">
+                ✓ Megoldva / Lezárás
+              </button>
+            </div>
+          </div>
+        `;
+      });
+
+      listElem.innerHTML = html;
+    });
+}
 
 // SOS Riasztás lezárása az Admin által
 window.resolveSosAlert = function(alertId) {
