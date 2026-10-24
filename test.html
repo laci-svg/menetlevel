@@ -3196,6 +3196,13 @@
       renderOverlimitShifts();
     };
 
+   let selectedOverlimitMonthDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+
+    window.changeOverlimitMonth = function(direction) {
+      selectedOverlimitMonthDate = new Date(selectedOverlimitMonthDate.getFullYear(), selectedOverlimitMonthDate.getMonth() + direction, 1);
+      renderOverlimitShifts();
+    };
+
     function renderOverlimitShifts() {
       const container = document.getElementById('overlimitShiftsContainer');
       const badgeContainer = document.getElementById('badge_overlimit');
@@ -3211,17 +3218,17 @@
       }
 
       let overlimitList = [];
-      const shifts = Array.isArray(window.allShifts) ? window.allShifts : (typeof allShifts !== 'undefined' ? allShifts : []);
-      const trips = Array.isArray(window.allTrips) ? window.allTrips : (typeof allTrips !== 'undefined' ? allTrips : []);
+      const shiftsArr = Array.isArray(window.allShifts) ? window.allShifts : (typeof allShifts !== 'undefined' ? allShifts : []);
+      const tripsArr = Array.isArray(window.allTrips) ? window.allTrips : (typeof allTrips !== 'undefined' ? allTrips : []);
 
-      shifts.forEach(shift => {
+      shiftsArr.forEach(shift => {
         if (dismissedOverlimits.includes(shift.id)) return;
 
         // Szűrés az adott hónapra (startDate vagy date alapján)
         const sDate = String(shift.startDate || shift.date || '');
         if (sDate && !sDate.startsWith(monthStr)) return;
 
-        const shiftTrips = trips.filter(t => t.shiftId === shift.id);
+        const shiftTrips = tripsArr.filter(t => String(t.shiftId) === String(shift.id));
         const workKmTotal = shiftTrips.filter(t => t.type === 'work').reduce((sum, t) => sum + Number(t.workKm || 0), 0);
         if (workKmTotal >= 250) {
           overlimitList.push({ shift, workKmTotal, firstTripId: shiftTrips[0]?.id });
