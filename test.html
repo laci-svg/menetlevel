@@ -3995,68 +3995,79 @@ window.saveDriverTripModalEdit = async function() {
   }
 };
 
+  // ==========================================
+    // 🚨 ADMIN: SOS RIASZTÁSOK VALÓS IDEJŰ FIGYELÉSE (Firebase v10)
     // ==========================================
-// 🚨 ADMIN: SOS RIASZTÁSOK VALÓS IDEJŰ FIGYELÉSE
-// ==========================================
-function initAdminSosListener() {
-  if (typeof db === 'undefined' || !db.collection) return;
+    function initAdminSosListener() {
+      if (typeof db === 'undefined') return;
 
-  // Figyeljük az aktív (PENDING) riasztásokat a Firestore-ban
-  db.collection('sos_alerts')
-    .where('status', '==', 'PENDING')
-    .onSnapshot((snapshot) => {
-      const container = document.getElementById('adminSosContainer');
-      const listElem = document.getElementById('adminSosList');
-      const countBadge = document.getElementById('sosBadgeCount');
+      onSnapshot(collection(db, "sos_alerts"), (snapshot) => {
+        const container = document.getElementById('adminSosContainer');
+        const listElem = document.getElementById('adminSosList');
+        const countBadge = document.getElementById('sosBadgeCount');
 
-      if (!container || !listElem) return;
+        if (!container || !listElem) return;
 
-      // Ha nincs aktív riasztás, elrejtjük a kártyát
-      if (snapshot.empty) {
-        container.classList.add('hidden');
-        listElem.innerHTML = '';
-        return;
-      }
+        const pendingAlerts = snapshot.docs.filter(d => d.data().status === 'PENDING');
 
-      // Ha van aktív riasztás, megjelenítjük a dobozt
-      container.classList.remove('hidden');
-      if (countBadge) countBadge.textContent = snapshot.docs.length;
+        if (pendingAlerts.length === 0) {
+          container.classList.add('hidden');
+          listElem.innerHTML = '';
+          return;
+        }
 
-      let html = '';
-      snapshot.docs.forEach((doc) => {
-        const data = doc.data();
-        const id = doc.id;
-        const timeStr = data.timestamp ? new Date(data.timestamp).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' }) : '';
+        container.classList.remove('hidden');
+        if (countBadge) countBadge.textContent = String(pendingAlerts.length);
 
-        html += `
-          <div class="bg-slate-900/90 border border-red-500/50 rounded-xl p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-            <div class="space-y-1">
-              <div class="flex items-center gap-2">
-                <span class="font-extrabold text-white text-sm">👤 ${data.driverName || 'Sofőr'}</span>
-                <span class="bg-red-500/20 text-red-300 text-[10px] font-bold px-2 py-0.5 rounded-lg border border-red-500/40">${data.reason || 'SOS'}</span>
-                <span class="text-slate-400 text-xs">${timeStr}</span>
+        let html = '';
+        pendingAlerts.forEach((docSnap) => {
+          const data = docSnap.data();
+          const id = docSnap.id;
+          const timeStr = data.timestamp ? new Date(data.timestamp).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' }) : '';
+
+          html += `
+            <div class="bg-slate-900/90 border border-red-500/50 rounded-xl p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <div class="space-y-1">
+                <div class="flex items-center gap-2">
+                  <span class="font-extrabold text-white text-sm">👤 ${escapeHtml(data.driverName || 'Sofőr')}</span>
+                  <span class="bg-red-500/20 text-red-300 text-[10px] font-bold px-2 py-0.5 rounded-lg border border-red-500/40">${escapeHtml(data.reason || 'SOS')}</span>
+                  <span class="text-slate-400 text-xs">${timeStr}</span>
+                </div>
+                ${data.note ? `<p class="text-xs text-slate-300 italic">" ${escapeHtml(data.note)} "</p>` : ''}
               </div>
-              ${data.note ? `<p class="text-xs text-slate-300 italic">" ${data.note} "</p>` : ''}
-            </div>
 
-            <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
-              ${data.mapsUrl ? `
-                <a href="${data.mapsUrl}" target="_blank" class="bg-blue-600/80 hover:bg-blue-600 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 transition">
-                  📍 GPS Térkép
-                </a>
-              ` : ''}
+              <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                ${data.mapsUrl ? `
+                  <a href="${data.mapsUrl}" target="_blank" class="bg-blue-600/80 hover:bg-blue-600 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 transition">
+                    📍 GPS Térkép
+                  </a>
+                ` : ''}
 
-              <button onclick="window.resolveSosAlert('${id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 transition">
-                ✓ Megoldva / Lezárás
-              </button>
+                <button onclick="window.resolveSosAlert('${id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 transition">
+                  ✓ Megoldva / Lezárás
+                </button>
+              </div>
             </div>
-          </div>
-        `;
+          `;
+        });
+
+        listElem.innerHTML = html;
       });
+    }
 
-      listElem.innerHTML = html;
-    });
-}
+    // SOS Riasztás lezárása az Admin által (Firebase v10)
+    window.resolveSosAlert = async function(alertId) {
+      if (!confirm("Biztosan lezárod ezt az SOS riasztást?")) return;
+
+      try {
+        await updateDoc(doc(db, "sos_alerts", alertId), {
+          status: 'RESOLVED',
+          resolvedAt: new Date().toISOString()
+        });
+      } catch (e) {
+        console.error("Hiba az SOS lezárásakor:", e);
+      }
+    };
 
 // SOS Riasztás lezárása az Admin által
 window.resolveSosAlert = function(alertId) {
