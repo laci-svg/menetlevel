@@ -3797,11 +3797,17 @@ async function processSosSend(reason, note, lat, lng, mapsUrl, channel) {
 
   window.closeSosModal();
 
-  // Viber vagy SMS megnyitása
+ // 3. Viber vagy SMS megnyitása
   if (channel === 'viber') {
     window.location.href = `viber://forward?text=${encodeURIComponent(text)}`;
   } else if (channel === 'sms') {
-    window.location.href = `sms:${ACTIVE_DISPATCHER_NUMBERS}?body=${encodeURIComponent(text)}`;
+    // Vesszővel, pontosvesszővel vagy szközzel elválasztott számok megtisztítása 
+    // és pontosvesszővel (;) való összefűzése a több címzettségi SMS-hez
+    const numberArray = ACTIVE_DISPATCHER_NUMBERS.split(/[,;\s]+/).filter(Boolean);
+    const formattedNumbers = numberArray.join(';');
+
+    // iOS (iPhone) esetén a separator ?& vagy ; lehet, de a ; a leguniverzálisabb
+    window.location.href = `sms:${formattedNumbers}?body=${encodeURIComponent(text)}`;
   }
 }
     
