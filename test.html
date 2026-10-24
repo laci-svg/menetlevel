@@ -2666,25 +2666,15 @@
 
   function renderRuralKmCard() {
   const monthLabel = document.getElementById('ruralKmMonthLabel');
-  if (!monthLabel) return;
-  const year = ruralKmMonthDate.getFullYear();
-  const month = ruralKmMonthDate.getMonth();
-  monthLabel.textContent = ruralKmMonthDate.toLocaleDateString('hu-HU', { year: 'numeric', month: 'long' });
+  if (monthLabel) {
+    monthLabel.textContent = ruralKmMonthDate.toLocaleDateString('hu-HU', { year: 'numeric', month: 'long' });
+  }
 
   const trips = Array.isArray(window.allTrips) ? window.allTrips : (typeof allTrips !== 'undefined' ? allTrips : []);
 
-  // Megengedőbb szűrés a vidéki utakra
+  // Garantált szűrés: minden út megjelenik, ami vidéki és nem privát
   const ruralTrips = trips.filter(t => {
-    // Csak a vidéki megjelölésűeket keressük (privát utakat kizárva)
-    if (!t.isRuralTrip || t.type === 'private' || t.type === 'privat') return false;
-
-    // Dátum kinyerése bármely lehetséges mezőből
-    const rawDate = String(t.date || t.startTime || t.time || t.timestamp || t.createdAt || '');
-    if (!rawDate) return true; // Ha nincs dátum, akkor is jelenítsük meg!
-
-    // Év és hónap egyezés vizsgálata
-    const targetMonthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
-    return rawDate.includes(targetMonthStr);
+    return (t.isRuralTrip === true || t.isRuralTrip === 'true') && t.type !== 'private' && t.type !== 'privat';
   }).sort((a, b) => {
     const dA = String(a.date || a.startTime || a.time || '');
     const dB = String(b.date || b.startTime || b.time || '');
@@ -2692,7 +2682,7 @@
   });
 
   const total = ruralTrips.reduce((sum, t) => sum + Math.max(0, Number(t.ruralKm || t.workKm || 0)), 0);
-  
+
   const totalKmEl = document.getElementById('ruralKmTotal');
   if (totalKmEl) totalKmEl.textContent = total.toLocaleString('hu-HU') + ' km';
   const badgeEl = document.getElementById('badge_rural_km');
@@ -2761,7 +2751,7 @@
           </button>
           <button type="button" onclick="window.exportShiftPDF('${targetShiftId}', 'work')" 
                   class="bg-blue-600/80 hover:bg-blue-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
-                  title="Kizárólag a munka utak PDF letöltése">
+                  title="Kizárólag munka km PDF letöltése">
             📊 Munka km PDF
           </button>
         </div>
