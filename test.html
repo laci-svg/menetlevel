@@ -3193,48 +3193,12 @@
       }
     };
 
-    window.adminEditTripPrompt = async function(tripId) {
-  const trip = (allTrips || []).find(t => String(t.id) === String(tripId));
-  if (!trip) return alert("Az út nem található.");
-
-  const typeChoice = prompt("Út típusa:\n1 = Munkaút\n2 = Privát út", trip.type === 'private' ? '2' : '1');
-  if (!typeChoice) return;
-
-  const newType = typeChoice === '2' ? 'private' : 'work';
-
-  // Vidéki út opció megkérdezése
-  let isRural = trip.isRuralTrip || false;
-  if (newType === 'work') {
-    const ruralChoice = prompt("Vidéki út legyen?\n1 = Igen\n2 = Nem", isRural ? '1' : '2');
-    if (ruralChoice) {
-      isRural = (ruralChoice === '1');
-    }
+   window.adminEditTripPrompt = function(tripId) {
+  // A sima prompt helyett megnyitjuk a teljes szerkesztő modalt
+  if (typeof window.editDriverTripModalOpen === 'function') {
+    window.editDriverTripModalOpen(tripId);
   } else {
-    isRural = false; // Privát út nem lehet vidéki
-  }
-
-  try {
-    const updatedData = {
-      type: newType,
-      isRuralTrip: isRural,
-      ruralKm: isRural ? (trip.ruralKm || trip.workKm || 0) : 0
-    };
-
-    await updateDoc(doc(db, 'trips', String(tripId)), updatedData);
-
-    // Memória frissítése
-    Object.assign(trip, updatedData);
-
-    alert("Út sikeresen frissítve!");
-    
-    // Nézetek újrarajzolása
-    if (typeof renderRuralKmCard === 'function') renderRuralKmCard();
-    if (typeof renderTripsTable === 'function') renderTripsTable();
-    if (typeof renderAdminShifts === 'function') renderAdminShifts();
-
-  } catch (err) {
-    console.error("Hiba az út szerkesztésekor:", err);
-    alert("Nem sikerült elmenteni a módosítást.");
+    alert("A szerkesztő modal nem található.");
   }
 };
 
