@@ -2664,29 +2664,37 @@
       renderRuralKmCard();
     };
 
-    function renderRuralKmCard() {
+   function renderRuralKmCard() {
       const monthLabel = document.getElementById('ruralKmMonthLabel');
       if (monthLabel) {
         monthLabel.textContent = ruralKmMonthDate.toLocaleDateString('hu-HU', { year: 'numeric', month: 'long' });
       }
 
       const trips = Array.isArray(window.allTrips) ? window.allTrips : (typeof allTrips !== 'undefined' ? allTrips : []);
+      const shifts = Array.isArray(window.allShifts) ? window.allShifts : (typeof allShifts !== 'undefined' ? allShifts : []);
+      
       const year = ruralKmMonthDate.getFullYear();
       const month = ruralKmMonthDate.getMonth();
       const targetMonthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
 
-      // Vidéki utak szűrése: Ha az adott hónapban van út, azt mutatja, ha nincs dátum egyáltalán, azt is megjeleníti!
-      let ruralTrips = trips.filter(t => {
+      // PONTOS HÓNAPSZŰRÉS: Megkeressük az út vagy a műszak dátumát
+      const ruralTrips = trips.filter(t => {
         if (!t.isRuralTrip || t.type === 'private' || t.type === 'privat') return false;
-        const dStr = String(t.date || t.startTime || t.time || '');
-        if (!dStr) return true;
+
+        // 1. Dátum kinyerése közvetlenül az útból
+        let dStr = String(t.date || t.startTime || t.time || t.timestamp || '');
+
+        // 2. Ha az útnál nincs dátum, lekérjük a kapcsolódó műszakból (shiftId alapján)
+        if (!dStr && t.shiftId) {
+          const parentShift = shifts.find(s => String(s.id) === String(t.shiftId));
+          if (parentShift) {
+            dStr = String(parentShift.startDate || parentShift.date || '');
+          }
+        }
+
+        // KIZÁRÓLAG az adott év-hónapra illeszkedő utakat engedjük át
         return dStr.includes(targetMonthStr);
       }).sort((a, b) => String(b.date || b.startTime || b.time || '').localeCompare(String(a.date || a.startTime || a.time || '')));
-
-      // Ha az adott hónapra szűrve üres, de vannak vidéki utak a rendszerben, megmutatjuk az összeset, hogy ne tűnjenek el!
-      if (ruralTrips.length === 0) {
-        ruralTrips = trips.filter(t => t.isRuralTrip && t.type !== 'private' && t.type !== 'privat');
-      }
 
       const total = ruralTrips.reduce((sum, t) => sum + Math.max(0, Number(t.ruralKm || t.workKm || 0)), 0);
 
@@ -2701,7 +2709,7 @@
       if (!container) return;
 
       if (!ruralTrips.length) {
-        container.innerHTML = '<div class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-center text-xs text-slate-500">Nincs vidéki útként megjelölt munkamenetlevél a rendszerben.</div>';
+        container.innerHTML = '<div class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-center text-xs text-slate-500">Ebben a hónapban nincs vidéki útként megjelölt munkamenetlevél.</div>';
         return;
       }
 
