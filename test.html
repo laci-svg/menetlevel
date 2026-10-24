@@ -2673,13 +2673,23 @@
 
   const trips = Array.isArray(window.allTrips) ? window.allTrips : (typeof allTrips !== 'undefined' ? allTrips : []);
 
-  // Szűrés vidéki utakra
+  // Megengedőbb szűrés a vidéki utakra
   const ruralTrips = trips.filter(t => {
+    // Csak a vidéki megjelölésűeket keressük (privát utakat kizárva)
     if (!t.isRuralTrip || t.type === 'private' || t.type === 'privat') return false;
-    const dStr = String(t.date || t.time || t.startTime || '');
-    if (!dStr) return true;
-    return dStr.includes(`${year}-${String(month + 1).padStart(2, '0')}`);
-  }).sort((a, b) => String(b.date || b.time || '').localeCompare(String(a.date || a.time || '')));
+
+    // Dátum kinyerése bármely lehetséges mezőből
+    const rawDate = String(t.date || t.startTime || t.time || t.timestamp || t.createdAt || '');
+    if (!rawDate) return true; // Ha nincs dátum, akkor is jelenítsük meg!
+
+    // Év és hónap egyezés vizsgálata
+    const targetMonthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
+    return rawDate.includes(targetMonthStr);
+  }).sort((a, b) => {
+    const dA = String(a.date || a.startTime || a.time || '');
+    const dB = String(b.date || b.startTime || b.time || '');
+    return dB.localeCompare(dA);
+  });
 
   const total = ruralTrips.reduce((sum, t) => sum + Math.max(0, Number(t.ruralKm || t.workKm || 0)), 0);
   
@@ -2703,11 +2713,12 @@
     const routeEnd = escapeHtml(String(t.endLocation || 'Célcím'));
     const driver = escapeHtml(getUserNameFromEmail(t.driverEmail || t.userEmail) || 'Ismeretlen sofőr');
     const car = escapeHtml(t.carPlate || 'Nincs rendszám');
-    const dateStr = escapeHtml(t.date || t.time || '-');
+    const dateStr = escapeHtml(t.date || t.startTime || t.time || '-');
     const targetShiftId = String(t.shiftId || t.id || '');
     const ruralKmVal = Math.max(0, Number(t.ruralKm || t.workKm || 0));
 
     return `<div class="bg-slate-900/90 border border-slate-700/60 rounded-xl p-4 mb-3 shadow-md text-slate-200">
+      <!-- 1. Fejléc: Útvonal és Jelvény -->
       <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
         <div class="flex items-center space-x-2 text-sm md:text-base font-semibold text-white">
           <span>${routeStart}</span>
@@ -2719,6 +2730,7 @@
         </span>
       </div>
 
+      <!-- 2. Adatsor: Metaadatok -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-slate-400 mb-4 bg-slate-950/40 p-2.5 rounded-lg border border-slate-800/50">
         <div>📅 <span class="text-slate-200">${dateStr}</span></div>
         <div>👤 <span class="text-slate-200 font-medium">${driver}</span></div>
@@ -2726,6 +2738,7 @@
         <div>📏 Menetlevél: <strong class="text-emerald-400">${Number(t.workKm || 0)} km</strong></div>
       </div>
 
+      <!-- 3. Vezérlők: Vidéki km form + Szerkesztés + PDF-ek -->
       <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
         <form class="flex items-center space-x-2" onsubmit="saveRuralKm(event, '${t.id}')">
           <label class="text-xs text-slate-300 font-medium whitespace-nowrap">Vidéki km:</label>
@@ -2742,11 +2755,13 @@
             ✏️ Szerkesztés
           </button>
           <button type="button" onclick="window.exportShiftPDF('${targetShiftId}', 'all')" 
-                  class="bg-slate-700 hover:bg-slate-600 text-slate-100 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors border border-slate-600">
+                  class="bg-slate-700 hover:bg-slate-600 text-slate-100 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors border border-slate-600"
+                  title="Teljes Műszak PDF letöltése">
             📄 Műszak PDF
           </button>
           <button type="button" onclick="window.exportShiftPDF('${targetShiftId}', 'work')" 
-                  class="bg-blue-600/80 hover:bg-blue-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
+                  class="bg-blue-600/80 hover:bg-blue-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+                  title="Kizárólag a munka utak PDF letöltése">
             📊 Munka km PDF
           </button>
         </div>
