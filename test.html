@@ -3734,39 +3734,72 @@ window.closeSosModal = function() {
   }
 };
 
-// 4. SOS Beküldése GPS javítással
+// 4. SOS Beküldése Biztonsági Timeout-tal
 window.submitSOS = function(channel) {
   const reason = document.getElementById('sosReason')?.value || 'Műszaki hiba';
   const note = document.getElementById('sosNote')?.value || '';
 
-  // Visszajelzés a felhasználónak, hogy a GPS lekérés folyamatban van
   const sendBtn = document.activeElement;
+  let originalText = "Küldés";
+
   if (sendBtn && sendBtn.tagName === 'BUTTON') {
+    originalText = sendBtn.innerText;
     sendBtn.disabled = true;
     sendBtn.innerText = "📍 Helyzet lekérése...";
   }
 
+  // Gomb és állapot visszaállító segédfüggvény
+  const resetButton = () => {
+    if (sendBtn && sendBtn.tagName === 'BUTTON') {
+      sendBtn.disabled = false;
+      sendBtn.innerText = originalText;
+    }
+  };
+
+  let handled = false;
+
+  // Biztonsági időkorlát: Ha 5 másodpercig nem válaszol a GPS, küldjük GPS nélkül!
+  const fallbackTimer = setTimeout(() => {
+    if (!handled) {
+      handled = true;
+      console.warn("GPS lekérés túllépte az időkorlátot, küldés GPS nélkül.");
+      resetButton();
+      processSosSend(reason, note, null, null, null, channel);
+    }
+  }, 5000);
+
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        // Szebb, garantáltan működő Google Maps URL
-        const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
-        processSosSend(reason, note, lat, lng, mapsUrl, channel);
+        if (!handled) {
+          handled = true;
+          clearTimeout(fallbackTimer);
+          resetButton();
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+          processSosSend(reason, note, lat, lng, mapsUrl, channel);
+        }
       },
       (err) => {
-        console.warn("GPS hiba vagy letiltva:", err);
-        // Ha nem sikerült a GPS, figyelmeztetjük a konzolon és küldjük anélkül
-        processSosSend(reason, note, null, null, null, channel);
+        if (!handled) {
+          handled = true;
+          clearTimeout(fallbackTimer);
+          resetButton();
+          console.warn("GPS hiba vagy letiltva:", err);
+          processSosSend(reason, note, null, null, null, channel);
+        }
       },
       { 
-        enableHighAccuracy: true, // Pontos GPS használata
-        timeout: 12000,           // Megnöveltük 12 másodpercre a türelmi időt
-        maximumAge: 30000         // Elfogadunk 30 másodpercen belüli tárolt pozíciót is
+        enableHighAccuracy: false, // Gyorsabb pozíciómeghatározás (hálózati/cella alapú)
+        timeout: 4000,
+        maximumAge: 60000 
       }
     );
   } else {
+    handled = true;
+    clearTimeout(fallbackTimer);
+    resetButton();
     processSosSend(reason, note, null, null, null, channel);
   }
 };
