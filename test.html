@@ -3661,13 +3661,15 @@ window.editTrip = function(tripId) {
   }
 };
     
-// Modal bezárása
+// Modal bezárása és az azonosítók teljes kitakarítása
 window.closeDriverEditTripModal = function() {
   const modal = document.getElementById('driverEditTripModal');
   if (modal) {
     modal.classList.add('hidden');
-    modal.style.display = 'none';
   }
+  // FONTOS: Az azonosító mező ürítése, hogy a következő megnyitás tiszta lappal induljon!
+  const idInput = document.getElementById('driverEditingTripId');
+  if (idInput) idInput.value = '';
 };
 
    // ==========================================
