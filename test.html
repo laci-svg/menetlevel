@@ -2800,21 +2800,6 @@
       }
     };
 
-    window.saveRuralKm = async function(event, tripId) {
-      event.preventDefault();
-      const input = document.getElementById('ruralKmEdit_' + tripId);
-      const value = Number(input?.value);
-      if (!Number.isFinite(value) || value < 0) return alert('Adj meg érvényes, nem negatív kilométerértéket.');
-      try {
-        await updateDoc(doc(db, 'trips', tripId), { ruralKm: value, ruralKmReviewed: true, ruralKmReviewedBy: currentUser?.email || '', ruralKmReviewedAt: new Date().toISOString() });
-        alert('A vidéki kilométer mentve.');
-        renderRuralKmCard();
-      } catch (error) {
-        console.error('Vidéki kilométer mentési hiba:', error);
-        alert('Nem sikerült menteni a vidéki kilométert. Ellenőrizd a jogosultságokat és a kapcsolatot.');
-      }
-    };
-
     function listenToTrips() {
       onSnapshot(collection(db, "trips"), (snapshot) => {
         window.allTrips = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
