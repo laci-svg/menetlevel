@@ -2683,20 +2683,77 @@
         return;
       }
       container.innerHTML = ruralTrips.map(t => {
-        const route = escapeHtml(String(t.startLocation || '') + ' → ' + String(t.endLocation || ''));
-        const driver = escapeHtml(getUsernameFromEmail(t.driverEmail || 'Ismeretlen sofőr'));
-        const car = escapeHtml(t.carPlate || '');
-        return '<div class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex flex-col lg:flex-row lg:items-center gap-3">' +
-          '<div class="flex-1 min-w-0"><div class="text-xs font-bold text-slate-100 flex flex-wrap items-center gap-2"><span>' + route + '</span><span class="inline-flex text-[9px] text-teal-200 bg-teal-950 border border-teal-800 px-1.5 py-0.5 rounded font-extrabold">🛣️ VIDÉKI CÍM</span></div>' +
-          '<div class="text-[10px] text-slate-400 mt-1">' + escapeHtml(t.date || '') + ' ' + escapeHtml(t.time || '') + ' · ' + driver + ' · ' + car + '</div>' +
-          '<div class="text-[10px] text-slate-500 mt-1">Menetlevél: ' + Number(t.workKm || 0) + ' km' + (t.type === 'private' ? ' · Privát út' : '') + '</div>' + (t.ruralKmReviewed === true ? '<span class="inline-flex mt-1 text-[9px] text-emerald-300 bg-emerald-950/60 border border-emerald-800 px-1.5 py-0.5 rounded">✓ Admin által ellenőrizve</span>' : '<span class="inline-flex mt-1 text-[9px] text-amber-300 bg-amber-950/50 border border-amber-800 px-1.5 py-0.5 rounded">Ellenőrzésre vár</span>') + '</div>' +
-          '<form class="flex items-center gap-2" onsubmit="saveRuralKm(event, \'' + t.id + '\')">' +
-          '<label class="text-[11px] text-teal-200 whitespace-nowrap">Vidéki km</label>' +
-          '<input type="number" min="0" step="1" id="ruralKmEdit_' + t.id + '" value="' + Math.max(0, Number(t.ruralKm || 0)) + '" class="w-24 bg-slate-800 border border-slate-700 text-white p-2 rounded-lg text-sm" required>' +
-          '<button type="submit" class="bg-teal-700 hover:bg-teal-600 text-white px-3 py-2 rounded-lg text-xs font-bold">Mentés</button>' +
-          (hasActionPermission('edit_trip') ? '<button type="button" onclick="window.adminEditTripPrompt(\'' + String(t.id).replace(/'/g, "\\'") + '\')" class="bg-amber-900/60 hover:bg-amber-800 text-amber-200 px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap">✏️ Út szerkesztése</button>' : '') +
-          (t.shiftId ? '<button type="button" onclick="window.exportShiftPDF(\'' + t.shiftId + '\', \'all\')" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap">📄 Műszak PDF</button>' : '') +
-          '</form></div>';
+  const routeStart = escapeHtml(String(t.startLocation || 'Kezdőcím'));
+  const routeEnd = escapeHtml(String(t.endLocation || 'Célcím'));
+  const driver = escapeHtml(getUserNameFromEmail(t.driverEmail) || 'Ismeretlen sofőr');
+  const car = escapeHtml(t.carPlate || 'Nincs carPlate');
+  const dateStr = escapeHtml(t.date || t.time || '-');
+  const shiftId = String(t.shiftId || t.id || '');
+  const ruralKmVal = Math.max(0, Number(t.ruralKm || 0));
+
+  return `<div class="bg-slate-900/90 border border-slate-700/60 rounded-xl p-4 mb-3 shadow-md text-slate-200">
+    <!-- 1. Fejléc: Útvonal és Jelvény -->
+    <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
+      <div class="flex items-center space-x-2 text-sm md:text-base font-semibold text-white">
+        <span>${routeStart}</span>
+        <span class="text-emerald-400 font-bold">➔</span>
+        <span>${routeEnd}</span>
+      </div>
+      <span class="bg-emerald-950/80 text-emerald-400 border border-emerald-600/40 text-[10px] md:text-xs font-medium px-2.5 py-1 rounded-md flex items-center gap-1">
+        🏞️ VIDÉKI CÍM
+      </span>
+    </div>
+
+    <!-- 2. Adatsor: Metaadatok átlátható hálózatban -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-slate-400 mb-4 bg-slate-950/40 p-2.5 rounded-lg border border-slate-800/50">
+      <div>📅 <span class="text-slate-200">${dateStr}</span></div>
+      <div>👤 <span class="text-slate-200 font-medium">${driver}</span></div>
+      <div>🚗 <span class="text-slate-200 font-medium">${car}</span></div>
+      <div>📏 Menetlevél: <strong class="text-emerald-400">${Number(t.workKm || 0)} km</strong></div>
+    </div>
+
+    <!-- 3. Vezérlőgombok és Szerkesztés (Alsó sor) -->
+    <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+      
+      <!-- Bal oldal: Vidéki km beírás + Mentés form -->
+      <form class="flex items-center space-x-2" onsubmit="saveRuralKm(event, '${t.id}')">
+        <label class="text-xs text-slate-300 font-medium whitespace-nowrap">Vidéki km:</label>
+        <input type="number" min="0" step="1" id="ruralKmedit_${t.id}" value="${ruralKmVal}" 
+               class="w-20 bg-slate-800 border border-slate-600 text-white text-sm rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none" required />
+        <button type="submit" 
+                class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1">
+          ✓ Mentés
+        </button>
+      </form>
+
+      <!-- Jobb oldal: Műveleti és PDF gombok -->
+      <div class="flex flex-wrap items-center gap-2">
+        ${hasActionPermission('edit_trip') ? `
+          <button type="button" onclick="window.adminEditTripPrompt('${String(t.id).replace(/'/g, "\\'")}')" 
+                  class="bg-amber-600/80 hover:bg-amber-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1">
+            ✏️ Szerkesztés
+          </button>
+        ` : ''}
+
+        ${shiftId ? `
+          <!-- Teljes Műszak PDF (Össz menetlevél) -->
+          <button type="button" onclick="window.exportShiftPDF('${shiftId}', 'all')" 
+                  class="bg-slate-700 hover:bg-slate-600 text-slate-100 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors border border-slate-600 flex items-center gap-1"
+                  title="Teljes Műszak PDF letöltése">
+            📄 Műszak PDF
+          </button>
+
+          <!-- Munka km PDF (Kizárólag a munka utak) -->
+          <button type="button" onclick="window.exportShiftPDF('${shiftId}', 'work')" 
+                  class="bg-blue-600/80 hover:bg-blue-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+                  title="Kizárólag munka km PDF letöltése">
+            📊 Munka km PDF
+          </button>
+        ` : ''}
+      </div>
+
+    </div>
+  </div>`;
       }).join('');
     }
 
