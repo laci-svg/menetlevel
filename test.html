@@ -2664,22 +2664,25 @@
       renderRuralKmCard();
     };
 
-   function renderRuralKmCard() {
+  function renderRuralKmCard() {
   const monthLabel = document.getElementById('ruralKmMonthLabel');
   if (!monthLabel) return;
   const year = ruralKmMonthDate.getFullYear();
   const month = ruralKmMonthDate.getMonth();
   monthLabel.textContent = ruralKmMonthDate.toLocaleDateString('hu-HU', { year: 'numeric', month: 'long' });
 
-  // Szűrés a vidéki utakra (dátum formátum függetlenül)
-  const ruralTrips = (allTrips || []).filter(t => {
+  const trips = Array.isArray(window.allTrips) ? window.allTrips : (typeof allTrips !== 'undefined' ? allTrips : []);
+
+  // Szűrés vidéki utakra
+  const ruralTrips = trips.filter(t => {
     if (!t.isRuralTrip || t.type === 'private' || t.type === 'privat') return false;
-    if (!t.date && !t.time && !t.startTime) return true;
     const dStr = String(t.date || t.time || t.startTime || '');
+    if (!dStr) return true;
     return dStr.includes(`${year}-${String(month + 1).padStart(2, '0')}`);
   }).sort((a, b) => String(b.date || b.time || '').localeCompare(String(a.date || a.time || '')));
 
-  const total = ruralTrips.reduce((sum, t) => sum + Math.max(0, Number(t.ruralKm || 0)), 0);
+  const total = ruralTrips.reduce((sum, t) => sum + Math.max(0, Number(t.ruralKm || t.workKm || 0)), 0);
+  
   const totalKmEl = document.getElementById('ruralKmTotal');
   if (totalKmEl) totalKmEl.textContent = total.toLocaleString('hu-HU') + ' km';
   const badgeEl = document.getElementById('badge_rural_km');
@@ -2701,8 +2704,8 @@
     const driver = escapeHtml(getUserNameFromEmail(t.driverEmail || t.userEmail) || 'Ismeretlen sofőr');
     const car = escapeHtml(t.carPlate || 'Nincs rendszám');
     const dateStr = escapeHtml(t.date || t.time || '-');
-    const shiftId = String(t.shiftId || t.id || '');
-    const ruralKmVal = Math.max(0, Number(t.ruralKm || 0));
+    const targetShiftId = String(t.shiftId || t.id || '');
+    const ruralKmVal = Math.max(0, Number(t.ruralKm || t.workKm || 0));
 
     return `<div class="bg-slate-900/90 border border-slate-700/60 rounded-xl p-4 mb-3 shadow-md text-slate-200">
       <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
@@ -2734,22 +2737,18 @@
         </form>
 
         <div class="flex flex-wrap items-center gap-2">
-          ${hasActionPermission('edit_trip') ? `
-            <button type="button" onclick="window.adminEditTripPrompt('${String(t.id).replace(/'/g, "\\'")}')" 
-                    class="bg-amber-600/80 hover:bg-amber-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
-              ✏️ Szerkesztés
-            </button>
-          ` : ''}
-          ${shiftId ? `
-            <button type="button" onclick="window.exportShiftPDF('${shiftId}', 'all')" 
-                    class="bg-slate-700 hover:bg-slate-600 text-slate-100 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors border border-slate-600">
-              📄 Műszak PDF
-            </button>
-            <button type="button" onclick="window.exportShiftPDF('${shiftId}', 'work')" 
-                    class="bg-blue-600/80 hover:bg-blue-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
-              📊 Munka km PDF
-            </button>
-          ` : ''}
+          <button type="button" onclick="window.editDriverTripModalOpen('${t.id}')" 
+                  class="bg-amber-600/80 hover:bg-amber-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
+            ✏️ Szerkesztés
+          </button>
+          <button type="button" onclick="window.exportShiftPDF('${targetShiftId}', 'all')" 
+                  class="bg-slate-700 hover:bg-slate-600 text-slate-100 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors border border-slate-600">
+            📄 Műszak PDF
+          </button>
+          <button type="button" onclick="window.exportShiftPDF('${targetShiftId}', 'work')" 
+                  class="bg-blue-600/80 hover:bg-blue-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
+            📊 Munka km PDF
+          </button>
         </div>
       </div>
     </div>`;
