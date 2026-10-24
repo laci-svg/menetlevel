@@ -3833,7 +3833,7 @@ window.calculateDriverModalTripKm = function() {
   }
 };
 
-// Módosítások elmentése a Firebase-be
+// Módosítások elmentése a Firebase-be (Azonnali memória-frissítéssel)
 window.saveDriverTripModalEdit = async function() {
   const tripId = document.getElementById('driverEditingTripId').value;
   if (!tripId) return alert("A szerkesztendő út nem található.");
@@ -3843,6 +3843,9 @@ window.saveDriverTripModalEdit = async function() {
   const workKm = Math.max(0, endKm - startKm);
   const type = document.getElementById('modalDriverTripType').value;
   const isRural = document.getElementById('modalDriverTripIsRural').checked;
+  const startLoc = document.getElementById('modalDriverTripStartLoc').value.trim();
+  const endLoc = document.getElementById('modalDriverTripEndLoc').value.trim();
+  const passengers = Math.max(0, Number(document.getElementById('modalDriverTripPassengers').value) || 0);
 
   const saveButton = document.querySelector('#driverEditTripModal button[onclick="window.saveDriverTripModalEdit()"]');
   if (saveButton) {
@@ -3853,19 +3856,36 @@ window.saveDriverTripModalEdit = async function() {
   try {
     const existingTrip = (Array.isArray(window.allTrips) ? window.allTrips : allTrips).find(t => String(t.id) === String(tripId));
 
-    await updateDoc(doc(db, 'trips', String(tripId)), {
+    const updatedData = {
       type: type,
-      startLocation: document.getElementById('modalDriverTripStartLoc').value.trim(),
-      endLocation: document.getElementById('modalDriverTripEndLoc').value.trim(),
+      startLocation: startLoc,
+      endLocation: endLoc,
       startKm: startKm,
       endKm: endKm,
       workKm: workKm,
-      passengerCount: Math.max(0, Number(document.getElementById('modalDriverTripPassengers').value) || 0),
+      passengerCount: passengers,
       isRuralTrip: isRural && type === 'work',
       ruralKm: isRural && type === 'work' ? Math.max(0, Number(existingTrip?.ruralKm || 0)) : 0
-    });
+    };
+
+    // 1. Adatbázis frissítése
+    await updateDoc(doc(db, 'trips', String(tripId)), updatedData);
+
+    // 2. Memóriában lévő (lokális) tömbök azonnali frissítése (F5 nélkül!)
+    if (existingTrip) {
+      Object.assign(existingTrip, updatedData);
+    }
 
     window.closeDriverEditTripModal();
+
+    // 3. Táblázatok és felületek azonnali újrarajzolása
+    if (typeof window.renderTripsTable === 'function') {
+      window.renderTripsTable();
+    }
+    if (typeof renderAdminShifts === 'function' && isAdminMode) {
+      renderAdminShifts();
+    }
+
   } catch (error) {
     console.error("Sofőr út szerkesztési hiba:", error);
     alert("Nem sikerült elmenteni az út adatait: " + (error?.message || error));
