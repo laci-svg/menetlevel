@@ -2664,101 +2664,128 @@
       renderRuralKmCard();
     };
 
-  function renderRuralKmCard() {
-  const monthLabel = document.getElementById('ruralKmMonthLabel');
-  if (monthLabel) {
-    monthLabel.textContent = ruralKmMonthDate.toLocaleDateString('hu-HU', { year: 'numeric', month: 'long' });
-  }
+    function renderRuralKmCard() {
+      const monthLabel = document.getElementById('ruralKmMonthLabel');
+      if (monthLabel) {
+        monthLabel.textContent = ruralKmMonthDate.toLocaleDateString('hu-HU', { year: 'numeric', month: 'long' });
+      }
 
-  const trips = Array.isArray(window.allTrips) ? window.allTrips : (typeof allTrips !== 'undefined' ? allTrips : []);
+      const trips = Array.isArray(window.allTrips) ? window.allTrips : (typeof allTrips !== 'undefined' ? allTrips : []);
+      const year = ruralKmMonthDate.getFullYear();
+      const month = ruralKmMonthDate.getMonth();
+      const targetMonthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
 
-  // Garantált szűrés: minden út megjelenik, ami vidéki és nem privát
-  const ruralTrips = trips.filter(t => {
-    return (t.isRuralTrip === true || t.isRuralTrip === 'true') && t.type !== 'private' && t.type !== 'privat';
-  }).sort((a, b) => {
-    const dA = String(a.date || a.startTime || a.time || '');
-    const dB = String(b.date || b.startTime || b.time || '');
-    return dB.localeCompare(dA);
-  });
+      // Vidéki utak szűrése: Ha az adott hónapban van út, azt mutatja, ha nincs dátum egyáltalán, azt is megjeleníti!
+      let ruralTrips = trips.filter(t => {
+        if (!t.isRuralTrip || t.type === 'private' || t.type === 'privat') return false;
+        const dStr = String(t.date || t.startTime || t.time || '');
+        if (!dStr) return true;
+        return dStr.includes(targetMonthStr);
+      }).sort((a, b) => String(b.date || b.startTime || b.time || '').localeCompare(String(a.date || a.startTime || a.time || '')));
 
-  const total = ruralTrips.reduce((sum, t) => sum + Math.max(0, Number(t.ruralKm || t.workKm || 0)), 0);
+      // Ha az adott hónapra szűrve üres, de vannak vidéki utak a rendszerben, megmutatjuk az összeset, hogy ne tűnjenek el!
+      if (ruralTrips.length === 0) {
+        ruralTrips = trips.filter(t => t.isRuralTrip && t.type !== 'private' && t.type !== 'privat');
+      }
 
-  const totalKmEl = document.getElementById('ruralKmTotal');
-  if (totalKmEl) totalKmEl.textContent = total.toLocaleString('hu-HU') + ' km';
-  const badgeEl = document.getElementById('badge_rural_km');
-  if (badgeEl) badgeEl.textContent = total.toLocaleString('hu-HU') + ' km összesen';
-  const countEl = document.getElementById('ruralKmTripCount');
-  if (countEl) countEl.textContent = String(ruralTrips.length);
+      const total = ruralTrips.reduce((sum, t) => sum + Math.max(0, Number(t.ruralKm || t.workKm || 0)), 0);
 
-  const container = document.getElementById('ruralKmListContainer');
-  if (!container) return;
+      const totalKmEl = document.getElementById('ruralKmTotal');
+      if (totalKmEl) totalKmEl.textContent = total.toLocaleString('hu-HU') + ' km';
+      const badgeEl = document.getElementById('badge_rural_km');
+      if (badgeEl) badgeEl.textContent = total.toLocaleString('hu-HU') + ' km összesen';
+      const countEl = document.getElementById('ruralKmTripCount');
+      if (countEl) countEl.textContent = String(ruralTrips.length);
 
-  if (!ruralTrips.length) {
-    container.innerHTML = '<div class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-center text-xs text-slate-500">Ebben a hónapban nincs vidéki útként megjelölt munkamenetlevél.</div>';
-    return;
-  }
+      const container = document.getElementById('ruralKmListContainer');
+      if (!container) return;
 
-  container.innerHTML = ruralTrips.map(t => {
-    const routeStart = escapeHtml(String(t.startLocation || 'Kezdőcím'));
-    const routeEnd = escapeHtml(String(t.endLocation || 'Célcím'));
-    const driver = escapeHtml(getUserNameFromEmail(t.driverEmail || t.userEmail) || 'Ismeretlen sofőr');
-    const car = escapeHtml(t.carPlate || 'Nincs rendszám');
-    const dateStr = escapeHtml(t.date || t.startTime || t.time || '-');
-    const targetShiftId = String(t.shiftId || t.id || '');
-    const ruralKmVal = Math.max(0, Number(t.ruralKm || t.workKm || 0));
+      if (!ruralTrips.length) {
+        container.innerHTML = '<div class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-center text-xs text-slate-500">Nincs vidéki útként megjelölt munkamenetlevél a rendszerben.</div>';
+        return;
+      }
 
-    return `<div class="bg-slate-900/90 border border-slate-700/60 rounded-xl p-4 mb-3 shadow-md text-slate-200">
-      <!-- 1. Fejléc: Útvonal és Jelvény -->
-      <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
-        <div class="flex items-center space-x-2 text-sm md:text-base font-semibold text-white">
-          <span>${routeStart}</span>
-          <span class="text-emerald-400 font-bold">➔</span>
-          <span>${routeEnd}</span>
-        </div>
-        <span class="bg-emerald-950/80 text-emerald-400 border border-emerald-600/40 text-[10px] md:text-xs font-medium px-2.5 py-1 rounded-md flex items-center gap-1">
-          🏞️ VIDÉKI CÍM
-        </span>
-      </div>
+      container.innerHTML = ruralTrips.map(t => {
+        const routeStart = escapeHtml(String(t.startLocation || 'Kezdőcím'));
+        const routeEnd = escapeHtml(String(t.endLocation || 'Célcím'));
+        const driver = escapeHtml(getUsernameFromEmail(t.driverEmail || t.userEmail) || 'Ismeretlen sofőr');
+        const car = escapeHtml(t.carPlate || 'Nincs rendszám');
+        const dateStr = escapeHtml(t.date || t.startTime || t.time || '-');
+        const targetShiftId = String(t.shiftId || t.id || '');
+        const ruralKmVal = Math.max(0, Number(t.ruralKm || t.workKm || 0));
 
-      <!-- 2. Adatsor: Metaadatok -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-slate-400 mb-4 bg-slate-950/40 p-2.5 rounded-lg border border-slate-800/50">
-        <div>📅 <span class="text-slate-200">${dateStr}</span></div>
-        <div>👤 <span class="text-slate-200 font-medium">${driver}</span></div>
-        <div>🚗 <span class="text-slate-200 font-medium">${car}</span></div>
-        <div>📏 Menetlevél: <strong class="text-emerald-400">${Number(t.workKm || 0)} km</strong></div>
-      </div>
+        return `<div class="bg-slate-900/90 border border-slate-700/60 rounded-xl p-4 mb-3 shadow-md text-slate-200">
+          <!-- 1. Fejléc: Útvonal és Jelvény -->
+          <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
+            <div class="flex items-center space-x-2 text-sm md:text-base font-semibold text-white">
+              <span>${routeStart}</span>
+              <span class="text-emerald-400 font-bold">➔</span>
+              <span>${routeEnd}</span>
+            </div>
+            <span class="bg-emerald-950/80 text-emerald-400 border border-emerald-600/40 text-[10px] md:text-xs font-medium px-2.5 py-1 rounded-md flex items-center gap-1">
+              🏞️ VIDÉKI CÍM
+            </span>
+          </div>
 
-      <!-- 3. Vezérlők: Vidéki km form + Szerkesztés + PDF-ek -->
-      <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
-        <form class="flex items-center space-x-2" onsubmit="saveRuralKm(event, '${t.id}')">
-          <label class="text-xs text-slate-300 font-medium whitespace-nowrap">Vidéki km:</label>
-          <input type="number" min="0" step="1" id="ruralKmedit_${t.id}" value="${ruralKmVal}" 
-                 class="w-20 bg-slate-800 border border-slate-600 text-white text-sm rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none" required />
-          <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors">
-            ✓ Mentés
-          </button>
-        </form>
+          <!-- 2. Adatsor: Metaadatok -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-slate-400 mb-4 bg-slate-950/40 p-2.5 rounded-lg border border-slate-800/50">
+            <div>📅 <span class="text-slate-200">${dateStr}</span></div>
+            <div>👤 <span class="text-slate-200 font-medium">${driver}</span></div>
+            <div>🚗 <span class="text-slate-200 font-medium">${car}</span></div>
+            <div>📏 Menetlevél: <strong class="text-emerald-400">${Number(t.workKm || 0)} km</strong></div>
+          </div>
 
-        <div class="flex flex-wrap items-center gap-2">
-          <button type="button" onclick="window.editDriverTripModalOpen('${t.id}')" 
-                  class="bg-amber-600/80 hover:bg-amber-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
-            ✏️ Szerkesztés
-          </button>
-          <button type="button" onclick="window.exportShiftPDF('${targetShiftId}', 'all')" 
-                  class="bg-slate-700 hover:bg-slate-600 text-slate-100 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors border border-slate-600"
-                  title="Teljes Műszak PDF letöltése">
-            📄 Műszak PDF
-          </button>
-          <button type="button" onclick="window.exportShiftPDF('${targetShiftId}', 'work')" 
-                  class="bg-blue-600/80 hover:bg-blue-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
-                  title="Kizárólag munka km PDF letöltése">
-            📊 Munka km PDF
-          </button>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-}
+          <!-- 3. Vezérlők: Vidéki km form + Szerkesztés + PDF-ek -->
+          <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+            <form class="flex items-center space-x-2" onsubmit="window.saveRuralKm(event, '${t.id}')">
+              <label class="text-xs text-slate-300 font-medium whitespace-nowrap">Vidéki km:</label>
+              <input type="number" min="0" step="1" id="ruralKmEdit_${t.id}" value="${ruralKmVal}" 
+                     class="w-20 bg-slate-800 border border-slate-600 text-white text-sm rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none" required />
+              <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                ✓ Mentés
+              </button>
+            </form>
+
+            <div class="flex flex-wrap items-center gap-2">
+              <button type="button" onclick="window.editDriverTripModalOpen('${t.id}')" 
+                      class="bg-amber-600/80 hover:bg-amber-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
+                ✏️ Szerkesztés
+              </button>
+              <button type="button" onclick="window.exportShiftPDF('${targetShiftId}', 'all')" 
+                      class="bg-slate-700 hover:bg-slate-600 text-slate-100 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors border border-slate-600"
+                      title="Teljes Műszak PDF letöltése">
+                📄 Műszak PDF
+              </button>
+              <button type="button" onclick="window.exportShiftPDF('${targetShiftId}', 'work')" 
+                      class="bg-blue-600/80 hover:bg-blue-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+                      title="Kizárólag munka km PDF letöltése">
+                📊 Munka km PDF
+              </button>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    window.saveRuralKm = async function(event, tripId) {
+      event.preventDefault();
+      const input = document.getElementById('ruralKmEdit_' + tripId);
+      const value = Number(input?.value);
+      if (!Number.isFinite(value) || value < 0) return alert('Adj meg érvényes, nem negatív kilométerértéket.');
+      try {
+        await updateDoc(doc(db, 'trips', tripId), { ruralKm: value, ruralKmReviewed: true, ruralKmReviewedBy: currentUser?.email || '', ruralKmReviewedAt: new Date().toISOString() });
+        
+        // Memória frissítése F5 nélkül
+        const trip = (window.allTrips || []).find(t => String(t.id) === String(tripId));
+        if (trip) trip.ruralKm = value;
+
+        alert('A vidéki kilométer mentve.');
+        renderRuralKmCard();
+      } catch (error) {
+        console.error('Vidéki kilométer mentési hiba:', error);
+        alert('Nem sikerült menteni a vidéki kilométert.');
+      }
+    };
 
     window.saveRuralKm = async function(event, tripId) {
       event.preventDefault();
