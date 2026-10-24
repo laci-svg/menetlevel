@@ -3853,10 +3853,7 @@ window.saveDriverTripModalEdit = async function() {
   const tripIdInput = document.getElementById('driverEditingTripId');
   const tripId = tripIdInput ? tripIdInput.value : null;
 
-  if (!tripId) {
-    alert("A szerkesztendő út azonosítója hiányzik.");
-    return;
-  }
+  if (!tripId) return alert("A szerkesztendő út azonosítója hiányzik.");
 
   const startKm = Number(document.getElementById('modalDriverTripStartKm').value) || 0;
   const endKm = Number(document.getElementById('modalDriverTripEndKm').value) || 0;
@@ -3882,35 +3879,27 @@ window.saveDriverTripModalEdit = async function() {
       endKm: endKm,
       workKm: workKm,
       passengerCount: passengers,
-      isRuralTrip: isRural && type === 'work'
+      isRuralTrip: isRural && type !== 'private' && type !== 'privat',
+      ruralKm: (isRural && type !== 'private' && type !== 'privat') ? workKm : 0
     };
 
     // 1. Mentés a Firestore-ba
     await updateDoc(doc(db, 'trips', String(tripId)), updatedData);
 
-    // 2. A globális memóriatömbök (window.allTrips) azonnali frissítése
-    if (Array.isArray(window.allTrips)) {
-      const idx = window.allTrips.findIndex(t => String(t.id) === String(tripId));
-      if (idx !== -1) {
-        window.allTrips[idx] = { ...window.allTrips[idx], ...updatedData };
-      }
-    }
-    if (typeof allTrips !== 'undefined' && Array.isArray(allTrips)) {
-      const idx = allTrips.findIndex(t => String(t.id) === String(tripId));
-      if (idx !== -1) {
-        allTrips[idx] = { ...allTrips[idx], ...updatedData };
-      }
+    // 2. Memória tömbök frissítése
+    const tripsArr = Array.isArray(window.allTrips) ? window.allTrips : (typeof allTrips !== 'undefined' ? allTrips : []);
+    const idx = tripsArr.findIndex(t => String(t.id) === String(tripId));
+    if (idx !== -1) {
+      Object.assign(tripsArr[idx], updatedData);
     }
 
-    // 3. Bezárás és tisztítás
+    // 3. Modal bezárása
     window.closeDriverEditTripModal();
 
-    // 4. Felület azonnali újrarajzolása
-    if (typeof window.renderTripsTable === 'function') {
-      window.renderTripsTable();
-    } else if (typeof renderTripsTable === 'function') {
-      renderTripsTable();
-    }
+    // 4. Minden felület azonnali újrarajzolása
+    if (typeof renderTripsTable === 'function') renderTripsTable();
+    if (typeof renderAdminShifts === 'function') renderAdminShifts();
+    if (typeof renderRuralKmCard === 'function') renderRuralKmCard();
 
   } catch (error) {
     console.error("Szerkesztési hiba:", error);
