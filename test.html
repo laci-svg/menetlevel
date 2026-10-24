@@ -3576,37 +3576,41 @@
       await deleteDoc(doc(db, "shifts", shiftId));
       alert("Műszak törölve!");
     };
+    
+window.editDriverTripModalOpen = function(tripId) {
+  try {
+    const trips = Array.isArray(window.allTrips) ? window.allTrips : (typeof allTrips !== 'undefined' ? allTrips : []);
+    const trip = trips.find(t => String(t.id) === String(tripId));
+    if (!trip) return alert("Az út nem található a betöltött utak között. Frissítsd az oldalt, majd próbáld újra!");
 
-    window.editDriverTripModalOpen = function(tripId) {
-      try {
-        const trips = Array.isArray(window.allTrips) ? window.allTrips : (typeof allTrips !== 'undefined' ? allTrips : []);
-        const trip = trips.find(t => String(t.id) === String(tripId));
-        if (!trip) return alert("Az út nem található a betöltött utak között. Frissítsd az oldalt, majd próbáld újra!");
-
-        const field = (id) => {
-          const el = document.getElementById(id);
-          if (!el) throw new Error('Hiányzó szerkesztőmező: ' + id);
-          return el;
-        };
-        field('driverEditingTripId').value = trip.id;
-        field('modalDriverTripType').value = (trip.type === 'privat' || trip.type === 'private') ? 'private' : 'work';
-        field('modalDriverTripStartLoc').value = trip.startLocation || '';
-        field('modalDriverTripEndLoc').value = trip.endLocation || '';
-        field('modalDriverTripStartKm').value = trip.startKm ?? 0;
-        field('modalDriverTripEndKm').value = trip.endKm ?? 0;
-        field('modalDriverTripPassengers').value = trip.passengerCount ?? 0;
-        field('modalDriverTripIsRural').checked = trip.isRuralTrip === true && trip.type !== 'private' && trip.type !== 'privat';
-        window.calculateDriverModalTripKm();
-
-        const modal = document.getElementById('driverEditTripModal');
-        if (!modal) throw new Error('A szerkesztőablak (driverEditTripModal) nem található.');
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-      } catch (error) {
-        console.error('Sofőr út szerkesztő megnyitási hiba:', error);
-        alert('Nem sikerült megnyitni az út szerkesztését: ' + (error && error.message ? error.message : error));
-      }
+    const field = (id) => {
+      const el = document.getElementById(id);
+      if (!el) throw new Error('Hiányzó szerkesztőmező: ' + id);
+      return el;
     };
+
+    field('driverEditingTripId').value = trip.id;
+    field('modalDriverTripType').value = (trip.type === 'privat' || trip.type === 'private') ? 'private' : 'work';
+    field('modalDriverTripStartLoc').value = trip.startLocation || '';
+    field('modalDriverTripEndLoc').value = trip.endLocation || '';
+    field('modalDriverTripStartKm').value = trip.startKm ?? 0;
+    field('modalDriverTripEndKm').value = trip.endKm ?? 0;
+    field('modalDriverTripPassengers').value = trip.passengerCount ?? 0;
+    field('modalDriverTripIsRural').checked = trip.isRuralTrip === true && trip.type !== 'private' && trip.type !== 'privat';
+
+    if (typeof window.calculateDriverModalTripKm === 'function') {
+      window.calculateDriverModalTripKm();
+    }
+
+    const modal = document.getElementById('driverEditTripModal');
+    if (!modal) throw new Error('A szerkesztőablak (driverEditTripModal) nem található.');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  } catch (error) {
+    console.error('Sofőr út szerkesztő megnyitási hiba:', error);
+    alert('Nem sikerült megnyitni az út szerkesztését: ' + (error && error.message ? error.message : error));
+  }
+};
 
 window.editTrip = function(tripId) {
   if (!tripId) return alert("Hiba: hiányzó út azonosító!");
