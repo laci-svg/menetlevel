@@ -4407,6 +4407,431 @@ if (document.readyState === 'loading') {
       const filename = "menetlevel_kimutatas_" + new Date().toISOString().slice(0,10) + ".pdf";
       generatePDFForTrips(filtered, "Menetlevél Kimutatás", "Szűrt Kimutatás | Időszak: " + period.toUpperCase(), filename, type);
     };
+    // ==========================================
+// 📋 MEGBÍZÁSOK & DISZPÉCSER LOGIKA
+// ==========================================
+
+let allAssignments = [];
+
+// 1. Dinamikus megbízók és útvonalak sormenedzsere
+window.addContactRow = function(name = '', phone = '') {
+  const container = document.getElementById('contactsContainer');
+  if (!container) return;
+
+  const div = document.createElement('div');
+  div.className = "flex items-center gap-2 contact-row";
+  div.innerHTML = `
+    <input type="text" placeholder="Megbízó neve (pl. Kovács Péter)" value="${name}" class="flex-1 bg-slate-800 border border-slate-700 text-white p-2 rounded-lg text-xs contact-name" required>
+    <input type="tel" placeholder="Telefonszám (pl. +36301234567)" value="${phone}" class="flex-1 bg-slate-800 border border-slate-700 text-white p-2 rounded-lg text-xs contact-phone" required>
+    <button type="button" onclick="this.parentElement.remove()" class="text-red-400 font-bold hover:text-red-300 p-1">✕</button>
+  `;
+  container.appendChild(div);
+};
+
+window.addRouteRow = function(location = '') {
+  const container = document.getElementById('routesContainer');
+  if (!container) return;
+
+  const count = container.children.length + 1;
+  const div = document.createElement('div');
+  div.className = "flex items-center gap-2 route-row";
+  div.innerHTML = `
+    <span class="text-[10px] font-bold text-slate-400 w-16 whitespace-nowrap">${count}. állomás:</span>
+    <input type="text" placeholder="Cím / Megálló (pl. Budapest, Hősök tere)" value="${location}" class="flex-1 bg-slate-800 border border-slate-700 text-white p-2 rounded-lg text-xs route-location" required>
+    <button type="button" onclick="this.parentElement.remove(); window.renumberRouteRows();" class="text-red-400 font-bold hover:text-red-300 p-1">✕</button>
+  `;
+  container.appendChild(div);
+};
+
+window.renumberRouteRows = function() {
+  const rows = document.querySelectorAll('#routesContainer .route-row');
+  rows.forEach((row, idx) => {
+    const label = row.querySelector('span');
+    if (label) label.textContent = `${idx + 1}. állomás:`;
+  });
+};
+
+// Modal nyitás / zárás
+window.openNewAssignmentModal = function(assignmentId = null) {
+  const form = document.getElementById('assignmentForm');
+  if (form) form.reset();
+  
+  document.getElementById('contactsContainer').innerHTML = '';
+  document.getElementById('routesContainer').innerHTML = '';
+
+  // Sofőrök és autók feltöltése
+  const driverSelect = document.getElementById('assignDriverSelect');
+  const carSelect = document.getElementById('assignCarSelect');
+
+  if (driverSelect) {
+    const activeUsers = allUsers.filter(u => u.email && !u.isInactive).sort((a, b) => getUsernameFromEmail(a.email).localeCompare(getUsernameFromEmail(b.email)));
+    driverSelect.innerHTML = '<option value="">-- Válassz sofőrt --</option>' + 
+      activeUsers.map(u => `<option value="${u.id}">${getUsernameFromEmail(u.email)} (${u.email})</option>`).join('');
+  }
+
+  if (carSelect) {
+    const sortedCars = [...allCars].sort((a, b) => (a.plateNumber || '').localeCompare(b.plateNumber || ''));
+    carSelect.innerHTML = '<option value="">-- Válassz autót (Opcionális) --</option>' + 
+      sortedCars.map(c => `<option value="${c.plateNumber}">${c.plateNumber} - ${c.model || ''} ${c.isLargeBus ? '(NAGYBUSZ)' : ''}</option>`).join('');
+  }
+
+  // Alapértelmezett sorok hozzáadása
+  window.addContactRow();
+  window.addRouteRow(); // Indulási pont
+  window.addRouteRow(); // Érkezési pont
+
+  // Alapértelmezett időpontok (Jelenlegi idő)
+  const nowISO = new Date().toISOString().slice(0, 16);
+  document.getElementById('assignStartDateTime').value = nowISO;
+  document.getElementById('assignSendDateTime').value = nowISO;
+
+  document.getElementById('assignmentModal').classList.remove('hidden');
+};
+
+window.closeAssignmentModal = function() {
+  document.getElementById('assignmentModal').classList.add('hidden');
+};
+
+// 2. Megbízás mentése Firestore-ba
+window.saveAssignment = async function(e) {
+  e.preventDefault();
+
+  const driverId = document.getElementById('assignDriverSelect').value;
+  const driverObj = allUsers.find(u => u.id === driverId);
+  const carPlate = document.getElementById('assignCarSelect').value;
+
+  // Contacts kinyerése
+  const contactRows = document.querySelectorAll('#contactsContainer .contact-row');
+  const contacts = Array.from(contactRows).map(row => ({
+    name: row.querySelector('.contact-name').value.trim(),
+    phone: row.querySelector('.contact-phone').value.trim()
+  })).filter(c => c.name && c.phone);
+
+  // Routes kinyerése
+  const routeRows = document.querySelectorAll('#routesContainer .route-row');
+  const routes = Array.from(routeRows).map(row => row.querySelector('.route-location').value.trim()).filter(Boolean);
+
+  if (contacts.length === 0) return alert("Kérlek adj meg legalább egy megbízót és elérhetőséget!");
+  if (routes.length < 2) return alert("Kérlek adj meg legalább 2 állomást (indulás és érkezés)!");
+
+  const startDateTime = document.getElementById('assignStartDateTime').value;
+  const endDateTime = document.getElementById('assignEndDateTime').value;
+  const sendDateTime = document.getElementById('assignSendDateTime').value;
+  const notes = document.getElementById('assignNotes').value.trim();
+
+  const assignmentData = {
+    driverUid: driverId,
+    driverEmail: driverObj ? driverObj.email : '',
+    carPlate: carPlate || '',
+    contacts: contacts,
+    routes: routes,
+    startDateTime: startDateTime,
+    endDateTime: endDateTime || '',
+    sendDateTime: sendDateTime,
+    notes: notes,
+    status: 'PENDING', // PENDING (kiadva), ACCEPTED (sofőr által tudomásul véve)
+    createdAt: new Date().toISOString(),
+    createdByName: getUsernameFromEmail(currentUser?.email)
+  };
+
+  try {
+    await addDoc(collection(db, "assignments"), assignmentData);
+    window.closeAssignmentModal();
+    alert("📋 Megbízás sikeresen rögzítve és ütemezve!");
+  } catch (err) {
+    console.error("Megbízás mentési hiba:", err);
+    alert("Hiba történt a mentés során: " + err.message);
+  }
+};
+
+// 3. Valós idejű figyelés (Firestore snapshot)
+function listenToAssignments() {
+  onSnapshot(collection(db, "assignments"), (snapshot) => {
+    allAssignments = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
+    
+    if (isAdminMode) {
+      renderAdminAssignments();
+    }
+    renderDriverAssignments();
+  });
+}
+
+// 4. ADMIN Felület kirajzolása
+function renderAdminAssignments() {
+  const container = document.getElementById('adminAssignmentsList');
+  const badge = document.getElementById('badge_assignments');
+  if (!container) return;
+
+  if (badge) badge.textContent = allAssignments.length + " megbízás";
+
+  if (allAssignments.length === 0) {
+    container.innerHTML = '<p class="text-xs text-slate-500 text-center p-3 bg-slate-950/60 rounded-xl">Még nincs rögzített megbízás.</p>';
+    return;
+  }
+
+  const sorted = [...allAssignments].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+
+  container.innerHTML = sorted.map(item => {
+    const driverName = getUsernameFromEmail(item.driverEmail);
+    const isAccepted = item.status === 'ACCEPTED';
+    const statusBadge = isAccepted 
+      ? `<span class="bg-emerald-950 text-emerald-300 border border-emerald-700 px-2 py-0.5 rounded text-[10px] font-bold">✅ Tudomásul véve (${item.acceptedAtFormatted || item.acceptedAt || ''})</span>`
+      : `<span class="bg-amber-950 text-amber-300 border border-amber-800 px-2 py-0.5 rounded text-[10px] font-bold">⏳ Várakozik a sofőrre</span>`;
+
+    const contactsHtml = item.contacts.map(c => `👤 ${c.name} (${c.phone})`).join(' | ');
+    const routeHtml = item.routes.map((r, i) => `<b>${i+1}.</b> ${r}`).join(' ➔ ');
+
+    return `
+      <div class="bg-slate-950 border border-slate-800 p-3 rounded-xl space-y-2 text-xs">
+        <div class="flex justify-between items-start border-b border-slate-800 pb-2">
+          <div>
+            <span class="font-bold text-slate-200">👤 Sofőr: ${driverName}</span>
+            ${item.carPlate ? ` | 🚗 Jármű: <strong>${window.formatCarPlate(item.carPlate)}</strong>` : ''}
+            <div class="text-[10px] text-slate-400 mt-0.5">📅 Munka kezdete: <strong class="text-orange-400">${item.startDateTime.replace('T', ' ')}</strong> | 📲 Kiküldés: ${item.sendDateTime.replace('T', ' ')}</div>
+          </div>
+          <div class="flex items-center gap-1.5">
+            ${statusBadge}
+            <button onclick="window.downloadAssignmentPDF('${item.id}')" class="bg-slate-800 hover:bg-slate-700 text-amber-300 px-2 py-1 rounded text-[10px] font-bold border border-slate-700">📄 PDF</button>
+            <button onclick="window.deleteAssignment('${item.id}')" class="bg-red-900/40 hover:bg-red-800 text-red-300 px-2 py-1 rounded text-[10px] font-bold border border-red-800">🗑️</button>
+          </div>
+        </div>
+
+        <div class="space-y-1 text-[11px] text-slate-300">
+          <div>📞 <strong>Megbízó(k):</strong> ${contactsHtml}</div>
+          <div>📍 <strong>Útvonal:</strong> ${routeHtml}</div>
+          ${item.notes ? `<div class="text-slate-400 italic">📝 Megjegyzés: ${item.notes}</div>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+window.deleteAssignment = async function(id) {
+  if (confirm("Biztosan törölni szeretnéd ezt a megbízást?")) {
+    await deleteDoc(doc(db, "assignments", id));
+  }
+};
+
+// 5. SOFŐR Felület kirajzolása (Időzített megjelenítéssel!)
+function renderDriverAssignments() {
+  if (!currentUser) return;
+
+  const nowStr = new Date().toISOString().slice(0, 16);
+
+  // Kizárólag azokat a megbízásokat mutatjuk a sofőrnek:
+  // 1. Ami NEKI szól (driverUid === currentUser.uid)
+  // 2. És aminek a kiküldési időpontja elérkezett (sendDateTime <= most)
+  const myAssignments = allAssignments.filter(a => 
+    a.driverUid === currentUser.uid && (a.sendDateTime <= nowStr)
+  ).sort((a, b) => (b.startDateTime || '').localeCompare(a.startDateTime || ''));
+
+  let driverBox = document.getElementById('driverAssignmentsBox');
+  if (!driverBox) {
+    const parentContainer = document.getElementById('driverViewContainer');
+    if (parentContainer) {
+      driverBox = document.createElement('div');
+      driverBox.id = 'driverAssignmentsBox';
+      parentContainer.insertBefore(driverBox, parentContainer.firstChild);
+    }
+  }
+
+  if (!driverBox) return;
+
+  if (myAssignments.length === 0) {
+    driverBox.innerHTML = '';
+    return;
+  }
+
+  driverBox.innerHTML = `
+    <div class="bg-slate-900/90 border border-emerald-500/50 p-4 rounded-2xl shadow-xl space-y-3 backdrop-blur-md">
+      <h3 class="text-sm font-bold text-emerald-400 flex items-center gap-2 border-b border-slate-800 pb-2">
+        <span>📋</span> Aktuális Megbízásaim
+      </h3>
+      <div class="space-y-3">
+        ${myAssignments.map(item => {
+          const isAccepted = item.status === 'ACCEPTED';
+          
+          const contactsHtml = item.contacts.map(c => `
+            <div class="flex items-center justify-between bg-slate-950 p-2 rounded-lg border border-slate-800">
+              <span class="font-bold text-slate-200">👤 ${c.name}</span>
+              <a href="tel:${c.phone}" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow">
+                📞 Hívás (${c.phone})
+              </a>
+            </div>
+          `).join('');
+
+          const routeHtml = item.routes.map((r, i) => `
+            <div class="text-xs text-slate-200"><strong class="text-emerald-400">${i+1}. állomás:</strong> ${r}</div>
+          `).join('');
+
+          return `
+            <div class="bg-slate-950/80 border ${isAccepted ? 'border-slate-800' : 'border-emerald-500/80 animate-pulse'} p-3 rounded-xl space-y-2 text-xs">
+              <div class="flex justify-between items-center border-b border-slate-800 pb-1.5">
+                <span class="font-bold text-orange-400">📅 Kezdés: ${item.startDateTime.replace('T', ' ')}</span>
+                ${item.carPlate ? `<span class="bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono">🚗 ${item.carPlate}</span>` : ''}
+              </div>
+
+              <!-- Megbízók & Hívás gombok -->
+              <div class="space-y-1 pt-1">
+                <span class="text-[10px] text-slate-400 font-bold block">MEGBÍZÓ ELÉRHERŐSÉGEK:</span>
+                ${contactsHtml}
+              </div>
+
+              <!-- Megállók -->
+              <div class="space-y-1 bg-slate-900 p-2 rounded-lg border border-slate-800 mt-2">
+                <span class="text-[10px] text-slate-400 font-bold block mb-1">ÚTVONAL & ÁLLOMÁSOK:</span>
+                ${routeHtml}
+              </div>
+
+              ${item.notes ? `<div class="bg-amber-950/30 border border-amber-800/60 p-2 rounded-lg text-amber-300 text-[11px]">📝 <strong>Megjegyzés:</strong> ${item.notes}</div>` : ''}
+
+              <!-- Gombok (Tudomásulvétel & PDF) -->
+              <div class="flex justify-between items-center pt-2">
+                ${!isAccepted ? `
+                  <button onclick="window.acceptAssignment('${item.id}')" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-90 text-white font-extrabold py-2.5 rounded-xl text-xs shadow-lg transition">
+                    ✔ Megbízást Tudomásul Vettem
+                  </button>
+                ` : `
+                  <div class="text-[11px] text-emerald-400 font-bold flex items-center gap-1">
+                    ✔ Tudomásul véve (${item.acceptedAtFormatted || ''})
+                  </div>
+                  <button onclick="window.downloadAssignmentPDF('${item.id}')" class="bg-slate-800 hover:bg-slate-700 text-amber-300 px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-700">
+                    📄 Megbízólevél PDF
+                  </button>
+                `}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
+// 6. Sofőr Tudomásulvétel visszagazolása
+window.acceptAssignment = async function(id) {
+  const now = new Date();
+  const dateFormatted = now.toLocaleDateString('hu-HU') + ' ' + now.toLocaleTimeString('hu-HU', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+
+  try {
+    await updateDoc(doc(db, "assignments", id), {
+      status: 'ACCEPTED',
+      acceptedAt: now.toISOString(),
+      acceptedAtFormatted: dateFormatted
+    });
+    alert("✅ Megbízást sikeresen tudomásul vetted! A dátum rögzítésre került.");
+  } catch (err) {
+    console.error("Visszaigazolási hiba:", err);
+    alert("Hiba történt a visszaigazoláskor.");
+  }
+};
+
+// 7. PDF MEGBÍZÓLEVÉL GENERÁLÁSA (Stempellel & Visszaigazolással)
+window.downloadAssignmentPDF = function(id) {
+  const item = allAssignments.find(a => a.id === id);
+  if (!item) return alert("A megbízás nem található!");
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  const driverName = getUsernameFromEmail(item.driverEmail);
+
+  // Fejléc
+  doc.setFontSize(18);
+  doc.setFont(undefined, 'bold');
+  doc.text("HIVATALOS MUNKA MEGBIZOLEVEL", 14, 18);
+
+  doc.setFontSize(9);
+  doc.setFont(undefined, 'normal');
+  doc.setTextColor(100, 100, 100);
+  doc.text(`Kiallitva: ${new Date().toLocaleDateString('hu-HU')} | Rendszerazonosito: ${item.id}`, 14, 24);
+
+  // 1. Megbízási adatok táblázat
+  const infoData = [
+    ["Kirendelt Sofor:", driverName],
+    ["Kirendelt Jarmu:", item.carPlate || 'Nincs kijelolve'],
+    ["Kiallas / Kezdes:", item.startDateTime.replace('T', ' ')],
+    ["Visszaindulas / Vegzes:", item.endDateTime ? item.endDateTime.replace('T', ' ') : 'Nincs megadva'],
+    ["Megbizas Kikuldese:", item.sendDateTime.replace('T', ' ')]
+  ];
+
+  doc.autoTable({
+    startY: 30,
+    body: infoData,
+    theme: 'plain',
+    styles: { fontSize: 9.5, cellPadding: 2 },
+    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 45 } }
+  });
+
+  // 2. Megbízók listája
+  let currentY = doc.lastAutoTable.finalY + 6;
+  doc.setFontSize(11);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(30, 41, 59);
+  doc.text("MEGBIZO(K) ES HELYSZINI ELERHETOSEGEK", 14, currentY);
+
+  const contactRows = item.contacts.map(c => [c.name, c.phone]);
+  doc.autoTable({
+    startY: currentY + 3,
+    head: [['Nev / Szervezet', 'Telefonszam']],
+    body: contactRows,
+    styles: { fontSize: 9, cellPadding: 2.5 },
+    headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255] }
+  });
+
+  // 3. Útvonal és állomások
+  currentY = doc.lastAutoTable.finalY + 6;
+  doc.setFontSize(11);
+  doc.setFont(undefined, 'bold');
+  doc.text("UTVONAL ES ALLOMASOK", 14, currentY);
+
+  const routeRows = item.routes.map((r, i) => [`${i + 1}. allomas`, r]);
+  doc.autoTable({
+    startY: currentY + 3,
+    head: [['Sorszam', 'Cim / Megallohely']],
+    body: routeRows,
+    styles: { fontSize: 9, cellPadding: 2.5 },
+    headStyles: { fillColor: [15, 118, 110], textColor: [255, 255, 255] }
+  });
+
+  // Megjegyzés, ha van
+  currentY = doc.lastAutoTable.finalY + 6;
+  if (item.notes) {
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'italic');
+    doc.setTextColor(80, 80, 80);
+    doc.text(`Megjegyzes: ${item.notes}`, 14, currentY);
+    currentY += 8;
+  }
+
+  // 4. IGazoló BÉLYEGZŐ (Tudomásulvétel elmentése)
+  currentY += 5;
+  const isAccepted = item.status === 'ACCEPTED';
+  
+  doc.setFillColor(isAccepted ? 240 : 254, isAccepted ? 253 : 242, isAccepted ? 244 : 242);
+  doc.setDrawColor(isAccepted ? 16 : 185, isAccepted ? 185 : 28, isAccepted ? 129 : 28);
+  doc.roundedRect(14, currentY, 182, 25, 3, 3, 'FD');
+
+  doc.setFontSize(10);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(isAccepted ? 15 : 153, isAccepted ? 118 : 27, isAccepted ? 110 : 27);
+  doc.text(isAccepted ? "STATUSZ: SOFOR ALTAL TUDOMASUL VEVE ES ELFOGADVA" : "STATUSZ: VARAKOZIK A SOFOR TUDOMASULVETELERE", 18, currentY + 8);
+
+  doc.setFontSize(8.5);
+  doc.setFont(undefined, 'normal');
+  doc.setTextColor(50, 50, 50);
+  if (isAccepted) {
+    doc.text(`Igazolta: ${driverName} (${item.driverEmail})`, 18, currentY + 15);
+    doc.text(`Tudomasulvetel pontos ideje: ${item.acceptedAtFormatted || item.acceptedAt}`, 18, currentY + 20);
+  } else {
+    doc.text("A sofor meg nem igazolta a megbizas tudomasulvetelet a rendszerben.", 18, currentY + 16);
+  }
+
+  doc.save(`Megbizolevel_${driverName}_${item.startDateTime.slice(0,10)}.pdf`);
+};
+
+// Automatikus indítás a Firestore hallgatóhoz
+listenToAssignments();
   </script>
 
   <!-- SOFŐR ÚT SZERKESZTŐ POPUP MODAL (A SCRIPT TAG-EN KÍVÜL) -->
