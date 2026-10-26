@@ -2339,7 +2339,15 @@
       const badge = document.getElementById('badge_car_manage');
       if (!container) return;
 
-      const sortedCars = [...allCars].sort((a, b) => (a.plateNumber || '').localeCompare(b.plateNumber || ''));
+      const sortedCars = [...allCars].sort((a, b) => {
+  // 1. Kategória szerinti rendezés: Kisbuszok felül (false/undefined), Nagybuszok alul (true)
+  const aLarge = !!a.isLargeBus;
+  const bLarge = !!b.isLargeBus;
+  if (aLarge !== bLarge) return aLarge ? 1 : -1;
+  
+  // 2. Csoporton belüli A-Z rendszám sorrend
+  return (a.plateNumber || '').localeCompare(b.plateNumber || '');
+});
       const freeCount = sortedCars.filter(c => !c.currentDriverUid && !c.isUnderMaintenance).length;
       const occupiedCount = sortedCars.filter(c => c.currentDriverUid).length;
       const serviceCount = sortedCars.filter(c => c.isUnderMaintenance).length;
