@@ -2480,6 +2480,7 @@
       document.getElementById('editCarId').value = carId;
       document.getElementById('editCarPlate').value = car.plateNumber || '';
       document.getElementById('editCarModel').value = car.model || '';
+      document.getElementById('editCarIsLargeBus').checked = !!car.isLargeBus;
       document.getElementById('editCarMot').value = car.motExpiry || '';
       document.getElementById('editMotAlertDays').value = car.motAlertDays || 30;
 
