@@ -2342,7 +2342,7 @@
   return `<span class="font-bold text-slate-200">${plateNumber}</span>`;
 };
     
-   function renderAdminCars() {
+  function renderAdminCars() {
   const container = document.getElementById('adminCarList');
   const badge = document.getElementById('badge_car_manage');
   if (!container) return;
@@ -2385,27 +2385,28 @@
         '<div>' +
           '<div class="text-sm ' + plateStyle + '">' + car.plateNumber + (isLarge ? ' <span class="text-[10px] bg-red-900/60 text-red-300 border border-red-700/60 px-1 py-0.5 rounded ml-1 font-normal">NAGYBUSZ</span>' : '') + ' <span class="font-normal text-slate-400 text-xs">(' + car.model + ')</span></div>' +
           '<div class="text-[10px] text-slate-400 mt-0.5">Óraállás: <strong class="text-orange-400 font-mono">' + (car.lastKm || 0) + ' km</strong> | Utolsó olaj: ' + (car.lastOilKm || 0) + ' km</div>' +
-          '<div class="text-[10px] mt-1">' + statusText + '</div>';
-            '</div>' +
-           '<div class="flex flex-wrap gap-1 justify-end max-w-[200px]">' +
-  '<button onclick="window.openEditCarModal(\'' + car.id + '\')" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-amber-300 p-1.5 px-2 rounded-lg border border-slate-700 font-bold">✏️ Módosít</button>' +
-  '<button onclick="window.openServiceHistory(\'' + car.plateNumber + '\')" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-sky-300 p-1.5 px-2 rounded-lg border border-slate-700 font-bold">📜 Történet</button>' +
-  (!isService ?
-                '<button onclick="window.openServiceCarModal(\'' + car.id + '\')" class="text-[10px] bg-amber-950 hover:bg-amber-900 text-amber-200 p-1.5 px-2 rounded-lg border border-amber-800 font-bold">🛠️ Szervizbe</button>' : 
-                '<button onclick="window.returnFromService(\'' + car.id + '\')" class="text-[10px] bg-emerald-950 hover:bg-emerald-900 text-emerald-300 p-1.5 px-2 rounded-lg border border-emerald-800 font-bold">✅ Visszavesz</button>') +
-              (isOccupied && canRelease ? '<button onclick="window.forceReleaseCar(\'' + car.id + '\')" class="text-[10px] bg-amber-500/10 text-amber-400 p-1.5 px-2 rounded-lg border border-amber-500/20 font-bold">🔓 Felszabadít</button>' : '') +
-              (canRelease ? '<button onclick="window.deleteCar(\'' + car.id + '\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-300 p-1.5 px-2 rounded-lg border border-red-800 font-bold">Törlés</button>' : '') +
-            '</div>' +
+          '<div class="text-[10px] mt-1">' + statusText + '</div>' +
+        '</div>' +
+        '<div class="flex flex-wrap gap-1 justify-end max-w-[200px]">' +
+          '<button onclick="window.openEditCarModal(\'' + car.id + '\')" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-amber-300 p-1.5 px-2 rounded-lg border border-slate-700 font-bold">✏️ Módosít</button>' +
+          '<button onclick="window.openServiceHistory(\'' + car.plateNumber + '\')" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-sky-300 p-1.5 px-2 rounded-lg border border-slate-700 font-bold">📜 Történet</button>' +
+          (!isService ?
+            '<button onclick="window.openServiceCarModal(\'' + car.id + '\')" class="text-[10px] bg-amber-950 hover:bg-amber-900 text-amber-200 p-1.5 px-2 rounded-lg border border-amber-800 font-bold">🛠️ Szervizbe</button>' : 
+            '<button onclick="window.returnFromService(\'' + car.id + '\')" class="text-[10px] bg-emerald-950 hover:bg-emerald-900 text-emerald-300 p-1.5 px-2 rounded-lg border border-emerald-800 font-bold">✅ Visszavesz</button>') +
+          (isOccupied && canRelease ? '<button onclick="window.forceReleaseCar(\'' + car.id + '\')" class="text-[10px] bg-amber-500/10 text-amber-400 p-1.5 px-2 rounded-lg border border-amber-500/20 font-bold">🔓 Felszabadít</button>' : '') +
+          (canRelease ? '<button onclick="window.deleteCar(\'' + car.id + '\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-300 p-1.5 px-2 rounded-lg border border-red-800 font-bold">Törlés</button>' : '') +
+        '</div>' +
+      '</div>' +
+      ((car.serviceHistory || []).length > 0 ? 
+        '<details class="text-[10px] text-slate-400 pt-1 border-t border-slate-800/80">' +
+          '<summary class="cursor-pointer font-bold text-sky-400 hover:underline">📜 Szerviztörténet megtekintése (' + car.serviceHistory.length + ' bejegyzés)</summary>' +
+          '<div class="space-y-1 mt-1 pl-2 border-l border-slate-800">' +
+           car.serviceHistory.map((h, idx) => '<div class="flex justify-between items-center py-1 border-b border-slate-800/50"><span>🗓️ ' + (h.date || '') + ' • <strong>' + (h.workType || h.type || '') + '</strong> (' + (h.location || h.notes || '') + ')' + (h.cost ? ' - ' + h.cost + ' Ft' : '') + '</span><div class="flex gap-1"><button onclick="window.editLegacyService(\'' + car.plateNumber + '\', ' + idx + ')" class="text-[10px] text-amber-300 hover:text-amber-200 px-1">✏️</button><button onclick="window.deleteLegacyService(\'' + car.plateNumber + '\', ' + idx + ')" class="text-[10px] text-red-400 hover:text-red-300 px-1">🗑️</button></div></div>').join('') +
           '</div>' +
-          ((car.serviceHistory || []).length > 0 ? 
-            '<details class="text-[10px] text-slate-400 pt-1 border-t border-slate-800/80">' +
-              '<summary class="cursor-pointer font-bold text-sky-400 hover:underline">📜 Szerviztörténet megtekintése (' + car.serviceHistory.length + ' bejegyzés)</summary>' +
-              '<div class="space-y-1 mt-1 pl-2 border-l border-slate-800">' +
-               car.serviceHistory.map((h, idx) => '<div class="flex justify-between items-center py-1 border-b border-slate-800/50"><span>🗓️ ' + (h.date || '') + ' • <strong>' + (h.workType || h.type || '') + '</strong> (' + (h.location || h.notes || '') + ')' + (h.cost ? ' - ' + h.cost + ' Ft' : '') + '</span><div class="flex gap-1"><button onclick="window.editLegacyService(\'' + car.plateNumber + '\', ' + idx + ')" class="text-[10px] text-amber-300 hover:text-amber-200 px-1">✏️</button><button onclick="window.deleteLegacyService(\'' + car.plateNumber + '\', ' + idx + ')" class="text-[10px] text-red-400 hover:text-red-300 px-1">🗑️</button></div></div>').join('') +
-            '</details>' : '') +
-        '</div>';
-      }).join('');
-    }
+        '</details>' : '') +
+    '</div>';
+  }).join('');
+}
 
     window.openServiceCarModal = function(carId) {
       const car = allCars.find(c => c.id === carId);
