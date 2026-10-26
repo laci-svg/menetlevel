@@ -4604,5 +4604,86 @@ if (document.readyState === 'loading') {
       </div>
     </div>
   </div>
+  <!-- ÚJ MEGBÍZÁSMODAL (ADMIN) -->
+<div id="assignmentModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+  <div class="bg-slate-900 border-2 border-emerald-500/50 rounded-2xl max-w-xl w-full p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+    <div class="border-b border-slate-800 pb-2 flex justify-between items-center">
+      <h3 class="text-base font-bold text-emerald-400 flex items-center gap-2">
+        <span>📋</span> Új Megbízás Rögzítése
+      </h3>
+      <button type="button" onclick="window.closeAssignmentModal()" class="text-slate-400 hover:text-white text-lg">✕</button>
+    </div>
+
+    <form id="assignmentForm" onsubmit="window.saveAssignment(event)" class="space-y-4">
+      <input type="hidden" id="assignmentId">
+
+      <!-- 1. Sofőr & Autó -->
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Sofőr kiválasztása *</label>
+          <select id="assignDriverSelect" required class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs"></select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Jármű kiválasztása</label>
+          <select id="assignCarSelect" class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs"></select>
+        </div>
+      </div>
+
+      <!-- 2. Megbízók & Elérhetőségek (Dinamikus + gombbal) -->
+      <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+        <div class="flex justify-between items-center">
+          <label class="text-xs font-bold text-emerald-300">📞 Megbízó(k) & Elérhetőségek</label>
+          <button type="button" onclick="window.addContactRow()" class="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded-lg font-bold hover:bg-emerald-900">+ Megbízó hozzáadása</button>
+        </div>
+        <div id="contactsContainer" class="space-y-2"></div>
+      </div>
+
+      <!-- 3. Útvonal & Megállók (Dinamikus + gombbal) -->
+      <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+        <div class="flex justify-between items-center">
+          <label class="text-xs font-bold text-emerald-300">📍 Útvonal & Állomások</label>
+          <button type="button" onclick="window.addRouteRow()" class="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded-lg font-bold hover:bg-emerald-900">+ Megálló hozzáadása</button>
+        </div>
+        <div id="routesContainer" class="space-y-2"></div>
+      </div>
+
+      <!-- 4. Időpontok & Kiküldés ütemezése -->
+      <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-3">
+        <div class="text-xs font-bold text-amber-300">⏱️ Munkavégzés Időpontjai</div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[10px] text-slate-400">Kiállás / Kezdés *</label>
+            <input type="datetime-local" id="assignStartDateTime" required class="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded-lg text-xs">
+          </div>
+          <div>
+            <label class="block text-[10px] text-slate-400">Visszaindulás / Végzés</label>
+            <input type="datetime-local" id="assignEndDateTime" class="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded-lg text-xs">
+          </div>
+        </div>
+
+        <div class="pt-2 border-t border-slate-800">
+          <label class="block text-xs font-bold text-sky-400 mb-1">📲 Mikor kapja meg a sofőr a megbízást? *</label>
+          <input type="datetime-local" id="assignSendDateTime" required class="w-full bg-slate-800 border border-sky-600/50 text-white p-2 rounded-lg text-xs font-bold">
+          <p class="text-[10px] text-slate-400 mt-1">A megbízás csak ezen időpont után fog megjelenni a sofőr felületén.</p>
+        </div>
+      </div>
+
+      <!-- 5. Megjegyzések -->
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1">Egyéb megjegyzések / Utasítások</label>
+        <textarea id="assignNotes" rows="2" placeholder="Pl. Parkolóbérlet a kesztyűtartóban, fizetés a helyszínen..." class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs"></textarea>
+      </div>
+
+      <div class="pt-2 flex gap-2">
+        <button type="submit" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs shadow-lg transition">
+          💾 Megbízás Mentése & Ütemezése
+        </button>
+        <button type="button" onclick="window.closeAssignmentModal()" class="bg-slate-800 text-slate-400 hover:bg-slate-700 px-4 py-2.5 rounded-xl text-xs font-semibold">
+          Mégse
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
 </body>
 </html>
