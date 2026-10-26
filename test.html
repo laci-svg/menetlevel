@@ -311,6 +311,29 @@
         </div>
       </div>
 
+      <!-- 📋 MEGBÍZÁSOK & DISZPÉCSER KÁRTYA (ADMIN) -->
+<div id="card_assignments" class="admin-card bg-slate-900/90 border border-emerald-500/40 rounded-xl overflow-hidden shadow-md">
+  <div onclick="toggleCardAccordion('card_assignments')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-emerald-500/30">
+    <div class="flex items-center gap-2">
+      <h3 class="text-sm font-bold text-emerald-400 flex items-center gap-1.5">
+        <span>📋</span> Megbízások & Diszpécser
+      </h3>
+      <span id="badge_assignments" class="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded-full font-mono font-bold">0 megbízás</span>
+    </div>
+    <span id="arrow_card_assignments" class="text-xs text-slate-400 font-bold transition-transform">▼</span>
+  </div>
+
+  <div id="content_card_assignments" class="hidden p-4 space-y-4 border-t border-slate-800/80">
+    <!-- Új megbízás gomb -->
+    <button onclick="window.openNewAssignmentModal()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs shadow-md transition flex justify-center items-center gap-2">
+      <span>➕</span> Új Megbízás Létrehozása & Kiküldése
+    </button>
+
+    <!-- Megbízások listája -->
+    <div id="adminAssignmentsList" class="space-y-2 max-h-[400px] overflow-y-auto pr-1"></div>
+  </div>
+</div>
+
       <!-- 4. HAVI TÚLÓRÁK KÁRTYA -->
         <div id="card_overtime" class="admin-card bg-slate-900/90 border border-indigo-500/40 rounded-xl overflow-hidden shadow-md">
           <div onclick="toggleCardAccordion('card_overtime')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-indigo-500/30">
