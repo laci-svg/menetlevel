@@ -2334,46 +2334,50 @@
   }
 };
     
-    function renderAdminCars() {
-      const container = document.getElementById('adminCarList');
-      const badge = document.getElementById('badge_car_manage');
-      if (!container) return;
+   function renderAdminCars() {
+  const container = document.getElementById('adminCarList');
+  const badge = document.getElementById('badge_car_manage');
+  if (!container) return;
 
-      const sortedCars = [...allCars].sort((a, b) => {
-  // 1. Kategória szerinti rendezés: Kisbuszok felül (false/undefined), Nagybuszok alul (true)
-  const aLarge = !!a.isLargeBus;
-  const bLarge = !!b.isLargeBus;
-  if (aLarge !== bLarge) return aLarge ? 1 : -1;
-  
-  // 2. Csoporton belüli A-Z rendszám sorrend
-  return (a.plateNumber || '').localeCompare(b.plateNumber || '');
-});
-      const freeCount = sortedCars.filter(c => !c.currentDriverUid && !c.isUnderMaintenance).length;
-      const occupiedCount = sortedCars.filter(c => c.currentDriverUid).length;
-      const serviceCount = sortedCars.filter(c => c.isUnderMaintenance).length;
+  // 1. Rendezés: Kisbuszok felül (A-Z), Nagybuszok alul (A-Z)
+  const sortedCars = [...allCars].sort((a, b) => {
+    const aLarge = !!a.isLargeBus;
+    const bLarge = !!b.isLargeBus;
+    if (aLarge !== bLarge) return aLarge ? 1 : -1;
+    return (a.plateNumber || '').localeCompare(b.plateNumber || '');
+  });
 
-      if (badge) badge.textContent = sortedCars.length + " autó (" + freeCount + " szabad / " + occupiedCount + " foglalt / " + serviceCount + " szervizben)";
+  const freeCount = sortedCars.filter(c => !c.currentDriverUid && !c.isUnderMaintenance).length;
+  const occupiedCount = sortedCars.filter(c => c.currentDriverUid).length;
+  const serviceCount = sortedCars.filter(c => c.isUnderMaintenance).length;
 
-      const canRelease = hasActionPermission('release_car');
+  if (badge) badge.textContent = sortedCars.length + " autó (" + freeCount + " szabad / " + occupiedCount + " foglalt / " + serviceCount + " szervizben)";
 
-      container.innerHTML = sortedCars.map(car => {
-        const isOccupied = !!car.currentDriverUid;
-        const isService = !!car.isUnderMaintenance;
-        const driverName = getUsernameFromEmail(car.currentDriverEmail);
+  const canRelease = hasActionPermission('release_car');
 
-        let statusText = '<span class="text-emerald-400 font-semibold">🟢 Szabad</span>';
-        if (isService) {
-          statusText = '<span class="text-amber-400 font-bold bg-amber-950 px-1.5 py-0.5 rounded border border-amber-800">🛠️ SZERVIZBEN (' + (car.serviceWorkType || 'Karbantartás') + ')</span>';
-        } else if (isOccupied) {
-          statusText = '<span class="text-amber-400 font-semibold">Foglalt (' + driverName + ')</span>';
-        }
+  container.innerHTML = sortedCars.map(car => {
+    const isOccupied = !!car.currentDriverUid;
+    const isService = !!car.isUnderMaintenance;
+    const driverName = getUsernameFromEmail(car.currentDriverEmail);
 
-        return '<div class="border border-slate-800 bg-slate-950 p-3 rounded-xl space-y-2 text-xs">' +
-          '<div class="flex justify-between items-start">' +
-            '<div>' +
-              '<div class="font-bold text-slate-200 text-sm">' + car.plateNumber + ' <span class="font-normal text-slate-400 text-xs">(' + car.model + ')</span></div>' +
-              '<div class="text-[10px] text-slate-400 mt-0.5">Óraállás: <strong class="text-orange-400 font-mono">' + (car.lastKm || 0) + ' km</strong> | Utolsó olaj: ' + (car.lastOilKm || 0) + ' km</div>' +
-              '<div class="text-[10px] mt-1">' + statusText + '</div>' +
+    let statusText = '<span class="text-emerald-400 font-semibold">🟢 Szabad</span>';
+    if (isService) {
+      statusText = '<span class="text-amber-400 font-bold bg-amber-950 px-1.5 py-0.5 rounded border border-amber-800">🔧 SZERVIZBEN (' + (car.serviceWorkType || 'Karbantartás') + ')</span>';
+    } else if (isOccupied) {
+      statusText = '<span class="text-amber-400 font-semibold">Foglalt (' + driverName + ')</span>';
+    }
+
+    // Nagybusz stílus beállítása
+    const isLarge = !!car.isLargeBus;
+    const cardBg = isLarge ? 'bg-red-950/30 border-red-800/60' : 'bg-slate-950 border-slate-800';
+    const plateStyle = isLarge ? 'text-red-400 font-extrabold' : 'text-slate-200 font-bold';
+
+    return '<div class="border p-3 rounded-xl space-y-2 text-xs ' + cardBg + '">' +
+      '<div class="flex justify-between items-start">' +
+        '<div>' +
+          '<div class="text-sm ' + plateStyle + '">' + car.plateNumber + (isLarge ? ' <span class="text-[10px] bg-red-900/60 text-red-300 border border-red-700/60 px-1 py-0.5 rounded ml-1 font-normal">NAGYBUSZ</span>' : '') + ' <span class="font-normal text-slate-400 text-xs">(' + car.model + ')</span></div>' +
+          '<div class="text-[10px] text-slate-400 mt-0.5">Óraállás: <strong class="text-orange-400 font-mono">' + (car.lastKm || 0) + ' km</strong> | Utolsó olaj: ' + (car.lastOilKm || 0) + ' km</div>' +
+          '<div class="text-[10px] mt-1">' + statusText + '</div>';
             '</div>' +
            '<div class="flex flex-wrap gap-1 justify-end max-w-[200px]">' +
   '<button onclick="window.openEditCarModal(\'' + car.id + '\')" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-amber-300 p-1.5 px-2 rounded-lg border border-slate-700 font-bold">✏️ Módosít</button>' +
