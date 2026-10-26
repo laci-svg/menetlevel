@@ -3218,6 +3218,8 @@
       const overlimitList = [];
       allShifts.forEach(shift => {
         if (dismissedOverlimits.includes(shift.id)) return;
+        const car = (allCars || []).find(c => c.plateNumber === shift.carPlate || c.id === shift.carId);
+   if (car && car.isLargeBus) return;
         const shiftTrips = allTrips.filter(t => t.shiftId === shift.id);
         const workKmTotal = shiftTrips.filter(t => t.type === 'work').reduce((sum, t) => sum + Number(t.workKm || 0), 0);
         if (workKmTotal >= 250) {
