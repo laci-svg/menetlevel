@@ -4038,6 +4038,47 @@ if (document.readyState === 'loading') {
     window.serviceData = JSON.parse(localStorage.getItem('serviceHistoryData')) || [];
     let currentHistoryCar = '';
 
+    // Régi elemek szerkesztése a kártyán
+    window.editLegacyService = function(plateNumber, index) {
+      const car = (allCars || []).find(c => c.plateNumber === plateNumber);
+      if (!car || !car.serviceHistory || !car.serviceHistory[index]) return;
+
+      const item = car.serviceHistory[index];
+      
+      const carSelect = document.getElementById('serviceCar');
+      if (carSelect) {
+        carSelect.innerHTML = (allCars || []).map(c => 
+          `<option value="${c.plateNumber}">${c.plateNumber} - ${c.model || ''}</option>`
+        ).join('');
+        carSelect.value = plateNumber;
+      }
+
+      document.getElementById('serviceId').value = item.id || ('legacy_' + index);
+      document.getElementById('serviceDate').value = item.date || '';
+      document.getElementById('serviceType').value = item.workType || item.type || '';
+      document.getElementById('serviceKm').value = item.km || car.lastKm || 0;
+      document.getElementById('serviceCost').value = item.cost || '';
+      document.getElementById('serviceNotes').value = item.notes || item.location || '';
+      document.getElementById('serviceModalTitle').textContent = 'Szervíz Bejegyzés Szerkesztése';
+
+      const modal = document.getElementById('serviceModal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    };
+
+    // Régi elemek törlése a kártyán
+    window.deleteLegacyService = function(plateNumber, index) {
+      if (confirm('Biztosan törölni szeretnéd ezt a szervíz bejegyzést?')) {
+        const car = (allCars || []).find(c => c.plateNumber === plateNumber);
+        if (car && car.serviceHistory) {
+          car.serviceHistory.splice(index, 1);
+          if (typeof renderAdminCars === 'function') renderAdminCars();
+        }
+      }
+    };
+    
     window.openServiceModal = function(serviceId = null) {
       const form = document.getElementById('serviceForm');
       if (form) form.reset();
