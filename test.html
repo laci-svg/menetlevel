@@ -4032,6 +4032,173 @@ if (document.readyState === 'loading') {
 } else {
   initAdminSosListener();
 }
+    // ==========================================
+    // 🛠️ SZERVÍZTÖRTÉNET LOGIKA (Mentés, Szerkesztés, PDF)
+    // ==========================================
+    window.serviceData = JSON.parse(localStorage.getItem('serviceHistoryData')) || [];
+    let currentHistoryCar = '';
+
+    window.openServiceModal = function(serviceId = null) {
+      const form = document.getElementById('serviceForm');
+      if (form) form.reset();
+      
+      const carSelect = document.getElementById('serviceCar');
+      if (carSelect) {
+        carSelect.innerHTML = (allCars || []).map(car => 
+          `<option value="${car.plateNumber}">${car.plateNumber} - ${car.model || ''}</option>`
+        ).join('');
+      }
+
+      if (serviceId) {
+        const item = window.serviceData.find(s => s.id === serviceId);
+        if (item) {
+          document.getElementById('serviceId').value = item.id;
+          document.getElementById('serviceCar').value = item.car;
+          document.getElementById('serviceDate').value = item.date;
+          document.getElementById('serviceType').value = item.type;
+          document.getElementById('serviceKm').value = item.km;
+          document.getElementById('serviceCost').value = item.cost || '';
+          document.getElementById('serviceNotes').value = item.notes || '';
+          document.getElementById('serviceModalTitle').textContent = 'Szervíz Bejegyzés Szerkesztése';
+        }
+      } else {
+        document.getElementById('serviceId').value = '';
+        if (currentHistoryCar && carSelect) carSelect.value = currentHistoryCar;
+        document.getElementById('serviceDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('serviceModalTitle').textContent = 'Új Szervíz Rögzítése';
+      }
+
+      const modal = document.getElementById('serviceModal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    };
+
+    window.closeServiceModalCustom = function() {
+      const modal = document.getElementById('serviceModal');
+      if (modal) modal.classList.add('hidden');
+    };
+
+    document.getElementById('serviceForm')?.addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      const id = document.getElementById('serviceId').value || 'srv_' + Date.now();
+      const serviceEntry = {
+        id: id,
+        car: document.getElementById('serviceCar').value,
+        date: document.getElementById('serviceDate').value,
+        type: document.getElementById('serviceType').value,
+        km: Number(document.getElementById('serviceKm').value),
+        cost: Number(document.getElementById('serviceCost').value) || 0,
+        notes: document.getElementById('serviceNotes').value
+      };
+
+      const existingIndex = window.serviceData.findIndex(s => s.id === id);
+      if (existingIndex > -1) {
+        window.serviceData[existingIndex] = serviceEntry;
+      } else {
+        window.serviceData.push(serviceEntry);
+      }
+
+      localStorage.setItem('serviceHistoryData', JSON.stringify(window.serviceData));
+
+      window.closeServiceModalCustom();
+
+      if (currentHistoryCar) {
+        window.openServiceHistory(currentHistoryCar);
+      }
+    });
+
+    window.openServiceHistory = function(carLicensePlate) {
+      currentHistoryCar = carLicensePlate;
+      const titleEl = document.getElementById('historyCarTitle');
+      if (titleEl) titleEl.textContent = `${carLicensePlate} - Szervíztörténet`;
+      
+      const tbody = document.getElementById('serviceHistoryTableBody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      const history = window.serviceData
+        .filter(s => s.car === carLicensePlate)
+        .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      if (history.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="p-3 text-center text-slate-500">Nincs rögzített szervízelőzmény ennél az autónál.</td></tr>';
+      } else {
+        history.forEach(item => {
+          const tr = document.createElement('tr');
+          tr.className = 'border-b border-slate-800 hover:bg-slate-800/50';
+          tr.innerHTML = `
+            <td class="p-2.5 font-mono text-slate-300">${item.date}</td>
+            <td class="p-2.5"><strong>${item.type}</strong><br><small class="text-slate-400">${item.notes || ''}</small></td>
+            <td class="p-2.5 font-mono font-bold text-orange-400">${item.km.toLocaleString()} km</td>
+            <td class="p-2.5 font-mono">${item.cost ? item.cost.toLocaleString() + ' Ft' : '-'}</td>
+            <td class="p-2.5 text-center">
+              <button class="bg-slate-800 hover:bg-slate-700 text-amber-300 p-1 px-2 rounded border border-slate-700 text-xs font-bold mr-1" onclick="window.openServiceModal('${item.id}')">
+                ✏️
+              </button>
+              <button class="bg-red-900/40 hover:bg-red-800 text-red-300 p-1 px-2 rounded border border-red-800 text-xs font-bold" onclick="window.deleteService('${item.id}')">
+                🗑️
+              </button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      const historyModal = document.getElementById('serviceHistoryModal');
+      if (historyModal) {
+        historyModal.classList.remove('hidden');
+        historyModal.classList.add('flex');
+      }
+    };
+
+    window.closeServiceHistoryModalCustom = function() {
+      const historyModal = document.getElementById('serviceHistoryModal');
+      if (historyModal) historyModal.classList.add('hidden');
+    };
+
+    window.deleteService = function(id) {
+      if (confirm('Biztosan törölni szeretnéd ezt a szervíz bejegyzést?')) {
+        window.serviceData = window.serviceData.filter(s => s.id !== id);
+        localStorage.setItem('serviceHistoryData', JSON.stringify(window.serviceData));
+        window.openServiceHistory(currentHistoryCar);
+      }
+    };
+
+    window.downloadServiceHistoryPDF = function() {
+      if (!currentHistoryCar) return;
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      const history = window.serviceData
+        .filter(s => s.car === currentHistoryCar)
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      doc.setFontSize(16);
+      doc.text(`Szerviztortenet - ${currentHistoryCar}`, 14, 20);
+      doc.setFontSize(10);
+      doc.text(`Kiallitva: ${new Date().toLocaleDateString('hu-HU')}`, 14, 28);
+
+      const tableRows = history.map(item => [
+        item.date,
+        item.type + (item.notes ? ` (${item.notes})` : ''),
+        `${item.km.toLocaleString()} km`,
+        item.cost ? `${item.cost.toLocaleString()} Ft` : '-'
+      ]);
+
+      doc.autoTable({
+        startY: 35,
+        head: [['Datum', 'Leiras / Tipus', 'Km allas', 'Koltseg']],
+        body: tableRows,
+        theme: 'striped',
+        headStyles: { fillColor: [30, 41, 59] }
+      });
+
+      doc.save(`Szerviztortenet_${currentHistoryCar}.pdf`);
+    };
 
     window.exportShiftPDF = function(shiftId, pdfType = 'all') {
       try {
