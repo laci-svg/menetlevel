@@ -4726,7 +4726,6 @@ window.acceptAssignment = async function(id) {
   }
 };
 
-// 7. PDF MEGBÍZÓLEVÉL GENERÁLÁSA (Stempellel & Visszaigazolással)
 window.downloadAssignmentPDF = function(id) {
   const item = allAssignments.find(a => a.id === id);
   if (!item) return alert("A megbízás nem található!");
@@ -4735,24 +4734,46 @@ window.downloadAssignmentPDF = function(id) {
   const doc = new jsPDF();
 
   const driverName = getUsernameFromEmail(item.driverEmail);
+  const cleanDriverCode = driverName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+
+  // 1. IKTATÓSZÁM GENERÁLÁSA (Pl: KN-20261026-MOLNARB-V9MW)
+  const dateCompact = (item.createdAt || new Date().toISOString()).slice(0, 10).replace(/-/g, '');
+  const shortHash = id.slice(-4).toUpperCase(); // Az adatbázis ID utolsó 4 karaktere
+  const docNumber = `KN-${dateCompact}-${cleanDriverCode}-${shortHash}`;
+
+  // 2. ÉKEZETMENTESÍTŐ SEGÉDFÜGGVÉNY A PDF-HEZ
+  const fixText = function(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/á/g, 'a').replace(/Á/g, 'A')
+      .replace(/é/g, 'e').replace(/É/g, 'E')
+      .replace(/í/g, 'i').replace(/Í/g, 'I')
+      .replace(/ó/g, 'o').replace(/Ó/g, 'O')
+      .replace(/ö/g, 'o').replace(/Ö/g, 'O')
+      .replace(/ő/g, 'o').replace(/Ő/g, 'O')
+      .replace(/ú/g, 'u').replace(/Ú/g, 'U')
+      .replace(/ü/g, 'u').replace(/Ü/g, 'U')
+      .replace(/ű/g, 'u').replace(/Ű/g, 'U')
+      .replace(/–/g, '-').replace(/—/g, '-');
+  };
 
   // Fejléc
-  doc.setFontSize(18);
+  doc.setFontSize(16);
   doc.setFont(undefined, 'bold');
   doc.text("HIVATALOS MUNKA MEGBIZOLEVEL", 14, 18);
 
   doc.setFontSize(9);
   doc.setFont(undefined, 'normal');
   doc.setTextColor(100, 100, 100);
-  doc.text(`Kiallitva: ${new Date().toLocaleDateString('hu-HU')} | Rendszerazonosito: ${item.id}`, 14, 24);
+  doc.text(`Kiallitva: ${new Date().toLocaleDateString('hu-HU')} | Iktatoszam: ${docNumber}`, 14, 24);
 
   // 1. Megbízási adatok táblázat
   const infoData = [
-    ["Kirendelt Sofor:", driverName],
-    ["Kirendelt Jarmu:", item.carPlate || 'Nincs kijelolve'],
-    ["Kiallas / Kezdes:", item.startDateTime.replace('T', ' ')],
+    ["Kirendelt Sofor:", fixText(driverName)],
+    ["Kirendelt Jarmu:", fixText(item.carPlate || 'Nincs kijelolve')],
+    ["Kiallas / Kezdes:", (item.startDateTime || '').replace('T', ' ')],
     ["Visszaindulas / Vegzes:", item.endDateTime ? item.endDateTime.replace('T', ' ') : 'Nincs megadva'],
-    ["Megbizas Kikuldese:", item.sendDateTime.replace('T', ' ')]
+    ["Megbizas Kikuldese:", (item.sendDateTime || '').replace('T', ' ')]
   ];
 
   doc.autoTable({
@@ -4770,7 +4791,7 @@ window.downloadAssignmentPDF = function(id) {
   doc.setTextColor(30, 41, 59);
   doc.text("MEGBIZO(K) ES HELYSZINI ELERHETOSEGEK", 14, currentY);
 
-  const contactRows = item.contacts.map(c => [c.name, c.phone]);
+  const contactRows = item.contacts.map(c => [fixText(c.name), c.phone]);
   doc.autoTable({
     startY: currentY + 3,
     head: [['Nev / Szervezet', 'Telefonszam']],
@@ -4785,7 +4806,7 @@ window.downloadAssignmentPDF = function(id) {
   doc.setFont(undefined, 'bold');
   doc.text("UTVONAL ES ALLOMASOK", 14, currentY);
 
-  const routeRows = item.routes.map((r, i) => [`${i + 1}. allomas`, r]);
+  const routeRows = item.routes.map((r, i) => [`${i + 1}. allomas`, fixText(r)]);
   doc.autoTable({
     startY: currentY + 3,
     head: [['Sorszam', 'Cim / Megallohely']],
@@ -4800,11 +4821,11 @@ window.downloadAssignmentPDF = function(id) {
     doc.setFontSize(9);
     doc.setFont(undefined, 'italic');
     doc.setTextColor(80, 80, 80);
-    doc.text(`Megjegyzes: ${item.notes}`, 14, currentY);
+    doc.text(`Megjegyzes: ${fixText(item.notes)}`, 14, currentY);
     currentY += 8;
   }
 
-  // 4. IGazoló BÉLYEGZŐ (Tudomásulvétel elmentése)
+  // 4. IGAZOLÓ BÉLYEGZŐ (Tudomásulvétel elmentése)
   currentY += 5;
   const isAccepted = item.status === 'ACCEPTED';
   
@@ -4821,13 +4842,13 @@ window.downloadAssignmentPDF = function(id) {
   doc.setFont(undefined, 'normal');
   doc.setTextColor(50, 50, 50);
   if (isAccepted) {
-    doc.text(`Igazolta: ${driverName} (${item.driverEmail})`, 18, currentY + 15);
+    doc.text(`Igazolta: ${fixText(driverName)} (${item.driverEmail})`, 18, currentY + 15);
     doc.text(`Tudomasulvetel pontos ideje: ${item.acceptedAtFormatted || item.acceptedAt}`, 18, currentY + 20);
   } else {
     doc.text("A sofor meg nem igazolta a megbizas tudomasulvetelet a rendszerben.", 18, currentY + 16);
   }
 
-  doc.save(`Megbizolevel_${driverName}_${item.startDateTime.slice(0,10)}.pdf`);
+  doc.save(`Megbizolevel_${docNumber}.pdf`);
 };
 
 // Automatikus indítás a Firestore hallgatóhoz
