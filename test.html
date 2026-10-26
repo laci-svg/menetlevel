@@ -2534,29 +2534,28 @@
       tempModalVignettes.splice(index, 1);
       renderModalVignettesList();
     };
+window.saveCarEditModal = async function() {
+  const carId = document.getElementById('editCarId').value;
+  if (!carId) return;
 
-    window.saveCarEditModal = async function() {
-      const carId = document.getElementById('editCarId').value;
-      if (!carId) return;
+  const plateNumber = document.getElementById('editCarPlate').value.trim().toUpperCase();
+  const model = document.getElementById('editCarModel').value.trim();
 
-      const plateNumber = document.getElementById('editCarPlate').value.trim().toUpperCase();
-      const model = document.getElementById('editCarModel').value.trim();
+  await updateDoc(doc(db, "cars", carId), {
+    plateNumber,
+    model,
+    isLargeBus: document.getElementById('editCarIsLargeBus').checked,
+    motExpiry: document.getElementById('editCarMot').value,
+    motAlertDays: Number(document.getElementById('editMotAlertDays').value) || 30,
+    lastOilKm: Number(document.getElementById('editCarLastOilKm').value) || 0,
+    oilPeriodKm: Number(document.getElementById('editCarOilPeriodKm').value) || 15000,
+    oilAlertKm: Number(document.getElementById('editOilAlertKm').value) || 1000,
+    vignettes: tempModalVignettes
+  });
 
-      await updateDoc(doc(db, "cars", carId), {
-        plateNumber,
-        model,
-        motExpiry: document.getElementById('editCarMot').value,
-        motAlertDays: Number(document.getElementById('editMotAlertDays').value) || 30,
-        lastOilKm: Number(document.getElementById('editCarLastOilKm').value) || 0,
-        oilPeriodKm: Number(document.getElementById('editCarOilPeriodKm').value) || 15000,
-        oilAlertKm: Number(document.getElementById('editOilAlertKm').value) || 1000,
-        vignettes: tempModalVignettes
-      });
-
-      closeEditCarModal();
-      alert("💾 Autó adatai és matricái frissítve!");
-    };
-
+  closeEditCarModal();
+  alert("💾 Autó adatai és matricái frissítve!");
+};
     function renderLiveCarKm() {
       const container = document.getElementById('liveCarKmContainer');
       const badge = document.getElementById('badge_car_live_km');
