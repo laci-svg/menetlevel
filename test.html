@@ -1555,6 +1555,9 @@
         document.getElementById('authScreen').classList.add('hidden');
         document.getElementById('appScreen').classList.remove('hidden');
         document.getElementById('userStatus').textContent = getUsernameFromEmail(currentUserData.email);
+        if (typeof window.renderRoleUI === 'function') {
+          window.renderRoleUI();
+        }
 
         listenToGlobalSettings();
         listenToCars();
