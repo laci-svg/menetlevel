@@ -4716,6 +4716,10 @@ function renderDriverAssignments() {
     </div>
   `;
 }
+    // Percenként ellenőrizzük az időzített megbízások megjelenését a sofőrnél
+setInterval(() => {
+  renderDriverAssignments();
+}, 60000);
 
 // 6. Sofőr Tudomásulvétel visszagazolása
 window.acceptAssignment = async function(id) {
