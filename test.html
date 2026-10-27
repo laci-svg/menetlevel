@@ -3246,47 +3246,77 @@ window.saveCarEditModal = async function() {
       }).join('') || '<p class="text-[11px] text-slate-500 text-center">Nincs adat.</p>';
     };
 
-    function renderOverlimitShifts() {
-      const container = document.getElementById('overlimitShiftsContainer');
-      const badgeContainer = document.getElementById('badge_overlimit');
-      if (!container) return;
+   let selectedOverlimitMonthDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
-      const overlimitList = [];
-      allShifts.forEach(shift => {
-        if (dismissedOverlimits.includes(shift.id)) return;
-        const car = (allCars || []).find(c => c.plateNumber === shift.carPlate || c.id === shift.carId);
-   if (car && car.isLargeBus) return;
-        const shiftTrips = allTrips.filter(t => t.shiftId === shift.id);
-        const workKmTotal = shiftTrips.filter(t => t.type === 'work').reduce((sum, t) => sum + Number(t.workKm || 0), 0);
-        if (workKmTotal >= 250) {
-          overlimitList.push({ shift, workKmTotal });
-        }
-      });
+window.changeOverlimitMonth = function(direction) {
+  selectedOverlimitMonthDate = new Date(selectedOverlimitMonthDate.getFullYear(), selectedOverlimitMonthDate.getMonth() + direction, 1);
+  renderOverlimitShifts();
+};
 
-      if (badgeContainer) badgeContainer.textContent = overlimitList.length + " eset";
+function renderOverlimitShifts() {
+  const container = document.getElementById('overlimitShiftsContainer');
+  const badgeContainer = document.getElementById('badge_overlimit');
+  const monthLabel = document.getElementById('overlimitMonthLabel');
+  if (!container) return;
 
-      if (overlimitList.length === 0) {
-        container.innerHTML = '<p class="text-xs text-slate-500 text-center p-3 bg-slate-950/60 rounded-lg">Nincs rögzített 250 km feletti műszak.</p>';
-        return;
-      }
+  const year = selectedOverlimitMonthDate.getFullYear();
+  const month = selectedOverlimitMonthDate.getMonth();
+  const monthStr = year + '-' + String(month + 1).padStart(2, '0');
 
-      container.innerHTML = overlimitList.map(item => {
-        const shift = item.shift;
-        const driverName = getUsernameFromEmail(shift.driverEmail);
+  if (monthLabel) {
+    monthLabel.textContent = selectedOverlimitMonthDate.toLocaleDateString('hu-HU', { year: 'numeric', month: 'long' });
+  }
 
-        return '<div class="bg-slate-950 border border-red-900/50 rounded-lg p-2.5 flex justify-between items-center text-xs">' +
-          '<div>' +
-            '<div class="font-bold text-slate-200">' + driverName + '</div>' +
-            '<div class="text-[10px] text-slate-400">📅 ' + (shift.startDate || '-') + ' • ' + (shift.carPlate || '-') + '</div>' +
-          '</div>' +
-          '<div class="flex items-center gap-1.5">' +
-            '<span class="text-xs font-mono font-bold text-red-400 bg-red-950/80 border border-red-800 px-2 py-0.5 rounded">' + item.workKmTotal + ' km</span>' +
-            '<button onclick="window.exportShiftPDF(\'' + shift.id + '\', \'work\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-200 px-2 py-1 rounded border border-red-700">📄 PDF</button>' +
-            '<button onclick="window.dismissOverlimitShift(\'' + shift.id + '\')" class="text-[10px] bg-slate-800 hover:bg-red-900/60 text-slate-400 px-2 py-1 rounded border border-slate-700">🗑️</button>' +
-          '</div>' +
-        '</div>';
-      }).join('');
+  const overlimitList = [];
+  allShifts.forEach(shift => {
+    if (dismissedOverlimits.includes(shift.id)) return;
+
+    // Hónap szűrés
+    const shiftDate = shift.startDate || shift.endDate || '';
+    if (!shiftDate.startsWith(monthStr)) return;
+
+    const car = (allCars || []).find(c => c.plateNumber === shift.carPlate || c.id === shift.carId);
+    if (car && car.isLargeBus) return;
+
+    const shiftTrips = allTrips.filter(t => t.shiftId === shift.id);
+    const workKmTotal = shiftTrips.filter(t => t.type === 'work').reduce((sum, t) => sum + Number(t.workKm || 0), 0);
+    
+    if (workKmTotal >= 250) {
+      overlimitList.push({ shift, workKmTotal });
     }
+  });
+
+  // 🎯 DÁTUM SZERINTI CSÖKKENŐ RENDEZÉS (Legújabbak legfelül)
+  overlimitList.sort((a, b) => {
+    const dateA = a.shift.startDate || a.shift.endDate || '';
+    const dateB = b.shift.startDate || b.shift.endDate || '';
+    return dateB.localeCompare(dateA);
+  });
+
+  if (badgeContainer) badgeContainer.textContent = overlimitList.length + " eset";
+
+  if (overlimitList.length === 0) {
+    container.innerHTML = '<p class="text-xs text-slate-500 text-center p-3 bg-slate-950/60 rounded-lg">Ebben a hónapban nincs rögzített 250 km feletti műszak.</p>';
+    return;
+  }
+
+  container.innerHTML = overlimitList.map(item => {
+    const shift = item.shift;
+    const driverName = getUsernameFromEmail(shift.driverEmail);
+
+    return '<div class="bg-slate-950 border border-red-900/50 rounded-lg p-2.5 flex justify-between items-center text-xs">' +
+      '<div>' +
+        '<div class="font-bold text-slate-200">👤 ' + driverName + '</div>' +
+        '<div class="text-[10px] text-slate-400">📅 ' + (shift.startDate || '-') + ' • 🚗 ' + (shift.carPlate || '-') + '</div>' +
+      '</div>' +
+      '<div class="flex items-center gap-1.5">' +
+        '<span class="text-xs font-mono font-bold text-red-400 bg-red-950/80 border border-red-800 px-2 py-0.5 rounded">' + item.workKmTotal + ' km</span>' +
+        '<button onclick="window.exportShiftPDF(\'' + shift.id + '\', \'work\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-200 px-2 py-1 rounded border border-red-700">📄 PDF</button>' +
+        '<button onclick="window.dismissOverlimitShift(\'' + shift.id + '\')" class="text-[10px] bg-slate-800 hover:bg-red-900/60 text-slate-400 px-2 py-1 rounded border border-slate-700">🗑️</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
 
     window.dismissOverlimitShift = function(shiftId) {
       if (!dismissedOverlimits.includes(shiftId)) {
