@@ -360,20 +360,18 @@
             </h3>
             <span id="badge_overtime" class="text-[10px] bg-indigo-950 text-indigo-300 border border-indigo-800 px-2 py-0.5 rounded-full font-mono font-bold">0 óra</span>
           </div>
+
+          <!-- Hónap Léptető a Fejlécen -->
+          <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
+            <button type="button" onclick="window.changeOvertimeMonth(-1)" class="bg-slate-800 hover:bg-slate-700 text-indigo-300 px-2 py-1 rounded text-xs font-bold border border-slate-700">◄</button>
+            <span id="overtimeMonthLabel" class="text-xs font-bold text-indigo-400 font-mono"></span>
+            <button type="button" onclick="window.changeOvertimeMonth(1)" class="bg-slate-800 hover:bg-slate-700 text-indigo-300 px-2 py-1 rounded text-xs font-bold border border-slate-700">►</button>
+          </div>
+
           <span id="arrow_card_overtime" class="text-xs text-slate-400 font-bold transition-transform">▼</span>
         </div>
 
         <div id="content_card_overtime" class="hidden p-4 space-y-3 border-t border-slate-800/80">
-          <div class="flex justify-between items-center bg-slate-950 p-2 rounded-xl border border-slate-800">
-            <button onclick="changeOvertimeMonth(-1)" class="bg-slate-800 hover:bg-slate-700 text-indigo-300 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">
-              ◄ Előző
-            </button>
-            <span id="overtimeMonthLabel" class="text-xs font-extrabold text-indigo-400 font-mono uppercase tracking-wide"></span>
-            <button onclick="changeOvertimeMonth(1)" class="bg-slate-800 hover:bg-slate-700 text-indigo-300 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">
-              Következő ►
-            </button>
-          </div>
-
           <div id="overtimeListContainer" class="space-y-2 max-h-[350px] overflow-y-auto pr-1"></div>
         </div>
       </div>
@@ -381,15 +379,24 @@
       <!-- LEDOLGOZOTT MŰSZAKÓRÁK -->
       <div id="card_shift_hours" class="admin-card bg-slate-900/90 border border-cyan-500/40 rounded-xl overflow-hidden shadow-md">
         <div onclick="toggleCardAccordion('card_shift_hours')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-cyan-500/30">
-          <div class="flex items-center gap-2"><h3 class="text-sm font-bold text-cyan-300 flex items-center gap-1.5"><span>🕒</span> Ledolgozott műszakórák</h3><span id="badge_shift_hours" class="text-[10px] bg-cyan-950 text-cyan-200 border border-cyan-800 px-2 py-0.5 rounded-full font-mono font-bold">0:00</span></div>
+          <div class="flex items-center gap-2">
+            <h3 class="text-sm font-bold text-cyan-300 flex items-center gap-1.5">
+              <span>🕒</span> Ledolgozott műszakórák
+            </h3>
+            <span id="badge_shift_hours" class="text-[10px] bg-cyan-950 text-cyan-200 border border-cyan-800 px-2 py-0.5 rounded-full font-mono font-bold">0:00</span>
+          </div>
+
+          <!-- Hónap Léptető a Fejlécen -->
+          <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
+            <button type="button" onclick="window.changeShiftHoursMonth(-1)" class="bg-slate-800 hover:bg-slate-700 text-cyan-300 px-2 py-1 rounded text-xs font-bold border border-slate-700">◄</button>
+            <span id="shiftHoursMonthLabel" class="text-xs font-bold text-cyan-300 font-mono"></span>
+            <button type="button" onclick="window.changeShiftHoursMonth(1)" class="bg-slate-800 hover:bg-slate-700 text-cyan-300 px-2 py-1 rounded text-xs font-bold border border-slate-700">►</button>
+          </div>
+
           <span id="arrow_card_shift_hours" class="text-xs text-slate-400 font-bold transition-transform">▼</span>
         </div>
+
         <div id="content_card_shift_hours" class="hidden p-4 border-t border-slate-800/80">
-          <div class="flex items-center justify-between gap-2 bg-slate-950 p-2 rounded-xl border border-slate-800 mb-3">
-            <button onclick="changeShiftHoursMonth(-1)" class="bg-slate-800 hover:bg-slate-700 text-cyan-300 px-3 py-1.5 rounded-lg text-xs font-bold">◄ Előző</button>
-            <span id="shiftHoursMonthLabel" class="text-xs font-extrabold text-cyan-300 text-center"></span>
-            <button onclick="changeShiftHoursMonth(1)" class="bg-slate-800 hover:bg-slate-700 text-cyan-300 px-3 py-1.5 rounded-lg text-xs font-bold">Következő ►</button>
-          </div>
           <div id="shiftHoursListContainer" class="space-y-2 max-h-[60vh] overflow-y-auto overscroll-contain pr-1" style="scrollbar-gutter:stable"></div>
         </div>
       </div>
@@ -466,21 +473,27 @@
         </div>
       </div>
 
-      <!-- HAVI VIDÉKI KILOMÉTEREK -->
+     <!-- HAVI VIDÉKI KILOMÉTEREK -->
       <div id="card_rural_km" class="admin-card bg-slate-900/90 border border-teal-500/40 rounded-xl overflow-hidden shadow-md">
         <div onclick="toggleCardAccordion('card_rural_km')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-teal-500/30">
           <div class="flex items-center gap-2 min-w-0 flex-wrap">
-            <h3 class="text-sm font-bold text-teal-300 flex items-center gap-1.5"><span>🛣️</span> Havi vidéki kilométerek</h3>
+            <h3 class="text-sm font-bold text-teal-300 flex items-center gap-1.5">
+              <span>🛣️</span> Havi vidéki kilométerek
+            </h3>
             <span id="badge_rural_km" class="text-[10px] bg-teal-950 text-teal-200 border border-teal-800 px-2 py-0.5 rounded-full font-mono font-bold">0 km összesen</span>
           </div>
+
+          <!-- Hónap Léptető a Fejlécen -->
+          <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
+            <button type="button" onclick="window.changeRuralKmMonth(-1)" class="bg-slate-800 hover:bg-slate-700 text-teal-300 px-2 py-1 rounded text-xs font-bold border border-slate-700">◄</button>
+            <span id="ruralKmMonthLabel" class="text-xs font-bold text-teal-300 font-mono"></span>
+            <button type="button" onclick="window.changeRuralKmMonth(1)" class="bg-slate-800 hover:bg-slate-700 text-teal-300 px-2 py-1 rounded text-xs font-bold border border-slate-700">►</button>
+          </div>
+
           <span id="arrow_card_rural_km" class="text-xs text-slate-400 font-bold transition-transform">▼</span>
         </div>
+
         <div id="content_card_rural_km" class="hidden p-4 space-y-3 border-t border-slate-800/80">
-          <div class="flex items-center justify-between gap-2 bg-slate-950 p-2 rounded-xl border border-slate-800">
-            <button onclick="changeRuralKmMonth(-1)" class="bg-slate-800 hover:bg-slate-700 text-teal-300 px-3 py-1.5 rounded-lg text-xs font-bold">◄ Előző</button>
-            <span id="ruralKmMonthLabel" class="text-sm font-extrabold text-teal-300 text-center"></span>
-            <button onclick="changeRuralKmMonth(1)" class="bg-slate-800 hover:bg-slate-700 text-teal-300 px-3 py-1.5 rounded-lg text-xs font-bold">Következő ►</button>
-          </div>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <div class="bg-slate-950 border border-teal-900/60 p-3 rounded-xl"><div class="text-[11px] text-slate-400">Havi vidéki kilométer</div><div id="ruralKmTotal" class="text-2xl font-black text-teal-300">0 km</div></div>
             <div class="bg-slate-950 border border-slate-800 p-3 rounded-xl"><div class="text-[11px] text-slate-400">Megjelölt utak</div><div id="ruralKmTripCount" class="text-2xl font-black text-slate-100">0</div></div>
