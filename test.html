@@ -4552,6 +4552,7 @@ window.closeAssignmentModal = function() {
 window.saveAssignment = async function(e) {
   e.preventDefault();
 
+  const assignmentId = document.getElementById('assignmentId').value;
   const driverId = document.getElementById('assignDriverSelect').value;
   const driverObj = allUsers.find(u => u.id === driverId);
   const carPlate = document.getElementById('assignCarSelect').value;
@@ -4585,15 +4586,25 @@ window.saveAssignment = async function(e) {
     endDateTime: endDateTime || '',
     sendDateTime: sendDateTime,
     notes: notes,
-    status: 'PENDING', // PENDING (kiadva), ACCEPTED (sofőr által tudomásul véve)
-    createdAt: new Date().toISOString(),
-    createdByName: getUsernameFromEmail(currentUser?.email)
+    updatedAt: new Date().toISOString()
   };
 
   try {
-    await addDoc(collection(db, "assignments"), assignmentData);
+    if (assignmentId) {
+      // Meglévő megbízás frissítése
+      await updateDoc(doc(db, "assignments", assignmentId), assignmentData);
+      alert("📋 Megbízás sikeresen módosítva!");
+    } else {
+      // Új megbízás létrehozása
+      assignmentData.status = 'PENDING';
+      assignmentData.createdAt = new Date().toISOString();
+      assignmentData.createdByName = getUsernameFromEmail(currentUser?.email);
+      await addDoc(collection(db, "assignments"), assignmentData);
+      alert("📋 Megbízás sikeresen rögzítve és ütemezve!");
+    }
+
+    document.getElementById('assignmentId').value = '';
     window.closeAssignmentModal();
-    alert("📋 Megbízás sikeresen rögzítve és ütemezve!");
   } catch (err) {
     console.error("Megbízás mentési hiba:", err);
     alert("Hiba történt a mentés során: " + err.message);
