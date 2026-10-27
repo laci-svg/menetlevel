@@ -588,24 +588,29 @@
                 </form>
               </div>
             </div>
+<!-- 💡 KILOMÉTER TÚLFUTÁSOK (250+ km) KÁRTYA -->
+<div id="card_overlimit" class="admin-card bg-slate-900/90 border border-red-500/40 rounded-xl overflow-hidden shadow-md">
+  <div onclick="toggleCardAccordion('card_overlimit')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-red-500/30">
+    <div class="flex items-center gap-2">
+      <h3 class="text-sm font-bold text-red-400 flex items-center gap-1.5">
+        <span>⚠️</span> Kilométer Túlfutások (250+ km)
+      </h3>
+      <span id="badge_overlimit" class="text-[10px] bg-red-950 text-red-300 border border-red-800 px-2 py-0.5 rounded-full font-mono font-bold">0 eset</span>
+    </div>
+    <span id="arrow_card_overlimit" class="text-xs text-slate-400 font-bold transition-transform">▼</span>
+  </div>
 
-            <div id="card_overlimit" class="admin-card bg-slate-900/90 border border-red-500/40 rounded-xl overflow-hidden shadow-md">
-              <div onclick="toggleCardAccordion('card_overlimit')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-red-500/30">
-                <div class="flex items-center gap-2">
-                  <h3 class="text-sm font-bold text-red-400 flex items-center gap-1.5">
-                    <span>⚠️</span> Kilométer Túlfutások (250+ km)
-                  </h3>
-                  <span id="badge_overlimit" class="text-[10px] bg-red-950 text-red-300 border border-red-800 px-2 py-0.5 rounded-full font-mono font-bold">0 eset</span>
-                </div>
-                <span id="arrow_card_overlimit" class="text-xs text-slate-400 font-bold transition-transform">▼</span>
-              </div>
+  <div id="content_card_overlimit" class="hidden p-4 space-y-3 border-t border-slate-800/80">
+    <!-- Havi Léptető Vezérlő -->
+    <div class="flex items-center justify-between gap-2 bg-slate-950 p-2 rounded-xl border border-slate-800">
+      <button onclick="window.changeOverlimitMonth(-1)" class="bg-slate-800 hover:bg-slate-700 text-red-300 px-3 py-1.5 rounded-lg text-xs font-bold transition">◄ Előző</button>
+      <span id="overlimitMonthLabel" class="text-xs font-extrabold text-red-400 text-center font-mono uppercase tracking-wide"></span>
+      <button onclick="window.changeOverlimitMonth(1)" class="bg-slate-800 hover:bg-slate-700 text-red-300 px-3 py-1.5 rounded-lg text-xs font-bold transition">Következő ►</button>
+    </div>
 
-              <div id="content_card_overlimit" class="hidden p-4 space-y-3 border-t border-slate-800/80">
-                <div id="overlimitShiftsContainer" class="space-y-2 max-h-[350px] overflow-y-auto pr-1"></div>
-              </div>
-            </div>
-          </div>
-        </div>
+    <div id="overlimitShiftsContainer" class="space-y-2 max-h-[350px] overflow-y-auto pr-1"></div>
+  </div>
+</div>
 
         <!-- 8. MŰSZAKOK & ÓRAÁLLÁSOK -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 pt-2">
