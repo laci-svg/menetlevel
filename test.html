@@ -9,10 +9,12 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
   <style>
     
-    /* Admin kártyák: asztali gépen rendezett, egymás melletti oszlopok. */
-   #adminSection.hidden, #driverViewContainer.hidden { display: none !important; }
+   /* Admin kártyák: asztali gépen rendezett, egymás melletti oszlopok. */
+    #adminSection.hidden, #driverViewContainer.hidden { display: none !important; }
 
-@media (min-width: 1100px) {
+    .admin-card { height: fit-content !important; align-self: start !important; }
+
+    @media (min-width: 1100px) {
   #adminSection { 
     max-width: 1600px; 
     width: 100% !important; 
