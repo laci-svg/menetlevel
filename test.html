@@ -2878,6 +2878,43 @@ window.saveCarEditModal = async function() {
       });
     }
 
+    window.renderRoleUI = function() {
+      const adminSec = document.getElementById('adminSection');
+      const driverSec = document.getElementById('driverViewContainer');
+      const btn = document.getElementById('toggleAdminBtn');
+
+      if (isAdminMode) {
+        if (adminSec) adminSec.classList.remove('hidden');
+        if (driverSec) driverSec.classList.add('hidden');
+        if (btn) {
+          btn.textContent = '🚗 Sofőr nézet';
+          btn.className = 'bg-blue-500/20 border border-blue-500/40 text-blue-400 hover:bg-blue-500/30 px-3 py-2 rounded-xl text-xs font-semibold transition';
+        }
+        applySavedCardStates();
+        applyCardVisibilityPermissions();
+        renderCombinedAlerts();
+        renderAdminWallPosts();
+        renderAdminAnnouncements();
+        renderLiveCarKm();
+        renderAdminShifts();
+        renderOverlimitShifts();
+        renderAdminOvertime();
+        renderShiftHoursCard();
+        populatePdfDriverDropdown();
+        populateBgDriverDropdown();
+        renderAdminStats();
+        renderSuperAdminPermissionsPanel();
+      } else {
+        if (adminSec) adminSec.classList.add('hidden');
+        if (driverSec) driverSec.classList.remove('hidden');
+        if (btn) {
+          btn.textContent = '👑 Admin';
+          btn.className = 'bg-amber-500/20 border border-amber-500/40 text-amber-400 hover:bg-amber-500/30 px-3 py-2 rounded-xl text-xs font-semibold transition';
+        }
+      }
+      renderTripsTable();
+    };
+
     document.getElementById('tripForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!activeShift) return alert("Út rögzítéséhez előbb indítsd el a műszakot!");
