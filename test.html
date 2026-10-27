@@ -1518,12 +1518,35 @@
         btn.className = 'bg-amber-500/20 border border-amber-500/40 text-amber-400 hover:bg-amber-500/30 px-3 py-2 rounded-xl text-xs font-semibold transition';
       }
 
-      renderTripsTable();
-    }
+renderTripsTable();
+  }
 
-    function applyCardVisibilityPermissions() {
-      const userEmail = (currentUser?.email || auth.currentUser?.email || '').toLowerCase();
-      const isMasterSuperAdmin = (userEmail === MASTER_SUPER_ADMIN_EMAIL.toLowerCase());
+  window.renderRoleUI = function() {
+    const adminSec = document.getElementById('adminSection');
+    const driverSec = document.getElementById('driverViewContainer');
+    const toggleBtn = document.getElementById('toggleAdminBtn');
+
+    if (!currentUser) return;
+
+    if (isAdminMode) {
+      if (adminSec) adminSec.classList.remove('hidden');
+      if (driverSec) driverSec.classList.add('hidden');
+      if (toggleBtn) {
+        toggleBtn.textContent = '🚗 Sofőr nézet';
+        toggleBtn.className = 'bg-blue-500/20 border border-blue-500/40 text-blue-400 hover:bg-blue-500/30 px-3 py-2 rounded-xl text-xs font-semibold transition';
+      }
+    } else {
+      if (adminSec) adminSec.classList.add('hidden');
+      if (driverSec) driverSec.classList.remove('hidden');
+      if (toggleBtn) {
+        toggleBtn.textContent = '👑 Admin';
+        toggleBtn.className = 'bg-amber-500/20 border border-amber-500/40 text-amber-400 hover:bg-amber-500/30 px-3 py-2 rounded-xl text-xs font-semibold transition';
+      }
+    }
+  };
+
+  function applyCardVisibilityPermissions() {
+    const userEmail = (currentUser?.email || auth.currentUser?.email || '').toLowerCase();
       const isSuperAdmin = (currentUserData?.isSuperAdmin === true || isMasterSuperAdmin);
       const allowedCards = currentUserData?.adminCards || [];
 
