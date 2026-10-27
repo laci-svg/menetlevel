@@ -414,18 +414,27 @@
             <span id="arrow_card_stats" class="text-xs text-slate-400 font-bold transition-transform">▼</span>
           </div>
 
-          <div id="content_card_stats" class="hidden p-4 space-y-3 border-t border-slate-800/80">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-800 pb-2 gap-2">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-800 pb-2 gap-2">
               <span class="text-xs text-slate-400 font-medium">Statisztika részletei:</span>
-              <div class="flex items-center gap-2 w-full sm:w-auto">
-                <label class="text-xs text-slate-400 font-medium whitespace-nowrap">Időszak:</label>
-                <select id="statsPeriodSelect" onchange="toggleStatsCustomDates(); renderAdminStats();" class="bg-slate-800 border border-slate-700 text-white p-1.5 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-orange-500">
-                  <option value="daily">Napi</option>
-                  <option value="weekly">Heti</option>
-                  <option value="monthly" selected>Havi</option>
-                  <option value="yearly">Éves</option>
-                  <option value="custom">Egyedi dátum</option>
-                </select>
+              <div class="flex items-center gap-3 w-full sm:w-auto flex-wrap">
+                <div class="flex items-center gap-1.5">
+                  <label class="text-xs text-slate-400 font-medium whitespace-nowrap">Út Típusa:</label>
+                  <select id="statsKmTypeSelect" onchange="renderAdminStats()" class="bg-slate-800 border border-slate-700 text-white p-1.5 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-orange-500">
+                    <option value="work" selected>💼 Munkakilométer</option>
+                    <option value="private">🔒 Privát út</option>
+                    <option value="all">📊 Összesített (Munka + Privát)</option>
+                  </select>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <label class="text-xs text-slate-400 font-medium whitespace-nowrap">Időszak:</label>
+                  <select id="statsPeriodSelect" onchange="toggleStatsCustomDates(); renderAdminStats();" class="bg-slate-800 border border-slate-700 text-white p-1.5 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-orange-500">
+                    <option value="daily">Napi</option>
+                    <option value="weekly">Heti</option>
+                    <option value="monthly" selected>Havi</option>
+                    <option value="yearly">Éves</option>
+                    <option value="custom">Egyedi dátum</option>
+                  </select>
+                </div>
               </div>
             </div>
 
