@@ -4612,55 +4612,113 @@ function listenToAssignments() {
   });
 }
 
-// 4. ADMIN Felület kirajzolása
-function renderAdminAssignments() {
-  const container = document.getElementById('adminAssignmentsList');
-  const badge = document.getElementById('badge_assignments');
-  if (!container) return;
+let selectedAssignmentMonthDate = new Date();
 
-  if (badge) badge.textContent = allAssignments.length + " megbízás";
+    window.changeAssignmentMonth = function(direction) {
+      selectedAssignmentMonthDate.setMonth(selectedAssignmentMonthDate.getMonth() + direction);
+      renderAdminAssignments();
+    };
 
-  if (allAssignments.length === 0) {
-    container.innerHTML = '<p class="text-xs text-slate-500 text-center p-3 bg-slate-950/60 rounded-xl">Még nincs rögzített megbízás.</p>';
-    return;
-  }
+    function renderAdminAssignments() {
+      const container = document.getElementById('adminAssignmentsList');
+      const badge = document.getElementById('badge_assignments');
+      const monthLabel = document.getElementById('assignmentMonthLabel');
+      if (!container) return;
 
-  const sorted = [...allAssignments].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      const year = selectedAssignmentMonthDate.getFullYear();
+      const month = selectedAssignmentMonthDate.getMonth();
+      const monthNames = ["Január", "Február", "Március", "Április", "Május", "Június", "Július", "Augusztus", "Szeptember", "Október", "November", "December"];
+      const targetMonthStr = year + "-" + String(month + 1).padStart(2, '0');
 
-  container.innerHTML = sorted.map(item => {
-    const driverName = getUsernameFromEmail(item.driverEmail);
-    const isAccepted = item.status === 'ACCEPTED';
-    const statusBadge = isAccepted 
-      ? `<span class="bg-emerald-950 text-emerald-300 border border-emerald-700 px-2 py-0.5 rounded text-[10px] font-bold">✅ Tudomásul véve (${item.acceptedAtFormatted || item.acceptedAt || ''})</span>`
-      : `<span class="bg-amber-950 text-amber-300 border border-amber-800 px-2 py-0.5 rounded text-[10px] font-bold">⏳ Várakozik a sofőrre</span>`;
+      if (monthLabel) {
+        monthLabel.textContent = year + ". " + monthNames[month];
+      }
 
-    const contactsHtml = item.contacts.map(c => `👤 ${c.name} (${c.phone})`).join(' | ');
-    const routeHtml = item.routes.map((r, i) => `<b>${i+1}.</b> ${r}`).join(' ➔ ');
+      // Megbízások szűrése a kiválasztott hónapra
+      const filteredAssignments = allAssignments.filter(a => {
+        const dateStr = a.startDateTime || a.sendDateTime || a.createdAt || '';
+        return dateStr.startsWith(targetMonthStr);
+      });
 
-    return `
-      <div class="bg-slate-950 border border-slate-800 p-3 rounded-xl space-y-2 text-xs">
-        <div class="flex justify-between items-start border-b border-slate-800 pb-2">
-          <div>
-            <span class="font-bold text-slate-200">👤 Sofőr: ${driverName}</span>
-            ${item.carPlate ? ` | 🚗 Jármű: <strong>${window.formatCarPlate(item.carPlate)}</strong>` : ''}
-            <div class="text-[10px] text-slate-400 mt-0.5">📅 Munka kezdete: <strong class="text-orange-400">${item.startDateTime.replace('T', ' ')}</strong> | 📲 Kiküldés: ${item.sendDateTime.replace('T', ' ')}</div>
+      if (badge) badge.textContent = filteredAssignments.length + " megbízás";
+
+      if (filteredAssignments.length === 0) {
+        container.innerHTML = '<p class="text-xs text-slate-500 text-center p-3 bg-slate-950/60 rounded-xl">Ebben a hónapban nincs rögzített megbízás.</p>';
+        return;
+      }
+
+      const sorted = [...filteredAssignments].sort((a, b) => (b.startDateTime || '').localeCompare(a.startDateTime || ''));
+
+      container.innerHTML = sorted.map(item => {
+        const driverName = getUsernameFromEmail(item.driverEmail);
+        const isAccepted = item.status === 'ACCEPTED';
+        const statusBadge = isAccepted 
+          ? `<span class="bg-emerald-950 text-emerald-300 border border-emerald-700 px-2 py-0.5 rounded text-[10px] font-bold">✅ Tudomásul véve (${item.acceptedAtFormatted || item.acceptedAt || ''})</span>`
+          : `<span class="bg-amber-950 text-amber-300 border border-amber-800 px-2 py-0.5 rounded text-[10px] font-bold">⏳ Várakozik a sofőrre</span>`;
+
+        const contactsHtml = (item.contacts || []).map(c => `👤 ${c.name} (${c.phone})`).join(' | ');
+        const routeHtml = (item.routes || []).map((r, i) => `<b>${i+1}.</b> ${r}`).join(' ➔ ');
+
+        return `
+          <div class="bg-slate-950 border border-slate-800 p-3 rounded-xl space-y-2 text-xs">
+            <div class="flex justify-between items-start border-b border-slate-800 pb-2">
+              <div>
+                <span class="font-bold text-slate-200">👤 Sofőr: ${driverName}</span>
+                ${item.carPlate ? ` | 🚗 Jármű: <strong>${window.formatCarPlate(item.carPlate)}</strong>` : ''}
+                <div class="text-[10px] text-slate-400 mt-0.5">📅 Munka kezdete: <strong class="text-orange-400">${(item.startDateTime || '').replace('T', ' ')}</strong> | 📲 Kiküldés: ${(item.sendDateTime || '').replace('T', ' ')}</div>
+              </div>
+              <div class="flex items-center gap-1.5 flex-wrap justify-end">
+                ${statusBadge}
+                <button onclick="window.editAssignmentModal('${item.id}')" class="bg-amber-600/80 hover:bg-amber-500 text-white px-2 py-1 rounded text-[10px] font-bold border border-amber-400/40">✏️ Szerkeszt</button>
+                <button onclick="window.downloadAssignmentPDF('${item.id}')" class="bg-slate-800 hover:bg-slate-700 text-amber-300 px-2 py-1 rounded text-[10px] font-bold border border-slate-700">📄 PDF</button>
+                <button onclick="window.deleteAssignment('${item.id}')" class="bg-red-900/40 hover:bg-red-800 text-red-300 px-2 py-1 rounded text-[10px] font-bold border border-red-800">🗑️</button>
+              </div>
+            </div>
+
+            <div class="space-y-1 text-[11px] text-slate-300">
+              <div>📞 <strong>Megbízó(k):</strong> ${contactsHtml}</div>
+              <div>📍 <strong>Útvonal:</strong> ${routeHtml}</div>
+              ${item.notes ? `<div class="text-slate-400 italic">📝 Megjegyzés: ${item.notes}</div>` : ''}
+            </div>
           </div>
-          <div class="flex items-center gap-1.5">
-            ${statusBadge}
-            <button onclick="window.downloadAssignmentPDF('${item.id}')" class="bg-slate-800 hover:bg-slate-700 text-amber-300 px-2 py-1 rounded text-[10px] font-bold border border-slate-700">📄 PDF</button>
-            <button onclick="window.deleteAssignment('${item.id}')" class="bg-red-900/40 hover:bg-red-800 text-red-300 px-2 py-1 rounded text-[10px] font-bold border border-red-800">🗑️</button>
-          </div>
-        </div>
+        `;
+      }).join('');
+    }
 
-        <div class="space-y-1 text-[11px] text-slate-300">
-          <div>📞 <strong>Megbízó(k):</strong> ${contactsHtml}</div>
-          <div>📍 <strong>Útvonal:</strong> ${routeHtml}</div>
-          ${item.notes ? `<div class="text-slate-400 italic">📝 Megjegyzés: ${item.notes}</div>` : ''}
-        </div>
-      </div>
-    `;
-  }).join('');
-}
+    // Megbízás szerkesztésének előkészítése és betöltése a modalba
+    window.editAssignmentModal = function(id) {
+      const item = allAssignments.find(a => a.id === id);
+      if (!item) return alert("A megbízás nem található!");
+
+      window.openNewAssignmentModal();
+
+      document.getElementById('assignmentId').value = item.id;
+      document.getElementById('assignDriverSelect').value = item.driverUid || '';
+      document.getElementById('assignCarSelect').value = item.carPlate || '';
+      document.getElementById('assignStartDateTime').value = item.startDateTime || '';
+      document.getElementById('assignEndDateTime').value = item.endDateTime || '';
+      document.getElementById('assignSendDateTime').value = item.sendDateTime || '';
+      document.getElementById('assignNotes').value = item.notes || '';
+
+      // Megbízók visszatöltése
+      const contactsContainer = document.getElementById('contactsContainer');
+      contactsContainer.innerHTML = '';
+      if (item.contacts && item.contacts.length > 0) {
+        item.contacts.forEach(c => window.addContactRow(c.name, c.phone));
+      } else {
+        window.addContactRow();
+      }
+
+      // Útvonal megállók visszatöltése
+      const routesContainer = document.getElementById('routesContainer');
+      routesContainer.innerHTML = '';
+      if (item.routes && item.routes.length > 0) {
+        item.routes.forEach(r => window.addRouteRow(r));
+      } else {
+        window.addRouteRow();
+        window.addRouteRow();
+      }
+    };
 
 window.deleteAssignment = async function(id) {
   if (confirm("Biztosan törölni szeretnéd ezt a megbízást?")) {
