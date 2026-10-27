@@ -1471,7 +1471,9 @@
               currentUserData.actionPermissions = ALL_ACTION_PERMISSIONS.map(a => a.id);
               setDoc(doc(db, "users", currentUser.uid), currentUserData, { merge: true });
             }
-            applyAdminState();
+            if (typeof window.renderRoleUI === 'function') {
+              window.renderRoleUI();
+            }
           } else {
             alert("Hiba: A fiókodhoz az Admin jogosultság nincs engedélyezve!");
           }
@@ -1480,10 +1482,12 @@
         }
       } else {
         isAdminMode = false;
-        applyAdminState();
+        if (typeof window.renderRoleUI === 'function') {
+          window.renderRoleUI();
+        }
       }
     };
-
+    
     function applyAdminState() {
       const adminSec = document.getElementById('adminSection');
       const driverSec = document.getElementById('driverViewContainer');
