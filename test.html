@@ -4415,12 +4415,18 @@ if (document.readyState === 'loading') {
       generatePDFForTrips(filtered, "Menetlevél Kimutatás", "Szűrt Kimutatás | Időszak: " + period.toUpperCase(), filename, type);
     };
     // ==========================================
-// 📋 MEGBÍZÁSOK & DISZPÉCSER LOGIKA
+// 📋 MEGBÍZÁSOK & DISZPÉCSER LOGIKA (HAVI LÉPTETŐ + SZERKESZTÉS)
 // ==========================================
 
 let allAssignments = [];
+let selectedAssignmentMonthDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
-// 1. Dinamikus megbízók és útvonalak sormenedzsere
+window.changeAssignmentMonth = function(direction) {
+  selectedAssignmentMonthDate = new Date(selectedAssignmentMonthDate.getFullYear(), selectedAssignmentMonthDate.getMonth() + direction, 1);
+  renderAdminAssignments();
+};
+
+// Dinamikus sormenedzserek
 window.addContactRow = function(name = '', phone = '') {
   const container = document.getElementById('contactsContainer');
   if (!container) return;
@@ -4468,6 +4474,7 @@ function getLocalDateTimeString() {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
+// Modal nyitás (Új megbízás VAGY Szerkesztés)
 window.openNewAssignmentModal = function(assignmentId = null) {
   const form = document.getElementById('assignmentForm');
   if (form) form.reset();
@@ -4475,7 +4482,6 @@ window.openNewAssignmentModal = function(assignmentId = null) {
   document.getElementById('contactsContainer').innerHTML = '';
   document.getElementById('routesContainer').innerHTML = '';
 
-  // Sofőrök és autók feltöltése
   const driverSelect = document.getElementById('assignDriverSelect');
   const carSelect = document.getElementById('assignCarSelect');
 
@@ -4491,39 +4497,57 @@ window.openNewAssignmentModal = function(assignmentId = null) {
       sortedCars.map(c => `<option value="${c.plateNumber}">${c.plateNumber} - ${c.model || ''} ${c.isLargeBus ? '(NAGYBUSZ)' : ''}</option>`).join('');
   }
 
-  // Alapértelmezett sorok hozzáadása
-  window.addContactRow();
-  window.addRouteRow(); // Indulási pont
-  window.addRouteRow(); // Érkezési pont
+  if (assignmentId) {
+    // SZERKESZTÉSI MÓD
+    const item = allAssignments.find(a => a.id === assignmentId);
+    if (!item) return alert("A szerkesztendő megbízás nem található!");
 
-  // Pontos magyar helyi idő beállítása a mezőkben (nem UTC!)
-  const currentLocalISO = getLocalDateTimeString();
-  document.getElementById('assignStartDateTime').value = currentLocalISO;
-  document.getElementById('assignSendDateTime').value = currentLocalISO;
+    document.getElementById('assignmentId').value = item.id;
+    if (driverSelect) driverSelect.value = item.driverUid || '';
+    if (carSelect) carSelect.value = item.carPlate || '';
+
+    (item.contacts || []).forEach(c => window.addContactRow(c.name, c.phone));
+    (item.routes || []).forEach(r => window.addRouteRow(r));
+
+    document.getElementById('assignStartDateTime').value = item.startDateTime || '';
+    document.getElementById('assignEndDateTime').value = item.endDateTime || '';
+    document.getElementById('assignSendDateTime').value = item.sendDateTime || '';
+    document.getElementById('assignNotes').value = item.notes || '';
+  } else {
+    // ÚJ MEGBÍZÁS MÓD
+    document.getElementById('assignmentId').value = '';
+    window.addContactRow();
+    window.addRouteRow();
+    window.addRouteRow();
+
+    const currentLocalISO = getLocalDateTimeString();
+    document.getElementById('assignStartDateTime').value = currentLocalISO;
+    document.getElementById('assignSendDateTime').value = currentLocalISO;
+  }
 
   document.getElementById('assignmentModal').classList.remove('hidden');
 };
 
 window.closeAssignmentModal = function() {
   document.getElementById('assignmentModal').classList.add('hidden');
+  document.getElementById('assignmentId').value = '';
 };
 
-// 2. Megbízás mentése Firestore-ba
+// Mentés / Módosítás Firestore-ba
 window.saveAssignment = async function(e) {
   e.preventDefault();
 
+  const assignmentId = document.getElementById('assignmentId').value;
   const driverId = document.getElementById('assignDriverSelect').value;
   const driverObj = allUsers.find(u => u.id === driverId);
   const carPlate = document.getElementById('assignCarSelect').value;
 
-  // Contacts kinyerése
   const contactRows = document.querySelectorAll('#contactsContainer .contact-row');
   const contacts = Array.from(contactRows).map(row => ({
     name: row.querySelector('.contact-name').value.trim(),
     phone: row.querySelector('.contact-phone').value.trim()
   })).filter(c => c.name && c.phone);
 
-  // Routes kinyerése
   const routeRows = document.querySelectorAll('#routesContainer .route-row');
   const routes = Array.from(routeRows).map(row => row.querySelector('.route-location').value.trim()).filter(Boolean);
 
@@ -4545,22 +4569,30 @@ window.saveAssignment = async function(e) {
     endDateTime: endDateTime || '',
     sendDateTime: sendDateTime,
     notes: notes,
-    status: 'PENDING', // PENDING (kiadva), ACCEPTED (sofőr által tudomásul véve)
-    createdAt: new Date().toISOString(),
-    createdByName: getUsernameFromEmail(currentUser?.email)
+    updatedAt: new Date().toISOString()
   };
 
   try {
-    await addDoc(collection(db, "assignments"), assignmentData);
+    if (assignmentId) {
+      // MÓDOSÍTÁS
+      await updateDoc(doc(db, "assignments", assignmentId), assignmentData);
+      alert("📋 Megbízás sikeresen frissítve!");
+    } else {
+      // ÚJ
+      assignmentData.status = 'PENDING';
+      assignmentData.createdAt = new Date().toISOString();
+      assignmentData.createdByName = getUsernameFromEmail(currentUser?.email);
+      await addDoc(collection(db, "assignments"), assignmentData);
+      alert("📋 Új megbízás sikeresen rögzítve és ütemezve!");
+    }
     window.closeAssignmentModal();
-    alert("📋 Megbízás sikeresen rögzítve és ütemezve!");
   } catch (err) {
     console.error("Megbízás mentési hiba:", err);
     alert("Hiba történt a mentés során: " + err.message);
   }
 };
 
-// 3. Valós idejű figyelés (Firestore snapshot)
+// Valós idejű figyelés
 function listenToAssignments() {
   onSnapshot(collection(db, "assignments"), (snapshot) => {
     allAssignments = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
@@ -4572,22 +4604,35 @@ function listenToAssignments() {
   });
 }
 
-// 4. ADMIN Felület kirajzolása
+// ADMIN Felület kirajzolása (Havi léptetővel)
 function renderAdminAssignments() {
   const container = document.getElementById('adminAssignmentsList');
   const badge = document.getElementById('badge_assignments');
+  const monthLabel = document.getElementById('assignmentMonthLabel');
   if (!container) return;
 
-  if (badge) badge.textContent = allAssignments.length + " megbízás";
+  const year = selectedAssignmentMonthDate.getFullYear();
+  const month = selectedAssignmentMonthDate.getMonth();
+  const monthStr = year + '-' + String(month + 1).padStart(2, '0');
 
-  if (allAssignments.length === 0) {
-    container.innerHTML = '<p class="text-xs text-slate-500 text-center p-3 bg-slate-950/60 rounded-xl">Még nincs rögzített megbízás.</p>';
+  if (monthLabel) {
+    monthLabel.textContent = selectedAssignmentMonthDate.toLocaleDateString('hu-HU', { year: 'numeric', month: 'long' });
+  }
+
+  // Szűrés a kiválasztott hónapra (a kiállás/kezdés dátuma alapján)
+  const monthAssignments = allAssignments.filter(item => {
+    const dStr = item.startDateTime || item.createdAt || '';
+    return dStr.startsWith(monthStr);
+  }).sort((a, b) => (b.startDateTime || '').localeCompare(a.startDateTime || ''));
+
+  if (badge) badge.textContent = monthAssignments.length + " megbízás";
+
+  if (monthAssignments.length === 0) {
+    container.innerHTML = '<p class="text-xs text-slate-500 text-center p-3 bg-slate-950/60 rounded-xl">Ebben a hónapban nincs rögzített megbízás.</p>';
     return;
   }
 
-  const sorted = [...allAssignments].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-
-  container.innerHTML = sorted.map(item => {
+  container.innerHTML = monthAssignments.map(item => {
     const driverName = getUsernameFromEmail(item.driverEmail);
     const isAccepted = item.status === 'ACCEPTED';
     const statusBadge = isAccepted 
@@ -4603,10 +4648,11 @@ function renderAdminAssignments() {
           <div>
             <span class="font-bold text-slate-200">👤 Sofőr: ${driverName}</span>
             ${item.carPlate ? ` | 🚗 Jármű: <strong>${window.formatCarPlate(item.carPlate)}</strong>` : ''}
-            <div class="text-[10px] text-slate-400 mt-0.5">📅 Munka kezdete: <strong class="text-orange-400">${item.startDateTime.replace('T', ' ')}</strong> | 📲 Kiküldés: ${item.sendDateTime.replace('T', ' ')}</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">📅 Kezdés: <strong class="text-orange-400">${item.startDateTime.replace('T', ' ')}</strong> | 📲 Kiküldés: ${item.sendDateTime.replace('T', ' ')}</div>
           </div>
           <div class="flex items-center gap-1.5">
             ${statusBadge}
+            <button onclick="window.openNewAssignmentModal('${item.id}')" class="bg-slate-800 hover:bg-slate-700 text-teal-300 px-2 py-1 rounded text-[10px] font-bold border border-slate-700" title="Megbízás szerkesztése">✏️ Szerkeszt</button>
             <button onclick="window.downloadAssignmentPDF('${item.id}')" class="bg-slate-800 hover:bg-slate-700 text-amber-300 px-2 py-1 rounded text-[10px] font-bold border border-slate-700">📄 PDF</button>
             <button onclick="window.deleteAssignment('${item.id}')" class="bg-red-900/40 hover:bg-red-800 text-red-300 px-2 py-1 rounded text-[10px] font-bold border border-red-800">🗑️</button>
           </div>
