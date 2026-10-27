@@ -3311,16 +3311,39 @@ window.saveCarEditModal = async function() {
       }).join('') || '<p class="text-[11px] text-slate-500 text-center">Nincs adat.</p>';
     };
 
+    let selectedOverlimitMonthDate = new Date();
+
+    window.changeOverlimitMonth = function(direction) {
+      selectedOverlimitMonthDate.setMonth(selectedOverlimitMonthDate.getMonth() + direction);
+      renderOverlimitShifts();
+    };
+
     function renderOverlimitShifts() {
       const container = document.getElementById('overlimitShiftsContainer');
       const badgeContainer = document.getElementById('badge_overlimit');
+      const monthLabel = document.getElementById('overlimitMonthLabel');
       if (!container) return;
+
+      const year = selectedOverlimitMonthDate.getFullYear();
+      const month = selectedOverlimitMonthDate.getMonth();
+      const monthNames = ["Január", "Február", "Március", "Április", "Május", "Június", "Július", "Augusztus", "Szeptember", "Október", "November", "December"];
+      const targetMonthStr = year + "-" + String(month + 1).padStart(2, '0');
+
+      if (monthLabel) {
+        monthLabel.textContent = year + ". " + monthNames[month];
+      }
 
       const overlimitList = [];
       allShifts.forEach(shift => {
         if (dismissedOverlimits.includes(shift.id)) return;
+
+        // Hónap szűrése
+        const shiftDate = shift.startDate || shift.endDate || '';
+        if (!shiftDate.startsWith(targetMonthStr)) return;
+
         const car = (allCars || []).find(c => c.plateNumber === shift.carPlate || c.id === shift.carId);
-   if (car && car.isLargeBus) return;
+        if (car && car.isLargeBus) return;
+
         const shiftTrips = allTrips.filter(t => t.shiftId === shift.id);
         const workKmTotal = shiftTrips.filter(t => t.type === 'work').reduce((sum, t) => sum + Number(t.workKm || 0), 0);
         if (workKmTotal >= 250) {
@@ -3328,10 +3351,13 @@ window.saveCarEditModal = async function() {
         }
       });
 
+      // Dátum szerinti csökkenő sorrend (a legújabb van legfelül)
+      overlimitList.sort((a, b) => (b.shift.startDate || '').localeCompare(a.shift.startDate || ''));
+
       if (badgeContainer) badgeContainer.textContent = overlimitList.length + " eset";
 
       if (overlimitList.length === 0) {
-        container.innerHTML = '<p class="text-xs text-slate-500 text-center p-3 bg-slate-950/60 rounded-lg">Nincs rögzített 250 km feletti műszak.</p>';
+        container.innerHTML = '<p class="text-xs text-slate-500 text-center p-3 bg-slate-950/60 rounded-lg">Ebben a hónapban nincs rögzített 250 km feletti műszak.</p>';
         return;
       }
 
@@ -3352,7 +3378,6 @@ window.saveCarEditModal = async function() {
         '</div>';
       }).join('');
     }
-
     window.dismissOverlimitShift = function(shiftId) {
       if (!dismissedOverlimits.includes(shiftId)) {
         dismissedOverlimits.push(shiftId);
