@@ -4451,7 +4451,16 @@ window.renumberRouteRows = function() {
   });
 };
 
-// Modal nyitás / zárás
+function getLocalDateTimeString() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
 window.openNewAssignmentModal = function(assignmentId = null) {
   const form = document.getElementById('assignmentForm');
   if (form) form.reset();
@@ -4480,10 +4489,10 @@ window.openNewAssignmentModal = function(assignmentId = null) {
   window.addRouteRow(); // Indulási pont
   window.addRouteRow(); // Érkezési pont
 
-  // Alapértelmezett időpontok (Jelenlegi idő)
-  const nowISO = new Date().toISOString().slice(0, 16);
-  document.getElementById('assignStartDateTime').value = nowISO;
-  document.getElementById('assignSendDateTime').value = nowISO;
+  // Pontos magyar helyi idő beállítása a mezőkben (nem UTC!)
+  const currentLocalISO = getLocalDateTimeString();
+  document.getElementById('assignStartDateTime').value = currentLocalISO;
+  document.getElementById('assignSendDateTime').value = currentLocalISO;
 
   document.getElementById('assignmentModal').classList.remove('hidden');
 };
