@@ -4624,15 +4624,25 @@ window.deleteAssignment = async function(id) {
 function renderDriverAssignments() {
   if (!currentUser) return;
 
-  // Helyi idő alapján hasonlítjuk össze az időzítést!
-  const nowStr = getLocalDateTimeString();
+ function renderDriverAssignments() {
+  if (!currentUser) return;
+
+  // Jelenlegi pontos helyi idő timestamp-ként (milliszekundumban)
+  const nowMs = new Date().getTime();
 
   // Kizárólag azokat a megbízásokat mutatjuk a sofőrnek:
   // 1. Ami NEKI szól (driverUid === currentUser.uid)
   // 2. És aminek a kiküldési időpontja elérkezett (sendDateTime <= most)
-  const myAssignments = allAssignments.filter(a => 
-    a.driverUid === currentUser.uid && (a.sendDateTime <= nowStr)
-  ).sort((a, b) => (b.startDateTime || '').localeCompare(a.startDateTime || ''));
+  const myAssignments = allAssignments.filter(a => {
+    if (a.driverUid !== currentUser.uid) return false;
+    if (!a.sendDateTime) return true; // Ha nincs beállítva időzítés, azonnal mutatjuk
+
+    // A beállított kiküldési idő konvertálása milliszekundummá
+    const sendMs = new Date(a.sendDateTime).getTime();
+    
+    // Csak akkor jelenik meg, ha a jelenlegi idő eléri vagy meghaladja a kiküldési időt
+    return sendMs <= nowMs;
+  }).sort((a, b) => (b.startDateTime || '').localeCompare(a.startDateTime || ''));
 
   let driverBox = document.getElementById('driverAssignmentsBox');
   if (!driverBox) {
