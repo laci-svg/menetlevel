@@ -4621,11 +4621,11 @@ window.deleteAssignment = async function(id) {
   }
 };
 
-// 5. SOFŐR Felület kirajzolása (Időzített megjelenítéssel!)
 function renderDriverAssignments() {
   if (!currentUser) return;
 
-  const nowStr = new Date().toISOString().slice(0, 16);
+  // Helyi idő alapján hasonlítjuk össze az időzítést!
+  const nowStr = getLocalDateTimeString();
 
   // Kizárólag azokat a megbízásokat mutatjuk a sofőrnek:
   // 1. Ami NEKI szól (driverUid === currentUser.uid)
