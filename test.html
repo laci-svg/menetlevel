@@ -8,23 +8,48 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
   <style>
-    /* Admin kártyák: asztali gépen rendezett, egymás melletti oszlopok. */
-    #adminSection.hidden, #driverViewContainer.hidden { display: none !important; }
-    @media (min-width: 1100px) {
-      #adminSection { max-width: 1600px; width: calc(100% - 2rem); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; align-items: start; }
-      #adminSection.space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 0 !important; }
-      #adminSection > .flex.justify-between { grid-column: 1 / -1; margin: 0; }
-      #card_combined_alerts, #card_rural_km, #card_announcements, #card_pdf, #superAdminSection, #adminSection > .grid { grid-column: 1 / -1; min-width: 0; }
-      #adminSection > .admin-card { grid-column: span 1; min-width: 0; width: 100%; margin: 0; box-shadow: 0 8px 22px rgba(2, 6, 23, .22); }
-      #card_closed_shifts, #card_active_shifts { grid-column: span 1; }
+    /* Nézetek elrejtése/megjelenítése fixen */
+    .hidden { display: none !important; }
+    
+    /* Sofőr felület láthatóságának javítása */
+    #driverViewContainer:not(.hidden) {
+      display: block !important;
     }
-    @media (min-width: 769px) and (max-width: 1099px) {
-      #adminSection { max-width: 100%; width: calc(100% - 1.5rem); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; }
-      #adminSection.space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 0 !important; }
-      #adminSection > .flex.justify-between, #card_combined_alerts, #card_rural_km, #card_announcements, #card_pdf, #superAdminSection, #adminSection > .grid { grid-column: 1 / -1; }
-      #adminSection > .admin-card { min-width: 0; margin: 0; width: 100%; }
+
+    /* Admin kártyák letisztult Grid elrendezése - Nem csúszik szét */
+    @media (min-width: 1024px) {
+      #adminSection:not(.hidden) {
+        display: grid !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1.25rem;
+        align-items: start;
+      }
+      .col-span-full-custom {
+        grid-column: 1 / -1;
+      }
     }
-    /* Minden admin fül tartalma külön, korlátozott magasságú görgetőterület legyen. */
+
+    @media (min-width: 640px) and (max-width: 1023px) {
+      #adminSection:not(.hidden) {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+        align-items: start;
+      }
+      .col-span-full-custom {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 639px) {
+      #adminSection:not(.hidden) {
+        display: flex !important;
+        flex-direction: column;
+        gap: 1rem;
+      }
+    }
+
+    /* Admin fül görgethető tartalma */
     [id^="content_card_"] {
       max-height: min(62vh, 620px);
       overflow-y: auto;
@@ -33,51 +58,42 @@
       scrollbar-gutter: stable;
       -webkit-overflow-scrolling: touch;
     }
-    [id^="content_card_"]::-webkit-scrollbar { width: 9px; height: 9px; }
-    [id^="content_card_"]::-webkit-scrollbar-track { background: rgba(15, 23, 42, .72); border-radius: 8px; }
-    [id^="content_card_"]::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, .8); border-radius: 8px; border: 2px solid rgba(15, 23, 42, .72); }
+    [id^="content_card_"]::-webkit-scrollbar { width: 8px; height: 8px; }
+    [id^="content_card_"]::-webkit-scrollbar-track { background: rgba(15, 23, 42, .7); border-radius: 8px; }
+    [id^="content_card_"]::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, .8); border-radius: 8px; }
     [id^="content_card_"]::-webkit-scrollbar-thumb:hover { background: rgba(45, 212, 191, .8); }
-    /* A kártya fejléce látható marad, miközben csak a belső tartalom görgethető. */
-    .admin-card { min-width: 0; }
-    .admin-card > div:first-child { position: relative; z-index: 1; }
-    .admin-card { transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
-    .admin-card:hover { border-color: rgba(100, 116, 139, .7); box-shadow: 0 12px 28px rgba(2, 6, 23, .28); }
-    .admin-card > div:first-child { min-height: 3.1rem; }
+
+    .admin-card {
+      min-width: 0;
+      width: 100%;
+      transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+    }
+    .admin-card:hover {
+      border-color: rgba(100, 116, 139, .7);
+      box-shadow: 0 12px 28px rgba(2, 6, 23, .28);
+    }
+    
     button { transition: filter .16s ease, transform .16s ease, background-color .16s ease; }
     button:active { transform: translateY(1px); }
     input:focus, select:focus, textarea:focus { outline: 2px solid rgba(45, 212, 191, .65); outline-offset: 1px; }
-    .admin-card h3 { line-height: 1.35; }
-    @media (max-width: 768px) {
-      #adminSection { display: flex; flex-direction: column; }
-      #adminSection > * { width: 100%; }
-    }
+
     @media (max-width: 768px) {
       #tripFormCard {
-        /* Ne legyen külön, belső görgetőfelület: a teljes sofőroldal görgessen. */
         position: relative;
-        bottom: auto;
-        z-index: auto;
-        padding: 0.5rem !important; /* 8px padding */
+        padding: 0.75rem !important;
         margin-bottom: 0 !important;
         box-shadow: 0 8px 20px -5px rgba(0, 0, 0, 0.45);
         max-height: none !important;
         overflow: visible !important;
       }
-      /* Kisebb inputok mobilon, hogy elférjenek */
       #tripFormCard input, #tripFormCard select {
-        padding: 0.4rem 0.5rem !important;
-        font-size: 0.75rem !important;
+        padding: 0.5rem !important;
+        font-size: 0.85rem !important;
+        min-height: 38px;
       }
       #tripFormCard label {
-        font-size: 0.65rem !important;
-        margin-bottom: 0.1rem !important;
+        font-size: 0.75rem !important;
       }
-      #tripFormCard .space-y-3 > * + * {
-        margin-top: 0.3rem !important;
-      }
-      #tripFormCard { max-height: none !important; overflow: visible !important; overscroll-behavior: auto; }
-      #tripFormCard .grid { gap: 0.35rem !important; }
-      #tripFormCard input, #tripFormCard select { min-height: 34px; }
     }
   </style>
 </head>
