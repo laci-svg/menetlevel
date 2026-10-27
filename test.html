@@ -607,17 +607,25 @@
               </div>
             </div>
 
-            <div id="card_overlimit" class="admin-card bg-slate-900/90 border border-red-500/40 rounded-xl overflow-hidden shadow-md">
-              <div onclick="toggleCardAccordion('card_overlimit')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-red-500/30">
-                <div class="flex items-center gap-2">
-                  <h3 class="text-sm font-bold text-red-400 flex items-center gap-1.5">
-                    <span>⚠️</span> Kilométer Túlfutások (250+ km)
-                  </h3>
-                  <span id="badge_overlimit" class="text-[10px] bg-red-950 text-red-300 border border-red-800 px-2 py-0.5 rounded-full font-mono font-bold">0 eset</span>
-                </div>
-                <span id="arrow_card_overlimit" class="text-xs text-slate-400 font-bold transition-transform">▼</span>
-              </div>
+           <div id="card_overlimit" class="admin-card bg-slate-900/90 border border-red-500/40 rounded-xl overflow-hidden shadow-md">
+  <div onclick="toggleCardAccordion('card_overlimit')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-red-500/30">
+    <div class="flex items-center gap-2">
+      <h3 class="text-sm font-bold text-red-400 flex items-center gap-1.5">
+        <span>⚠️</span> Kilométer Túlfutások (250+ km)
+      </h3>
+      <span id="badge_overlimit" class="text-[10px] bg-red-950 text-red-300 border border-red-800 px-2 py-0.5 rounded-full font-mono font-bold">0 eset</span>
+    </div>
 
+    <!-- Hónap léptető gombok -->
+    <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
+      <button type="button" onclick="window.changeOverlimitMonth(-1)" class="bg-slate-800 hover:bg-slate-700 text-red-300 px-2 py-1 rounded text-xs font-bold border border-slate-700">◄</button>
+      <span id="overlimitMonthLabel" class="text-xs font-bold text-red-400 font-mono"></span>
+      <button type="button" onclick="window.changeOverlimitMonth(1)" class="bg-slate-800 hover:bg-slate-700 text-red-300 px-2 py-1 rounded text-xs font-bold border border-slate-700">►</button>
+    </div>
+
+    <span id="arrow_card_overlimit" class="text-xs text-slate-400 font-bold transition-transform">▼</span>
+  </div>
+             
               <div id="content_card_overlimit" class="hidden p-4 space-y-3 border-t border-slate-800/80">
                 <div id="overlimitShiftsContainer" class="space-y-2 max-h-[350px] overflow-y-auto pr-1"></div>
               </div>
