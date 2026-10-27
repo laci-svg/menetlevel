@@ -8,48 +8,23 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
   <style>
-    /* Nézetek elrejtése/megjelenítése fixen */
-    .hidden { display: none !important; }
-    
-    /* Sofőr felület láthatóságának javítása */
-    #driverViewContainer:not(.hidden) {
-      display: block !important;
+    /* Admin kártyák: asztali gépen rendezett, egymás melletti oszlopok. */
+    #adminSection.hidden, #driverViewContainer.hidden { display: none !important; }
+    @media (min-width: 1100px) {
+      #adminSection { max-width: 1600px; width: calc(100% - 2rem); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; align-items: start; }
+      #adminSection.space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 0 !important; }
+      #adminSection > .flex.justify-between { grid-column: 1 / -1; margin: 0; }
+      #card_combined_alerts, #card_rural_km, #card_announcements, #card_pdf, #superAdminSection, #adminSection > .grid { grid-column: 1 / -1; min-width: 0; }
+      #adminSection > .admin-card { grid-column: span 1; min-width: 0; width: 100%; margin: 0; box-shadow: 0 8px 22px rgba(2, 6, 23, .22); }
+      #card_closed_shifts, #card_active_shifts { grid-column: span 1; }
     }
-
-    /* Admin kártyák letisztult Grid elrendezése - Nem csúszik szét */
-    @media (min-width: 1024px) {
-      #adminSection:not(.hidden) {
-        display: grid !important;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 1.25rem;
-        align-items: start;
-      }
-      .col-span-full-custom {
-        grid-column: 1 / -1;
-      }
+    @media (min-width: 769px) and (max-width: 1099px) {
+      #adminSection { max-width: 100%; width: calc(100% - 1.5rem); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; }
+      #adminSection.space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 0 !important; }
+      #adminSection > .flex.justify-between, #card_combined_alerts, #card_rural_km, #card_announcements, #card_pdf, #superAdminSection, #adminSection > .grid { grid-column: 1 / -1; }
+      #adminSection > .admin-card { min-width: 0; margin: 0; width: 100%; }
     }
-
-    @media (min-width: 640px) and (max-width: 1023px) {
-      #adminSection:not(.hidden) {
-        display: grid !important;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 1rem;
-        align-items: start;
-      }
-      .col-span-full-custom {
-        grid-column: 1 / -1;
-      }
-    }
-
-    @media (max-width: 639px) {
-      #adminSection:not(.hidden) {
-        display: flex !important;
-        flex-direction: column;
-        gap: 1rem;
-      }
-    }
-
-    /* Admin fül görgethető tartalma */
+    /* Minden admin fül tartalma külön, korlátozott magasságú görgetőterület legyen. */
     [id^="content_card_"] {
       max-height: min(62vh, 620px);
       overflow-y: auto;
@@ -58,42 +33,51 @@
       scrollbar-gutter: stable;
       -webkit-overflow-scrolling: touch;
     }
-    [id^="content_card_"]::-webkit-scrollbar { width: 8px; height: 8px; }
-    [id^="content_card_"]::-webkit-scrollbar-track { background: rgba(15, 23, 42, .7); border-radius: 8px; }
-    [id^="content_card_"]::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, .8); border-radius: 8px; }
+    [id^="content_card_"]::-webkit-scrollbar { width: 9px; height: 9px; }
+    [id^="content_card_"]::-webkit-scrollbar-track { background: rgba(15, 23, 42, .72); border-radius: 8px; }
+    [id^="content_card_"]::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, .8); border-radius: 8px; border: 2px solid rgba(15, 23, 42, .72); }
     [id^="content_card_"]::-webkit-scrollbar-thumb:hover { background: rgba(45, 212, 191, .8); }
-
-    .admin-card {
-      min-width: 0;
-      width: 100%;
-      transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
-    }
-    .admin-card:hover {
-      border-color: rgba(100, 116, 139, .7);
-      box-shadow: 0 12px 28px rgba(2, 6, 23, .28);
-    }
-    
+    /* A kártya fejléce látható marad, miközben csak a belső tartalom görgethető. */
+    .admin-card { min-width: 0; }
+    .admin-card > div:first-child { position: relative; z-index: 1; }
+    .admin-card { transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
+    .admin-card:hover { border-color: rgba(100, 116, 139, .7); box-shadow: 0 12px 28px rgba(2, 6, 23, .28); }
+    .admin-card > div:first-child { min-height: 3.1rem; }
     button { transition: filter .16s ease, transform .16s ease, background-color .16s ease; }
     button:active { transform: translateY(1px); }
     input:focus, select:focus, textarea:focus { outline: 2px solid rgba(45, 212, 191, .65); outline-offset: 1px; }
-
+    .admin-card h3 { line-height: 1.35; }
+    @media (max-width: 768px) {
+      #adminSection { display: flex; flex-direction: column; }
+      #adminSection > * { width: 100%; }
+    }
     @media (max-width: 768px) {
       #tripFormCard {
+        /* Ne legyen külön, belső görgetőfelület: a teljes sofőroldal görgessen. */
         position: relative;
-        padding: 0.75rem !important;
+        bottom: auto;
+        z-index: auto;
+        padding: 0.5rem !important; /* 8px padding */
         margin-bottom: 0 !important;
         box-shadow: 0 8px 20px -5px rgba(0, 0, 0, 0.45);
         max-height: none !important;
         overflow: visible !important;
       }
+      /* Kisebb inputok mobilon, hogy elférjenek */
       #tripFormCard input, #tripFormCard select {
-        padding: 0.5rem !important;
-        font-size: 0.85rem !important;
-        min-height: 38px;
-      }
-      #tripFormCard label {
+        padding: 0.4rem 0.5rem !important;
         font-size: 0.75rem !important;
       }
+      #tripFormCard label {
+        font-size: 0.65rem !important;
+        margin-bottom: 0.1rem !important;
+      }
+      #tripFormCard .space-y-3 > * + * {
+        margin-top: 0.3rem !important;
+      }
+      #tripFormCard { max-height: none !important; overflow: visible !important; overscroll-behavior: auto; }
+      #tripFormCard .grid { gap: 0.35rem !important; }
+      #tripFormCard input, #tripFormCard select { min-height: 34px; }
     }
   </style>
 </head>
@@ -153,9 +137,9 @@
     </div>
 
     <!-- ADMIN FELÜLET CONTAINER -->
-    <div id="adminSection" class="hidden max-w-7xl mx-auto">
+    <div id="adminSection" class="hidden max-w-6xl mx-auto space-y-4">
       
-      <div class="col-span-full-custom flex justify-between items-center bg-slate-900/80 p-3 rounded-xl border border-slate-800 mb-2">
+      <div class="flex justify-between items-center bg-slate-900/80 p-3 rounded-xl border border-slate-800">
         <h2 class="text-sm font-bold text-amber-400 flex items-center gap-2">
           <span>👑</span> Adminisztrációs Vezérlőpult
         </h2>
@@ -166,15 +150,17 @@
       </div>
 
       <!-- 🚨 AKTÍV SOS RIASZTÁSOK KÁRTYA (ADMIN) -->
-      <div id="adminSosContainer" class="col-span-full-custom hidden border border-red-500/80 bg-red-950/40 rounded-2xl p-4 shadow-2xl backdrop-blur-md animate-pulse">
-        <div class="flex items-center justify-between border-b border-red-800/60 pb-2 mb-3">
-          <h3 class="text-sm font-bold text-red-400 flex items-center gap-2">
-            <span>🚨</span> AKTÍV SOS RIASZTÁSOK
-          </h3>
-          <span id="sosBadgeCount" class="bg-red-600 text-white font-black text-xs px-2.5 py-0.5 rounded-full">0</span>
-        </div>
-        <div id="adminSosList" class="space-y-3"></div>
-      </div>
+<div id="adminSosContainer" class="hidden mb-4 border border-red-500/80 bg-red-950/40 rounded-2xl p-4 shadow-2xl backdrop-blur-md animate-pulse">
+  <div class="flex items-center justify-between border-b border-red-800/60 pb-2 mb-3">
+    <h3 class="text-sm font-bold text-red-400 flex items-center gap-2">
+      <span>🚨</span> AKTÍV SOS RIASZTÁSOK
+    </h3>
+    <span id="sosBadgeCount" class="bg-red-600 text-white font-black text-xs px-2.5 py-0.5 rounded-full">0</span>
+  </div>
+  
+  <!-- Ide töltődnek be a riasztási kártyák JS-ből -->
+  <div id="adminSosList" class="space-y-3"></div>
+</div>
 
       <!-- ⚙️ SOS TELEFONSZÁM BEÁLLÍTÁSOK KÁRTYA (ADMIN) -->
 <div id="card_sos_settings" class="admin-card bg-slate-900/90 border border-slate-700/80 rounded-xl overflow-hidden shadow-md mb-4">
@@ -342,13 +328,6 @@
     <button onclick="window.openNewAssignmentModal()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs shadow-md transition flex justify-center items-center gap-2">
       <span>➕</span> Új Megbízás Létrehozása & Kiküldése
     </button>
-
-    <!-- Havi Léptető Vezérlő -->
-    <div class="flex items-center justify-between gap-2 bg-slate-950 p-2 rounded-xl border border-slate-800">
-      <button onclick="window.changeAssignmentMonth(-1)" class="bg-slate-800 hover:bg-slate-700 text-emerald-300 px-3 py-1.5 rounded-lg text-xs font-bold transition">◄ Előző</button>
-      <span id="assignmentMonthLabel" class="text-xs font-extrabold text-emerald-400 text-center font-mono uppercase tracking-wide"></span>
-      <button onclick="window.changeAssignmentMonth(1)" class="bg-slate-800 hover:bg-slate-700 text-emerald-300 px-3 py-1.5 rounded-lg text-xs font-bold transition">Következő ►</button>
-    </div>
 
     <!-- Megbízások listája -->
     <div id="adminAssignmentsList" class="space-y-2 max-h-[400px] overflow-y-auto pr-1"></div>
@@ -602,29 +581,24 @@
                 </form>
               </div>
             </div>
-<!-- 💡 KILOMÉTER TÚLFUTÁSOK (250+ km) KÁRTYA -->
-<div id="card_overlimit" class="admin-card bg-slate-900/90 border border-red-500/40 rounded-xl overflow-hidden shadow-md">
-  <div onclick="toggleCardAccordion('card_overlimit')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-red-500/30">
-    <div class="flex items-center gap-2">
-      <h3 class="text-sm font-bold text-red-400 flex items-center gap-1.5">
-        <span>⚠️</span> Kilométer Túlfutások (250+ km)
-      </h3>
-      <span id="badge_overlimit" class="text-[10px] bg-red-950 text-red-300 border border-red-800 px-2 py-0.5 rounded-full font-mono font-bold">0 eset</span>
-    </div>
-    <span id="arrow_card_overlimit" class="text-xs text-slate-400 font-bold transition-transform">▼</span>
-  </div>
 
-  <div id="content_card_overlimit" class="hidden p-4 space-y-3 border-t border-slate-800/80">
-    <!-- Havi Léptető Vezérlő -->
-    <div class="flex items-center justify-between gap-2 bg-slate-950 p-2 rounded-xl border border-slate-800">
-      <button onclick="window.changeOverlimitMonth(-1)" class="bg-slate-800 hover:bg-slate-700 text-red-300 px-3 py-1.5 rounded-lg text-xs font-bold transition">◄ Előző</button>
-      <span id="overlimitMonthLabel" class="text-xs font-extrabold text-red-400 text-center font-mono uppercase tracking-wide"></span>
-      <button onclick="window.changeOverlimitMonth(1)" class="bg-slate-800 hover:bg-slate-700 text-red-300 px-3 py-1.5 rounded-lg text-xs font-bold transition">Következő ►</button>
-    </div>
+            <div id="card_overlimit" class="admin-card bg-slate-900/90 border border-red-500/40 rounded-xl overflow-hidden shadow-md">
+              <div onclick="toggleCardAccordion('card_overlimit')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-red-500/30">
+                <div class="flex items-center gap-2">
+                  <h3 class="text-sm font-bold text-red-400 flex items-center gap-1.5">
+                    <span>⚠️</span> Kilométer Túlfutások (250+ km)
+                  </h3>
+                  <span id="badge_overlimit" class="text-[10px] bg-red-950 text-red-300 border border-red-800 px-2 py-0.5 rounded-full font-mono font-bold">0 eset</span>
+                </div>
+                <span id="arrow_card_overlimit" class="text-xs text-slate-400 font-bold transition-transform">▼</span>
+              </div>
 
-    <div id="overlimitShiftsContainer" class="space-y-2 max-h-[350px] overflow-y-auto pr-1"></div>
-  </div>
-</div>
+              <div id="content_card_overlimit" class="hidden p-4 space-y-3 border-t border-slate-800/80">
+                <div id="overlimitShiftsContainer" class="space-y-2 max-h-[350px] overflow-y-auto pr-1"></div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <!-- 8. MŰSZAKOK & ÓRAÁLLÁSOK -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 pt-2">
@@ -1518,35 +1492,12 @@
         btn.className = 'bg-amber-500/20 border border-amber-500/40 text-amber-400 hover:bg-amber-500/30 px-3 py-2 rounded-xl text-xs font-semibold transition';
       }
 
-renderTripsTable();
-  }
-
-  window.renderRoleUI = function() {
-    const adminSec = document.getElementById('adminSection');
-    const driverSec = document.getElementById('driverViewContainer');
-    const toggleBtn = document.getElementById('toggleAdminBtn');
-
-    if (!currentUser) return;
-
-    if (isAdminMode) {
-      if (adminSec) adminSec.classList.remove('hidden');
-      if (driverSec) driverSec.classList.add('hidden');
-      if (toggleBtn) {
-        toggleBtn.textContent = '🚗 Sofőr nézet';
-        toggleBtn.className = 'bg-blue-500/20 border border-blue-500/40 text-blue-400 hover:bg-blue-500/30 px-3 py-2 rounded-xl text-xs font-semibold transition';
-      }
-    } else {
-      if (adminSec) adminSec.classList.add('hidden');
-      if (driverSec) driverSec.classList.remove('hidden');
-      if (toggleBtn) {
-        toggleBtn.textContent = '👑 Admin';
-        toggleBtn.className = 'bg-amber-500/20 border border-amber-500/40 text-amber-400 hover:bg-amber-500/30 px-3 py-2 rounded-xl text-xs font-semibold transition';
-      }
+      renderTripsTable();
     }
-  };
 
-  function applyCardVisibilityPermissions() {
-    const userEmail = (currentUser?.email || auth.currentUser?.email || '').toLowerCase();
+    function applyCardVisibilityPermissions() {
+      const userEmail = (currentUser?.email || auth.currentUser?.email || '').toLowerCase();
+      const isMasterSuperAdmin = (userEmail === MASTER_SUPER_ADMIN_EMAIL.toLowerCase());
       const isSuperAdmin = (currentUserData?.isSuperAdmin === true || isMasterSuperAdmin);
       const allowedCards = currentUserData?.adminCards || [];
 
@@ -1604,9 +1555,6 @@ renderTripsTable();
         document.getElementById('authScreen').classList.add('hidden');
         document.getElementById('appScreen').classList.remove('hidden');
         document.getElementById('userStatus').textContent = getUsernameFromEmail(currentUserData.email);
-        if (typeof window.renderRoleUI === 'function') {
-          window.renderRoleUI();
-        }
 
         listenToGlobalSettings();
         listenToCars();
@@ -3286,77 +3234,47 @@ window.saveCarEditModal = async function() {
       }).join('') || '<p class="text-[11px] text-slate-500 text-center">Nincs adat.</p>';
     };
 
-   let selectedOverlimitMonthDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    function renderOverlimitShifts() {
+      const container = document.getElementById('overlimitShiftsContainer');
+      const badgeContainer = document.getElementById('badge_overlimit');
+      if (!container) return;
 
-window.changeOverlimitMonth = function(direction) {
-  selectedOverlimitMonthDate = new Date(selectedOverlimitMonthDate.getFullYear(), selectedOverlimitMonthDate.getMonth() + direction, 1);
-  renderOverlimitShifts();
-};
+      const overlimitList = [];
+      allShifts.forEach(shift => {
+        if (dismissedOverlimits.includes(shift.id)) return;
+        const car = (allCars || []).find(c => c.plateNumber === shift.carPlate || c.id === shift.carId);
+   if (car && car.isLargeBus) return;
+        const shiftTrips = allTrips.filter(t => t.shiftId === shift.id);
+        const workKmTotal = shiftTrips.filter(t => t.type === 'work').reduce((sum, t) => sum + Number(t.workKm || 0), 0);
+        if (workKmTotal >= 250) {
+          overlimitList.push({ shift, workKmTotal });
+        }
+      });
 
-function renderOverlimitShifts() {
-  const container = document.getElementById('overlimitShiftsContainer');
-  const badgeContainer = document.getElementById('badge_overlimit');
-  const monthLabel = document.getElementById('overlimitMonthLabel');
-  if (!container) return;
+      if (badgeContainer) badgeContainer.textContent = overlimitList.length + " eset";
 
-  const year = selectedOverlimitMonthDate.getFullYear();
-  const month = selectedOverlimitMonthDate.getMonth();
-  const monthStr = year + '-' + String(month + 1).padStart(2, '0');
+      if (overlimitList.length === 0) {
+        container.innerHTML = '<p class="text-xs text-slate-500 text-center p-3 bg-slate-950/60 rounded-lg">Nincs rögzített 250 km feletti műszak.</p>';
+        return;
+      }
 
-  if (monthLabel) {
-    monthLabel.textContent = selectedOverlimitMonthDate.toLocaleDateString('hu-HU', { year: 'numeric', month: 'long' });
-  }
+      container.innerHTML = overlimitList.map(item => {
+        const shift = item.shift;
+        const driverName = getUsernameFromEmail(shift.driverEmail);
 
-  const overlimitList = [];
-  allShifts.forEach(shift => {
-    if (dismissedOverlimits.includes(shift.id)) return;
-
-    // Hónap szűrés
-    const shiftDate = shift.startDate || shift.endDate || '';
-    if (!shiftDate.startsWith(monthStr)) return;
-
-    const car = (allCars || []).find(c => c.plateNumber === shift.carPlate || c.id === shift.carId);
-    if (car && car.isLargeBus) return;
-
-    const shiftTrips = allTrips.filter(t => t.shiftId === shift.id);
-    const workKmTotal = shiftTrips.filter(t => t.type === 'work').reduce((sum, t) => sum + Number(t.workKm || 0), 0);
-    
-    if (workKmTotal >= 250) {
-      overlimitList.push({ shift, workKmTotal });
+        return '<div class="bg-slate-950 border border-red-900/50 rounded-lg p-2.5 flex justify-between items-center text-xs">' +
+          '<div>' +
+            '<div class="font-bold text-slate-200">' + driverName + '</div>' +
+            '<div class="text-[10px] text-slate-400">📅 ' + (shift.startDate || '-') + ' • ' + (shift.carPlate || '-') + '</div>' +
+          '</div>' +
+          '<div class="flex items-center gap-1.5">' +
+            '<span class="text-xs font-mono font-bold text-red-400 bg-red-950/80 border border-red-800 px-2 py-0.5 rounded">' + item.workKmTotal + ' km</span>' +
+            '<button onclick="window.exportShiftPDF(\'' + shift.id + '\', \'work\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-200 px-2 py-1 rounded border border-red-700">📄 PDF</button>' +
+            '<button onclick="window.dismissOverlimitShift(\'' + shift.id + '\')" class="text-[10px] bg-slate-800 hover:bg-red-900/60 text-slate-400 px-2 py-1 rounded border border-slate-700">🗑️</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
     }
-  });
-
-  // 🎯 DÁTUM SZERINTI CSÖKKENŐ RENDEZÉS (Legújabbak legfelül)
-  overlimitList.sort((a, b) => {
-    const dateA = a.shift.startDate || a.shift.endDate || '';
-    const dateB = b.shift.startDate || b.shift.endDate || '';
-    return dateB.localeCompare(dateA);
-  });
-
-  if (badgeContainer) badgeContainer.textContent = overlimitList.length + " eset";
-
-  if (overlimitList.length === 0) {
-    container.innerHTML = '<p class="text-xs text-slate-500 text-center p-3 bg-slate-950/60 rounded-lg">Ebben a hónapban nincs rögzített 250 km feletti műszak.</p>';
-    return;
-  }
-
-  container.innerHTML = overlimitList.map(item => {
-    const shift = item.shift;
-    const driverName = getUsernameFromEmail(shift.driverEmail);
-
-    return '<div class="bg-slate-950 border border-red-900/50 rounded-lg p-2.5 flex justify-between items-center text-xs">' +
-      '<div>' +
-        '<div class="font-bold text-slate-200">👤 ' + driverName + '</div>' +
-        '<div class="text-[10px] text-slate-400">📅 ' + (shift.startDate || '-') + ' • 🚗 ' + (shift.carPlate || '-') + '</div>' +
-      '</div>' +
-      '<div class="flex items-center gap-1.5">' +
-        '<span class="text-xs font-mono font-bold text-red-400 bg-red-950/80 border border-red-800 px-2 py-0.5 rounded">' + item.workKmTotal + ' km</span>' +
-        '<button onclick="window.exportShiftPDF(\'' + shift.id + '\', \'work\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-200 px-2 py-1 rounded border border-red-700">📄 PDF</button>' +
-        '<button onclick="window.dismissOverlimitShift(\'' + shift.id + '\')" class="text-[10px] bg-slate-800 hover:bg-red-900/60 text-slate-400 px-2 py-1 rounded border border-slate-700">🗑️</button>' +
-      '</div>' +
-    '</div>';
-  }).join('');
-}
 
     window.dismissOverlimitShift = function(shiftId) {
       if (!dismissedOverlimits.includes(shiftId)) {
@@ -4490,18 +4408,12 @@ if (document.readyState === 'loading') {
       generatePDFForTrips(filtered, "Menetlevél Kimutatás", "Szűrt Kimutatás | Időszak: " + period.toUpperCase(), filename, type);
     };
     // ==========================================
-// 📋 MEGBÍZÁSOK & DISZPÉCSER LOGIKA (HAVI LÉPTETŐ + SZERKESZTÉS)
+// 📋 MEGBÍZÁSOK & DISZPÉCSER LOGIKA
 // ==========================================
 
 let allAssignments = [];
-let selectedAssignmentMonthDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
-window.changeAssignmentMonth = function(direction) {
-  selectedAssignmentMonthDate = new Date(selectedAssignmentMonthDate.getFullYear(), selectedAssignmentMonthDate.getMonth() + direction, 1);
-  renderAdminAssignments();
-};
-
-// Dinamikus sormenedzserek
+// 1. Dinamikus megbízók és útvonalak sormenedzsere
 window.addContactRow = function(name = '', phone = '') {
   const container = document.getElementById('contactsContainer');
   if (!container) return;
@@ -4549,7 +4461,6 @@ function getLocalDateTimeString() {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
-// Modal nyitás (Új megbízás VAGY Szerkesztés)
 window.openNewAssignmentModal = function(assignmentId = null) {
   const form = document.getElementById('assignmentForm');
   if (form) form.reset();
@@ -4557,6 +4468,7 @@ window.openNewAssignmentModal = function(assignmentId = null) {
   document.getElementById('contactsContainer').innerHTML = '';
   document.getElementById('routesContainer').innerHTML = '';
 
+  // Sofőrök és autók feltöltése
   const driverSelect = document.getElementById('assignDriverSelect');
   const carSelect = document.getElementById('assignCarSelect');
 
@@ -4572,57 +4484,39 @@ window.openNewAssignmentModal = function(assignmentId = null) {
       sortedCars.map(c => `<option value="${c.plateNumber}">${c.plateNumber} - ${c.model || ''} ${c.isLargeBus ? '(NAGYBUSZ)' : ''}</option>`).join('');
   }
 
-  if (assignmentId) {
-    // SZERKESZTÉSI MÓD
-    const item = allAssignments.find(a => a.id === assignmentId);
-    if (!item) return alert("A szerkesztendő megbízás nem található!");
+  // Alapértelmezett sorok hozzáadása
+  window.addContactRow();
+  window.addRouteRow(); // Indulási pont
+  window.addRouteRow(); // Érkezési pont
 
-    document.getElementById('assignmentId').value = item.id;
-    if (driverSelect) driverSelect.value = item.driverUid || '';
-    if (carSelect) carSelect.value = item.carPlate || '';
-
-    (item.contacts || []).forEach(c => window.addContactRow(c.name, c.phone));
-    (item.routes || []).forEach(r => window.addRouteRow(r));
-
-    document.getElementById('assignStartDateTime').value = item.startDateTime || '';
-    document.getElementById('assignEndDateTime').value = item.endDateTime || '';
-    document.getElementById('assignSendDateTime').value = item.sendDateTime || '';
-    document.getElementById('assignNotes').value = item.notes || '';
-  } else {
-    // ÚJ MEGBÍZÁS MÓD
-    document.getElementById('assignmentId').value = '';
-    window.addContactRow();
-    window.addRouteRow();
-    window.addRouteRow();
-
-    const currentLocalISO = getLocalDateTimeString();
-    document.getElementById('assignStartDateTime').value = currentLocalISO;
-    document.getElementById('assignSendDateTime').value = currentLocalISO;
-  }
+  // Pontos magyar helyi idő beállítása a mezőkben (nem UTC!)
+  const currentLocalISO = getLocalDateTimeString();
+  document.getElementById('assignStartDateTime').value = currentLocalISO;
+  document.getElementById('assignSendDateTime').value = currentLocalISO;
 
   document.getElementById('assignmentModal').classList.remove('hidden');
 };
 
 window.closeAssignmentModal = function() {
   document.getElementById('assignmentModal').classList.add('hidden');
-  document.getElementById('assignmentId').value = '';
 };
 
-// Mentés / Módosítás Firestore-ba
+// 2. Megbízás mentése Firestore-ba
 window.saveAssignment = async function(e) {
   e.preventDefault();
 
-  const assignmentId = document.getElementById('assignmentId').value;
   const driverId = document.getElementById('assignDriverSelect').value;
   const driverObj = allUsers.find(u => u.id === driverId);
   const carPlate = document.getElementById('assignCarSelect').value;
 
+  // Contacts kinyerése
   const contactRows = document.querySelectorAll('#contactsContainer .contact-row');
   const contacts = Array.from(contactRows).map(row => ({
     name: row.querySelector('.contact-name').value.trim(),
     phone: row.querySelector('.contact-phone').value.trim()
   })).filter(c => c.name && c.phone);
 
+  // Routes kinyerése
   const routeRows = document.querySelectorAll('#routesContainer .route-row');
   const routes = Array.from(routeRows).map(row => row.querySelector('.route-location').value.trim()).filter(Boolean);
 
@@ -4644,30 +4538,22 @@ window.saveAssignment = async function(e) {
     endDateTime: endDateTime || '',
     sendDateTime: sendDateTime,
     notes: notes,
-    updatedAt: new Date().toISOString()
+    status: 'PENDING', // PENDING (kiadva), ACCEPTED (sofőr által tudomásul véve)
+    createdAt: new Date().toISOString(),
+    createdByName: getUsernameFromEmail(currentUser?.email)
   };
 
   try {
-    if (assignmentId) {
-      // MÓDOSÍTÁS
-      await updateDoc(doc(db, "assignments", assignmentId), assignmentData);
-      alert("📋 Megbízás sikeresen frissítve!");
-    } else {
-      // ÚJ
-      assignmentData.status = 'PENDING';
-      assignmentData.createdAt = new Date().toISOString();
-      assignmentData.createdByName = getUsernameFromEmail(currentUser?.email);
-      await addDoc(collection(db, "assignments"), assignmentData);
-      alert("📋 Új megbízás sikeresen rögzítve és ütemezve!");
-    }
+    await addDoc(collection(db, "assignments"), assignmentData);
     window.closeAssignmentModal();
+    alert("📋 Megbízás sikeresen rögzítve és ütemezve!");
   } catch (err) {
     console.error("Megbízás mentési hiba:", err);
     alert("Hiba történt a mentés során: " + err.message);
   }
 };
 
-// Valós idejű figyelés
+// 3. Valós idejű figyelés (Firestore snapshot)
 function listenToAssignments() {
   onSnapshot(collection(db, "assignments"), (snapshot) => {
     allAssignments = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
@@ -4679,35 +4565,22 @@ function listenToAssignments() {
   });
 }
 
-// ADMIN Felület kirajzolása (Havi léptetővel)
+// 4. ADMIN Felület kirajzolása
 function renderAdminAssignments() {
   const container = document.getElementById('adminAssignmentsList');
   const badge = document.getElementById('badge_assignments');
-  const monthLabel = document.getElementById('assignmentMonthLabel');
   if (!container) return;
 
-  const year = selectedAssignmentMonthDate.getFullYear();
-  const month = selectedAssignmentMonthDate.getMonth();
-  const monthStr = year + '-' + String(month + 1).padStart(2, '0');
+  if (badge) badge.textContent = allAssignments.length + " megbízás";
 
-  if (monthLabel) {
-    monthLabel.textContent = selectedAssignmentMonthDate.toLocaleDateString('hu-HU', { year: 'numeric', month: 'long' });
-  }
-
-  // Szűrés a kiválasztott hónapra (a kiállás/kezdés dátuma alapján)
-  const monthAssignments = allAssignments.filter(item => {
-    const dStr = item.startDateTime || item.createdAt || '';
-    return dStr.startsWith(monthStr);
-  }).sort((a, b) => (b.startDateTime || '').localeCompare(a.startDateTime || ''));
-
-  if (badge) badge.textContent = monthAssignments.length + " megbízás";
-
-  if (monthAssignments.length === 0) {
-    container.innerHTML = '<p class="text-xs text-slate-500 text-center p-3 bg-slate-950/60 rounded-xl">Ebben a hónapban nincs rögzített megbízás.</p>';
+  if (allAssignments.length === 0) {
+    container.innerHTML = '<p class="text-xs text-slate-500 text-center p-3 bg-slate-950/60 rounded-xl">Még nincs rögzített megbízás.</p>';
     return;
   }
 
-  container.innerHTML = monthAssignments.map(item => {
+  const sorted = [...allAssignments].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+
+  container.innerHTML = sorted.map(item => {
     const driverName = getUsernameFromEmail(item.driverEmail);
     const isAccepted = item.status === 'ACCEPTED';
     const statusBadge = isAccepted 
@@ -4723,11 +4596,10 @@ function renderAdminAssignments() {
           <div>
             <span class="font-bold text-slate-200">👤 Sofőr: ${driverName}</span>
             ${item.carPlate ? ` | 🚗 Jármű: <strong>${window.formatCarPlate(item.carPlate)}</strong>` : ''}
-            <div class="text-[10px] text-slate-400 mt-0.5">📅 Kezdés: <strong class="text-orange-400">${item.startDateTime.replace('T', ' ')}</strong> | 📲 Kiküldés: ${item.sendDateTime.replace('T', ' ')}</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">📅 Munka kezdete: <strong class="text-orange-400">${item.startDateTime.replace('T', ' ')}</strong> | 📲 Kiküldés: ${item.sendDateTime.replace('T', ' ')}</div>
           </div>
           <div class="flex items-center gap-1.5">
             ${statusBadge}
-            <button onclick="window.openNewAssignmentModal('${item.id}')" class="bg-slate-800 hover:bg-slate-700 text-teal-300 px-2 py-1 rounded text-[10px] font-bold border border-slate-700" title="Megbízás szerkesztése">✏️ Szerkeszt</button>
             <button onclick="window.downloadAssignmentPDF('${item.id}')" class="bg-slate-800 hover:bg-slate-700 text-amber-300 px-2 py-1 rounded text-[10px] font-bold border border-slate-700">📄 PDF</button>
             <button onclick="window.deleteAssignment('${item.id}')" class="bg-red-900/40 hover:bg-red-800 text-red-300 px-2 py-1 rounded text-[10px] font-bold border border-red-800">🗑️</button>
           </div>
@@ -4749,25 +4621,18 @@ window.deleteAssignment = async function(id) {
   }
 };
 
- function renderDriverAssignments() {
+function renderDriverAssignments() {
   if (!currentUser) return;
 
-  // Jelenlegi pontos helyi idő timestamp-ként (milliszekundumban)
-  const nowMs = new Date().getTime();
+  // Helyi idő alapján hasonlítjuk össze az időzítést!
+  const nowStr = getLocalDateTimeString();
 
   // Kizárólag azokat a megbízásokat mutatjuk a sofőrnek:
   // 1. Ami NEKI szól (driverUid === currentUser.uid)
   // 2. És aminek a kiküldési időpontja elérkezett (sendDateTime <= most)
-  const myAssignments = allAssignments.filter(a => {
-    if (a.driverUid !== currentUser.uid) return false;
-    if (!a.sendDateTime) return true; // Ha nincs beállítva időzítés, azonnal mutatjuk
-
-    // A beállított kiküldési idő konvertálása milliszekundummá
-    const sendMs = new Date(a.sendDateTime).getTime();
-    
-    // Csak akkor jelenik meg, ha a jelenlegi idő eléri vagy meghaladja a kiküldési időt
-    return sendMs <= nowMs;
-  }).sort((a, b) => (b.startDateTime || '').localeCompare(a.startDateTime || ''));
+  const myAssignments = allAssignments.filter(a => 
+    a.driverUid === currentUser.uid && (a.sendDateTime <= nowStr)
+  ).sort((a, b) => (b.startDateTime || '').localeCompare(a.startDateTime || ''));
 
   let driverBox = document.getElementById('driverAssignmentsBox');
   if (!driverBox) {
