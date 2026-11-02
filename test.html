@@ -10,38 +10,32 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
     
-    /* Admin kártyák: asztali gépen rendezett, egymás melletti oszlopok. */
-   #adminSection.hidden, #driverViewContainer.hidden { display: none !important; }
-
-@media (min-width: 1100px) {
-  #adminSection { 
-    max-width: 1600px; 
-    width: 100% !important; 
-    margin: 0 auto !important;
-    display: grid !important; 
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important; 
-    gap: 1rem !important; 
-    align-items: start; 
-  }
-  #adminSection.space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 0 !important; }
-  #adminSection > .flex.justify-between { grid-column: 1 / -1; margin: 0; }
-  #card_combined_alerts, #card_announcements, #card_pdf, #superAdminSection, #adminSection > .grid { grid-column: 1 / -1; min-width: 0; }
-  #adminSection > .admin-card { grid-column: span 1; min-width: 0; width: 100%; margin: 0; box-shadow: 0 8px 22px rgba(2, 6, 23, .22); }
-  #card_closed_shifts, #card_active_shifts { grid-column: span 1; }
-}
-
-@media (min-width: 769px) and (max-width: 1099px) {
-  #adminSection { 
-    max-width: 100%; 
-    width: 100% !important; 
-    display: grid !important; 
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important; 
-    gap: .85rem !important; 
-  }
-  #adminSection.space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 0 !important; }
-  #adminSection > .flex.justify-between, #card_combined_alerts, #card_announcements, #card_pdf, #superAdminSection, #adminSection > .grid { grid-column: 1 / -1; }
-  #adminSection > .admin-card { min-width: 0; margin: 0; width: 100%; }
-}
+    /* Admin kártyák: valódi, egymástól független oszlopok, hogy a lenyitás ne hagyjon üres helyet a szomszédos oszlopban. */
+    #adminSection.hidden, #driverViewContainer.hidden { display: none !important; }
+    @media (min-width: 1100px) {
+      #adminSection {
+        max-width: 1600px; width: 100% !important; margin: 0 auto !important;
+        display: block !important; column-count: 3; column-gap: 1rem;
+      }
+      #adminSection > .flex.justify-between { column-span: all; margin: 0 0 1rem 0 !important; }
+      #adminSection > .admin-card {
+        display: inline-block; vertical-align: top; width: 100%; min-width: 0;
+        margin: 0 0 1rem 0 !important; break-inside: avoid; -webkit-column-break-inside: avoid;
+        box-shadow: 0 8px 22px rgba(2, 6, 23, .22);
+      }
+    }
+    @media (min-width: 769px) and (max-width: 1099px) {
+      #adminSection { max-width: 100%; width: 100% !important; display: block !important; column-count: 2; column-gap: .85rem; }
+      #adminSection > .flex.justify-between { column-span: all; margin: 0 0 .85rem 0 !important; }
+      #adminSection > .admin-card {
+        display: inline-block; vertical-align: top; width: 100%; min-width: 0;
+        margin: 0 0 .85rem 0 !important; break-inside: avoid; -webkit-column-break-inside: avoid;
+      }
+    }
+    @media (max-width: 768px) {
+      #adminSection { display: block !important; }
+      #adminSection > .admin-card { width: 100%; margin-bottom: .85rem; }
+    }
     /* Minden admin fül tartalma külön, korlátozott magasságú görgetőterület legyen. */
     [id^="content_card_"] {
       max-height: min(62vh, 620px);
@@ -498,6 +492,19 @@
         </div>
 
         <div id="content_card_closed_shifts" class="hidden p-4 space-y-3 border-t border-slate-800/80">
+          <div class="rounded-xl border border-indigo-500/30 bg-slate-950/60 p-3 space-y-2">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <span class="text-xs font-bold text-indigo-200">Sofőrök kiválasztása a havi összesítőhöz</span>
+              <div class="flex gap-2">
+                <button type="button" onclick="window.setMonthlyDriverSelection(true)" class="text-[10px] text-cyan-300 hover:text-white">Mind kijelöl</button>
+                <button type="button" onclick="window.setMonthlyDriverSelection(false)" class="text-[10px] text-slate-400 hover:text-white">Kijelölés törlése</button>
+              </div>
+            </div>
+            <div id="monthlyDriverSelector" class="grid grid-cols-1 sm:grid-cols-2 gap-1 max-h-44 overflow-y-auto pr-1">
+              <span class="text-[11px] text-slate-400">A sofőrlista betöltése...</span>
+            </div>
+            <p class="text-[10px] text-slate-400">Csak a kijelölt sofőrök havi munka + privát összesítője kerül a ZIP-fájlba.</p>
+          </div>
           <button type="button" onclick="window.downloadAllWorkMileagePDFsZip()" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-90 text-white font-bold py-2.5 rounded-xl text-xs shadow-md transition flex items-center justify-center gap-2">
             📦 Az összes havi munkakilométeres menetlevél letöltése (ZIP)
           </button>
@@ -1062,6 +1069,7 @@
 window.changeClosedShiftsMonth = function(direction) {
   selectedClosedShiftsMonthDate.setMonth(selectedClosedShiftsMonthDate.getMonth() + direction);
   renderAdminShifts();
+  if (typeof window.renderMonthlyDriverSelector === 'function') window.renderMonthlyDriverSelector();
 };
 
     const ADMIN_PIN = "1234";
@@ -1213,6 +1221,9 @@ window.changeClosedShiftsMonth = function(direction) {
         content.classList.remove('hidden');
         arrow.textContent = '▲';
         cardStates[cardId] = true;
+        if (cardId === 'card_closed_shifts' && typeof window.renderMonthlyDriverSelector === 'function') {
+          window.renderMonthlyDriverSelector();
+        }
       } else {
         content.classList.add('hidden');
         arrow.textContent = '▼';
@@ -4408,6 +4419,71 @@ if (document.readyState === 'loading') {
     };
 
 
+    // A havi összesítőhöz kiválasztható sofőrök listája.
+    let selectedMonthlyDriverEmails = new Set();
+    window.renderMonthlyDriverSelector = function() {
+      const container = document.getElementById('monthlyDriverSelector');
+      if (!container) return;
+      const year = selectedClosedShiftsMonthDate.getFullYear();
+      const month = selectedClosedShiftsMonthDate.getMonth();
+      const monthKey = year + "-" + String(month + 1).padStart(2, "0");
+      const shifts = (Array.isArray(window.allShifts) ? window.allShifts : allShifts)
+        .filter(sh => sh.status === "closed" && String(sh.startDate || sh.endDate || "").startsWith(monthKey));
+      const drivers = [...new Set(shifts.map(sh => sh.driverEmail || sh.userEmail || sh.email || "Ismeretlen"))]
+        .filter(email => shifts.some(sh => (sh.driverEmail || sh.userEmail || sh.email || "Ismeretlen") === email &&
+          (Array.isArray(window.allTrips) ? window.allTrips : allTrips).some(t => String(t.shiftId) === String(sh.id))));
+      const previous = new Set(selectedMonthlyDriverEmails);
+      container.innerHTML = '';
+      if (!drivers.length) {
+        container.innerHTML = '<span class="text-[11px] text-slate-400">Ebben a hónapban nincs lezárt, letölthető menetlevél.</span>';
+        selectedMonthlyDriverEmails = new Set();
+        return;
+      }
+      const valid = new Set(drivers);
+      selectedMonthlyDriverEmails = new Set([...previous].filter(email => valid.has(email)));
+      // Első megjelenítéskor minden, az adott hónapban szereplő sofőr legyen kijelölve.
+      if (!previous.size) selectedMonthlyDriverEmails = new Set(drivers);
+      drivers.sort((a,b) => getUsernameFromEmail(a).localeCompare(getUsernameFromEmail(b), "hu"));
+      drivers.forEach(email => {
+        const label = document.createElement('label');
+        label.className = 'flex items-center gap-2 rounded-lg bg-slate-800/80 px-2 py-1.5 text-[11px] text-slate-200 cursor-pointer';
+        label.dataset.email = email;
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = selectedMonthlyDriverEmails.has(email);
+        checkbox.className = 'accent-indigo-500';
+        checkbox.addEventListener('change', () => {
+          if (checkbox.checked) selectedMonthlyDriverEmails.add(email);
+          else selectedMonthlyDriverEmails.delete(email);
+        });
+        const name = document.createElement('span');
+        name.textContent = getUsernameFromEmail(email);
+        label.append(checkbox, name);
+        container.appendChild(label);
+      });
+    };
+    window.setMonthlyDriverSelection = function(selectAll) {
+      const container = document.getElementById('monthlyDriverSelector');
+      if (!container) return;
+      container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        cb.checked = !!selectAll;
+        const email = cb.parentElement?.dataset?.email;
+        if (email) {
+          if (selectAll) selectedMonthlyDriverEmails.add(email);
+          else selectedMonthlyDriverEmails.delete(email);
+        }
+      });
+      // A checkboxhoz tartozó e-mailt a label datasetében tároljuk.
+      container.querySelectorAll('label').forEach(label => {
+        const cb = label.querySelector('input');
+        const email = label.dataset.email;
+        if (email) {
+          if (selectAll) selectedMonthlyDriverEmails.add(email);
+          else selectedMonthlyDriverEmails.delete(email);
+        }
+      });
+    };
+
     // Havi, sofőrönkénti összesítő: egy PDF tartalmazza az adott hónap összes munka- és privát útját.
     window.downloadMonthlyDriverCombinedMileageZip = async function() {
       if (typeof JSZip === 'undefined') return alert("A ZIP-készítő könyvtár nem töltődött be. Frissítsd az oldalt!");
@@ -4430,8 +4506,9 @@ if (document.readyState === 'loading') {
         });
       });
 
-      const drivers = Object.keys(byDriver).filter(email => byDriver[email].length);
-      if (!drivers.length) return alert("A kiválasztott hónapban nincs letölthető lezárt menetlevél.");
+      const availableDrivers = Object.keys(byDriver).filter(email => byDriver[email].length);
+      const drivers = availableDrivers.filter(email => selectedMonthlyDriverEmails.has(email));
+      if (!drivers.length) return alert("Jelölj ki legalább egy sofőrt a havi összesítő letöltéséhez.");
 
       const zip = new JSZip();
       const folderName = "Havi_munka_es_privat_kilometer_osszesitok_" + year + "_" + monthNames[month];
