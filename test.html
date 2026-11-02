@@ -1224,6 +1224,13 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
+    let selectedClosedShiftsMonthDate = new Date();
+
+window.changeClosedShiftsMonth = function(direction) {
+  selectedClosedShiftsMonthDate.setMonth(selectedClosedShiftsMonthDate.getMonth() + direction);
+  renderAdminShifts();
+};
+
     const ADMIN_PIN = "1234";
     const MASTER_SUPER_ADMIN_EMAIL = "zwickl@kn.hu";
 
