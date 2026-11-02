@@ -4975,7 +4975,25 @@ function renderDriverAssignments() {
                 ${!isAccepted ? `
                   <button onclick="window.acceptAssignment
 }
-    // Percenként ellenőrizzük az időzített megbízások megjelenését a sofőrnél
+
+window.toggleAssignmentCard = function() {
+  const body = document.getElementById('assignmentCardBody');
+  const chevron = document.getElementById('assignmentChevron');
+
+  if (!body) return;
+
+  const isCollapsed = body.classList.contains('hidden');
+
+  if (isCollapsed) {
+    body.classList.remove('hidden');
+    if (chevron) chevron.style.transform = 'rotate(180deg)';
+  } else {
+    body.classList.add('hidden');
+    if (chevron) chevron.style.transform = 'rotate(0deg)';
+  }
+};
+
+// Percenként ellenőrizzük az időzített megbízások megjelenését a sofőrnél
 setInterval(() => {
   renderDriverAssignments();
 }, 60000);
