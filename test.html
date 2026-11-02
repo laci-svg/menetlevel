@@ -240,32 +240,28 @@
 <div class="hidden p-4 border-t border-slate-800/80" id="content_card_shift_hours">
 <div class="space-y-2 max-h-[60vh] overflow-y-auto overscroll-contain pr-1" id="shiftHoursListContainer" style="scrollbar-gutter:stable"></div>
 </div>
-</div>      <div id="card_overlimit" class="admin-card bg-slate-900/90 border border-red-500/40 rounded-xl overflow-hidden shadow-md">
-        <div onclick="toggleCardAccordion('card_overlimit')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-red-500/30">
-          <div class="flex items-center gap-2">
-            <h3 class="text-sm font-bold text-red-400 flex items-center gap-1.5">
-              <span>⚠️</span> Kilométer Túlfutások (250+ km)
+</div> <div class="admin-card bg-slate-900/90 border border-red-500/40 rounded-xl overflow-hidden shadow-md" id="card_overlimit">
+<div class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-red-500/30" onclick="toggleCardAccordion('card_overlimit')">
+<div class="flex items-center gap-2">
+<h3 class="text-sm font-bold text-red-400 flex items-center gap-1.5">
+<span>⚠️</span> Kilométer Túlfutások (250+ km)
             </h3>
-            <span id="badge_overlimit" class="text-[10px] bg-red-950 text-red-300 border border-red-800 px-2 py-0.5 rounded-full font-mono font-bold">0 eset</span>
-          </div>
-
-          <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
-            <button type="button" onclick="window.changeOverlimitMonth(-1)" class="bg-slate-800 hover:bg-slate-700 text-red-300 px-2 py-1 rounded text-xs font-bold border border-slate-700">◄</button>
-            <span id="overlimitMonthLabel" class="text-xs font-bold text-red-400 font-mono"></span>
-            <button type="button" onclick="window.changeOverlimitMonth(1)" class="bg-slate-800 hover:bg-slate-700 text-red-300 px-2 py-1 rounded text-xs font-bold border border-slate-700">►</button>
-          </div>
-
-          <span id="arrow_card_overlimit" class="text-xs text-slate-400 font-bold transition-transform">▼</span>
-        </div>
-
-        <div id="content_card_overlimit" class="hidden p-4 space-y-3 border-t border-slate-800/80">
-          <button type="button" onclick="window.downloadAllOverlimitPDFsZip()" class="w-full bg-gradient-to-r from-red-700 to-rose-600 hover:opacity-90 text-white font-bold py-2.5 rounded-xl text-xs shadow-md transition flex items-center justify-center gap-2">
+<span class="text-[10px] bg-red-950 text-red-300 border border-red-800 px-2 py-0.5 rounded-full font-mono font-bold" id="badge_overlimit">0 eset</span>
+</div>
+<div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
+<button class="bg-slate-800 hover:bg-slate-700 text-red-300 px-2 py-1 rounded text-xs font-bold border border-slate-700" onclick="window.changeOverlimitMonth(-1)" type="button">◄</button>
+<span class="text-xs font-bold text-red-400 font-mono" id="overlimitMonthLabel"></span>
+<button class="bg-slate-800 hover:bg-slate-700 text-red-300 px-2 py-1 rounded text-xs font-bold border border-slate-700" onclick="window.changeOverlimitMonth(1)" type="button">►</button>
+</div>
+<span class="text-xs text-slate-400 font-bold transition-transform" id="arrow_card_overlimit">▼</span>
+</div>
+<div class="hidden p-4 space-y-3 border-t border-slate-800/80" id="content_card_overlimit">
+<button class="w-full bg-gradient-to-r from-red-700 to-rose-600 hover:opacity-90 text-white font-bold py-2.5 rounded-xl text-xs shadow-md transition flex items-center justify-center gap-2" onclick="window.downloadAllOverlimitPDFsZip()" type="button">
             📦 Az összes havi kilométer-túlfutásos menetlevél letöltése (ZIP)
           </button>
-          <div id="overlimitShiftsContainer" class="space-y-2 max-h-[350px] overflow-y-auto pr-1"></div>
-        </div>
-      </div>
-
+<div class="space-y-2 max-h-[350px] overflow-y-auto pr-1" id="overlimitShiftsContainer"></div>
+</div>
+</div>
 <div class="admin-card bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-md" id="card_closed_shifts">
 <div class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-slate-800/50" onclick="toggleCardAccordion('card_closed_shifts')">
 <div class="flex items-center gap-2">
@@ -303,23 +299,6 @@
             📦 Sofőrönkénti havi munka + privát kilométer összesítő letöltése (ZIP)
           </button>
 <div class="space-y-3 max-h-[650px] overflow-y-auto pr-1" id="adminClosedShiftsContainer"></div>
-</div>
-</div><div class="admin-card bg-slate-900/90 border border-emerald-500/30 rounded-xl overflow-hidden shadow-md" id="card_active_shifts">
-<div class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-emerald-500/30" onclick="toggleCardAccordion('card_active_shifts')">
-<div class="flex items-center gap-2">
-<h3 class="text-sm font-bold text-emerald-400 flex items-center gap-1.5">
-<span class="relative flex h-2 w-2">
-<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-<span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-</span>
-<span>Jelenleg ÉLŐ Műszakok (ABC)</span>
-</h3>
-<span class="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded-full font-bold" id="badge_active_shifts">0 élő műszak</span>
-</div>
-<span class="text-xs text-slate-400 font-bold transition-transform" id="arrow_card_active_shifts">▼</span>
-</div>
-<div class="hidden p-4 space-y-3 border-t border-slate-800/80" id="content_card_active_shifts">
-<div class="space-y-3 max-h-[350px] overflow-y-auto pr-1" id="adminActiveShiftsContainer"></div>
 </div>
 </div></div><div class="admin-card-column" id="adminCardColumnRight"><div class="admin-card bg-slate-900/90 border border-amber-500/40 rounded-xl overflow-hidden shadow-md" id="card_combined_alerts">
 <div class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-amber-500/30" onclick="toggleCardAccordion('card_combined_alerts')">
@@ -437,26 +416,11 @@
 <option value="all">📊 Összesített (Munka + Privát)</option>
 </select>
 </div>
-<div class="flex items-center gap-1.5">
-<label class="text-xs text-slate-400 font-medium whitespace-nowrap">Időszak:</label>
-<select class="bg-slate-800 border border-slate-700 text-white p-1.5 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-orange-500" id="statsPeriodSelect" onchange="toggleStatsCustomDates(); renderAdminStats();">
-<option value="daily">Napi</option>
-<option value="weekly">Heti</option>
-<option selected="" value="monthly">Havi</option>
-<option value="yearly">Éves</option>
-<option value="custom">Egyedi dátum</option>
-</select>
+<div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
+<button aria-label="Előző hónap" class="bg-slate-800 hover:bg-slate-700 text-orange-300 px-2 py-1 rounded text-xs font-bold border border-slate-700" onclick="window.changeStatsMonth(-1)" type="button">◄</button>
+<span class="text-xs font-bold text-orange-300 font-mono min-w-[112px] text-center" id="statsMonthLabel"></span>
+<button aria-label="Következő hónap" class="bg-slate-800 hover:bg-slate-700 text-orange-300 px-2 py-1 rounded text-xs font-bold border border-slate-700" onclick="window.changeStatsMonth(1)" type="button">►</button>
 </div>
-</div>
-</div>
-<div class="hidden grid grid-cols-2 gap-2 bg-slate-950 p-2.5 rounded-xl border border-slate-800" id="statsCustomDateContainer">
-<div>
-<label class="block text-[10px] text-slate-400 mb-0.5">Kezdő dátum</label>
-<input class="w-full bg-slate-800 border border-slate-700 text-white p-1.5 rounded-lg text-xs" id="statsStartDate" onchange="renderAdminStats()" type="date"/>
-</div>
-<div>
-<label class="block text-[10px] text-slate-400 mb-0.5">Záró dátum</label>
-<input class="w-full bg-slate-800 border border-slate-700 text-white p-1.5 rounded-lg text-xs" id="statsEndDate" onchange="renderAdminStats()" type="date"/>
 </div>
 </div>
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
@@ -493,6 +457,23 @@
 <div class="hidden p-4 space-y-3 border-t border-slate-800/80" id="content_card_car_live_km">
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2 max-h-[250px] overflow-y-auto pr-1" id="liveCarKmContainer"></div>
 </div>
+</div><div class="admin-card bg-slate-900/90 border border-emerald-500/30 rounded-xl overflow-hidden shadow-md" id="card_active_shifts">
+<div class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-emerald-500/30" onclick="toggleCardAccordion('card_active_shifts')">
+<div class="flex items-center gap-2">
+<h3 class="text-sm font-bold text-emerald-400 flex items-center gap-1.5">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+</span>
+<span>Jelenleg ÉLŐ Műszakok (ABC)</span>
+</h3>
+<span class="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded-full font-bold" id="badge_active_shifts">0 élő műszak</span>
+</div>
+<span class="text-xs text-slate-400 font-bold transition-transform" id="arrow_card_active_shifts">▼</span>
+</div>
+<div class="hidden p-4 space-y-3 border-t border-slate-800/80" id="content_card_active_shifts">
+<div class="space-y-3 max-h-[350px] overflow-y-auto pr-1" id="adminActiveShiftsContainer"></div>
+</div>
 </div></div></div><div class="hidden bg-slate-900/95 border-2 border-amber-500/60 rounded-xl overflow-hidden shadow-xl" id="superAdminSection">
 <div class="p-3.5 bg-amber-950/40 cursor-pointer flex justify-between items-center select-none hover:bg-amber-900/40 transition border-b border-amber-500/30" onclick="toggleCardAccordion('superAdminSection')">
 <div class="flex items-center gap-2">
@@ -509,26 +490,14 @@
 </div>
 </div>
 <!-- ⚙️ SOS TELEFONSZÁM BEÁLLÍTÁSOK KÁRTYA (ADMIN) -->
-
 <!-- 1. JÁRMŰPARK FIGYELMEZTETÉSEK & TEENDŐK -->
-
 <!-- 2. BELSŐ ADMIN ÜZENŐFAL -->
-
 <!-- 3. SOFŐR ÜZENŐFAL & KÖZLEMÉNYEK -->
-
 <!-- 📋 MEGBÍZÁSOK & DISZPÉCSER KÁRTYA (ADMIN) -->
-
 <!-- 4. HAVI TÚLÓRÁK KÁRTYA -->
-
 <!-- LEDOLGOZOTT MŰSZAKÓRÁK -->
-
 <!-- 5. STATISZTIKA & ÖSSZESÍTŐ -->
-
-
-
-
 <!-- 9. FŐADMIN PANEL (SZABADSÁGOK, LEDOLGOZOTT NAPOK & JOGOK) -->
-
 </div> <!-- Ez zárja be megfelelően az #adminSection-t! -->
 <!-- SOFŐR FELÜLET -->
 <div class="max-w-2xl mx-auto space-y-4" id="driverViewContainer">
@@ -663,7 +632,6 @@
 </details>
 </div>
 </div>
-
 <!-- SOFŐR KÖTELEZŐ ÜZENET POP-UP MODAL -->
 <div class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4" id="driverAnnouncementModal">
 <div class="bg-slate-900 border-2 border-sky-500/80 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-bounce-short">
@@ -970,6 +938,7 @@
     const db = getFirestore(app);
 
     let selectedClosedShiftsMonthDate = new Date();
+let selectedStatsMonthDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
 window.changeClosedShiftsMonth = function(direction) {
   selectedClosedShiftsMonthDate.setMonth(selectedClosedShiftsMonthDate.getMonth() + direction);
@@ -1626,7 +1595,7 @@ window.changeClosedShiftsMonth = function(direction) {
       if (!container) return;
 
       if (driversContainer) {
-        const activeUsers = allUsers.filter(u => u.email && !u.isInactive).sort((a, b) => getUsernameFromEmail(a.email).localeCompare(getUsernameFromEmail(b.email)));
+        const activeUsers = allUsers.filter(u => u.email && !u.isInactive).sort((a, b) => getUsernameFromEmail(a.email || '').localeCompare(getUsernameFromEmail(b.email || '')));
         driversContainer.innerHTML = '<label class="inline-flex items-center gap-1.5 bg-slate-800 px-2.5 py-1 rounded-lg text-xs font-bold text-sky-300 cursor-pointer"><input type="checkbox" value="all" checked class="rounded bg-slate-900 border-slate-700 text-sky-500"> Mindenki (Összes Sofőr)</label>' +
           activeUsers.map(u => '<label class="inline-flex items-center gap-1.5 bg-slate-800 px-2.5 py-1 rounded-lg text-xs text-slate-200 cursor-pointer"><input type="checkbox" value="' + u.id + '" class="rounded bg-slate-900 border-slate-700 text-sky-500"> ' + getUsernameFromEmail(u.email) + '</label>').join('');
       }
@@ -1977,6 +1946,12 @@ window.changeClosedShiftsMonth = function(direction) {
           renderAdminStats();
           renderSuperAdminPermissionsPanel();
         }
+      }, (error) => {
+        console.error("Felhasználói lista betöltési hiba:", error);
+        const container = document.getElementById('userPermissionsListContainer');
+        const badge = document.getElementById('badge_superAdminSection');
+        if (badge) badge.textContent = "Betöltési hiba";
+        if (container) container.innerHTML = '<p class="text-xs text-red-200 bg-red-950/50 border border-red-800 rounded-lg p-3">A felhasználók adatai nem tölthetők be a Firebase-ből. A meglévő mentésekhez nem nyúltunk. Részletek: ' + String(error.message || error).replace(/[<>]/g, '') + '</p>';
       });
     }
 
@@ -2880,6 +2855,12 @@ window.saveCarEditModal = async function() {
       else container.classList.add('hidden');
     };
 
+    window.changeStatsMonth = function(direction) {
+      selectedStatsMonthDate.setMonth(selectedStatsMonthDate.getMonth() + direction);
+      selectedStatsMonthDate.setDate(1);
+      window.renderAdminStats();
+    };
+
     window.renderAdminStats = function() {
       const driverContainer = document.getElementById('driverStatsContainer');
       const carContainer = document.getElementById('carStatsContainer');
@@ -2889,29 +2870,11 @@ window.saveCarEditModal = async function() {
 
       if (!driverContainer || !carContainer) return;
 
-      const period = document.getElementById('statsPeriodSelect') ? document.getElementById('statsPeriodSelect').value : 'monthly';
       const kmType = document.getElementById('statsKmTypeSelect') ? document.getElementById('statsKmTypeSelect').value : 'work';
-
-      const now = new Date();
-      let filteredTrips = [...allTrips];
-
-      if (period === 'daily') {
-        const todayStr = now.toISOString().slice(0, 10);
-        filteredTrips = filteredTrips.filter(t => t.date === todayStr);
-      } else if (period === 'weekly') {
-        const past7Days = new Date(now.setDate(now.getDate() - 7));
-        filteredTrips = filteredTrips.filter(t => new Date(t.date) >= past7Days);
-      } else if (period === 'monthly') {
-        const currentMonth = new Date().toISOString().slice(0, 7);
-        filteredTrips = filteredTrips.filter(t => t.date && t.date.startsWith(currentMonth));
-      } else if (period === 'yearly') {
-        const currentYear = new Date().getFullYear().toString();
-        filteredTrips = filteredTrips.filter(t => t.date && t.date.startsWith(currentYear));
-      } else if (period === 'custom') {
-        const start = document.getElementById('statsStartDate').value;
-        const end = document.getElementById('statsEndDate').value;
-        if (start && end) filteredTrips = filteredTrips.filter(t => t.date >= start && t.date <= end);
-      }
+      const statsMonthKey = selectedStatsMonthDate.getFullYear() + '-' + String(selectedStatsMonthDate.getMonth() + 1).padStart(2, '0');
+      const statsMonthLabel = document.getElementById('statsMonthLabel');
+      if (statsMonthLabel) statsMonthLabel.textContent = selectedStatsMonthDate.toLocaleDateString('hu-HU', { year: 'numeric', month: 'long' });
+      let filteredTrips = [...allTrips].filter(t => t.date && t.date.startsWith(statsMonthKey));
 
       // 1. Sofőrök kilométerei (Típus szerint: Munkakilométer / Privát / Összes)
       const driverMap = {};
@@ -3408,13 +3371,18 @@ window.downloadAllOverlimitPDFsZip = async function() {
       const sortedUsers = [...allUsers].sort((a, b) => getUsernameFromEmail(a.email).localeCompare(getUsernameFromEmail(b.email)));
       if (badge) badge.textContent = sortedUsers.length + " felhasználó";
 
+      if (sortedUsers.length === 0) {
+        container.innerHTML = '<p class="text-xs text-amber-200 bg-amber-950/40 border border-amber-800/50 rounded-lg p-3">A felhasználói lista jelenleg üres vagy nem tölthető be. A mentett jogosultságokat nem töröltük. Ellenőrizd a Firebase users olvasási jogosultságát.</p>';
+        return;
+      }
+
       container.innerHTML = sortedUsers.map(u => {
-        const isMaster = (u.email.toLowerCase() === MASTER_SUPER_ADMIN_EMAIL.toLowerCase());
+        const isMaster = ((u.email || '').toLowerCase() === MASTER_SUPER_ADMIN_EMAIL.toLowerCase());
         const isAdmin = (u.role === 'admin' || u.isSuperAdmin || isMaster);
         const isInactive = !!u.isInactive;
         const userCards = u.adminCards || [];
         const userActions = u.actionPermissions || [];
-        const name = getUsernameFromEmail(u.email);
+        const name = getUsernameFromEmail(u.email || '');
 
         const cardCheckboxesHtml = ALL_ADMIN_CARDS.map(card => {
           const isChecked = (isMaster || (u.adminCards === undefined ? true : userCards.includes(card.id))) ? 'checked' : '';
