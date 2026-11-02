@@ -20,29 +20,13 @@
     display: grid !important; 
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important; 
     gap: 1rem !important; 
-    align-items: start !important;
+    align-items: start; 
   }
-  
-  #adminSection.space-y-4 > :not([hidden]) ~ :not([hidden]) { 
-    margin-top: 0 !important; 
-  }
-  
-  /* Csak a fejléc és a Főadmin panel legyen teljes szélességű */
-  #adminSection > .flex.justify-between,
-  #superAdminSection { 
-    grid-column: 1 / -1 !important; 
-  }
-
-  /* Minden kártya szigorúan független 1 oszlopos elem maradjon */
-  #adminSection > .admin-card { 
-    grid-column: span 1 !important; 
-    min-width: 0 !important; 
-    width: 100% !important; 
-    margin: 0 !important; 
-    height: fit-content !important; 
-    align-self: start !important; 
-    box-shadow: 0 8px 22px rgba(2, 6, 23, .22); 
-  }
+  #adminSection.space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 0 !important; }
+  #adminSection > .flex.justify-between { grid-column: 1 / -1; margin: 0; }
+  #card_combined_alerts, #card_rural_km, #card_announcements, #card_pdf, #superAdminSection, #adminSection > .grid { grid-column: 1 / -1; min-width: 0; }
+  #adminSection > .admin-card { grid-column: span 1; min-width: 0; width: 100%; margin: 0; box-shadow: 0 8px 22px rgba(2, 6, 23, .22); }
+  #card_closed_shifts, #card_active_shifts { grid-column: span 1; }
 }
 
 @media (min-width: 769px) and (max-width: 1099px) {
@@ -52,18 +36,10 @@
     display: grid !important; 
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important; 
     gap: .85rem !important; 
-    align-items: start !important; 
   }
   #adminSection.space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 0 !important; }
-  #adminSection > .flex.justify-between, #superAdminSection { grid-column: 1 / -1 !important; }
-  #adminSection > .admin-card { 
-    grid-column: span 1 !important;
-    min-width: 0 !important; 
-    margin: 0 !important; 
-    width: 100% !important; 
-    height: fit-content !important; 
-    align-self: start !important; 
-  }
+  #adminSection > .flex.justify-between, #card_combined_alerts, #card_rural_km, #card_announcements, #card_pdf, #superAdminSection, #adminSection > .grid { grid-column: 1 / -1; }
+  #adminSection > .admin-card { min-width: 0; margin: 0; width: 100%; }
 }
     /* Minden admin fül tartalma külön, korlátozott magasságú görgetőterület legyen. */
     [id^="content_card_"] {
