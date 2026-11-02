@@ -1557,25 +1557,38 @@ window.changeClosedShiftsMonth = function(direction) {
       });
     }
 
-    function checkDriverUnreadAnnouncements() {
+   function checkDriverUnreadAnnouncements() {
   if (isAdminMode || !currentUser) return;
 
   const myUid = currentUser.uid;
+  const myEmail = (currentUser.email || '').toLowerCase();
 
+  // Keresünk olyan üzenetet, amit még NEM olvasott el ez a sofőr
   const unread = allAnnouncements.find(a => {
     const targets = a.targetDrivers || [];
-    const isTargeted = targets.includes('all') || targets.includes(myUid);
+    
+    // Elfogadjuk, ha 'all', ha a UID szerepel benne, vagy ha az Email cím szerepel benne
+    const isTargeted = targets.includes('all') || 
+                       targets.includes(myUid) || 
+                       targets.some(t => String(t).toLowerCase() === myEmail);
+                       
     const seenByList = a.seenBy || [];
-    return isTargeted && !seenByList.includes(myUid);
+    const hasSeen = seenByList.includes(myUid) || seenByList.some(s => String(s).toLowerCase() === myEmail);
+
+    return isTargeted && !hasSeen;
   });
 
   const modal = document.getElementById('driverAnnouncementModal');
   if (!modal) return;
 
   if (unread) {
+    console.log("📢 Új olvasatlan üzenet megtalálva:", unread);
     document.getElementById('modalAnnouncementTitle').textContent = unread.title || 'Központi Felhívás';
     document.getElementById('modalAnnouncementDate').textContent = unread.createdAt || '';
+    
+    // Támogatja a 'message' és 'content' mezőneveket is!
     document.getElementById('modalAnnouncementMessage').textContent = unread.message || unread.content || '';
+    
     modal.dataset.currentAnnouncementId = unread.id;
     modal.classList.remove('hidden');
   } else {
