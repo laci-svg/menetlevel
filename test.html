@@ -444,7 +444,33 @@
 </div>
 </div>
 </div>
-</div><div class="admin-card bg-slate-900/90 border border-cyan-500/40 rounded-xl overflow-hidden shadow-md" id="card_car_live_km">
+</div><div id="card_car_manage" class="admin-card bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-md">
+            <div onclick="toggleCardAccordion('card_car_manage')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-slate-800/50">
+              <div class="flex items-center gap-2">
+                <h3 class="text-sm font-bold text-orange-400 flex items-center gap-1.5">
+                  <span>🚗</span> Járműpark Kezelése (ABC)
+                </h3>
+                <span id="badge_car_manage" class="text-[10px] bg-slate-800 text-emerald-400 px-2 py-0.5 rounded-full border border-slate-700 font-semibold">0 autó</span>
+              </div>
+              <span id="arrow_card_car_manage" class="text-xs text-slate-400 font-bold transition-transform">▼</span>
+            </div>
+
+            <div id="content_card_car_manage" class="hidden p-4 space-y-3 border-t border-slate-800/80">
+              <form id="addCarForm" class="space-y-3">
+                <div class="grid grid-cols-2 gap-2">
+                  <input type="text" id="carPlateInput" placeholder="Rendszám (ABC-123)" required class="bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs uppercase">
+                  <input type="text" id="carModelInput" placeholder="Típus (pl. Skoda)" required class="bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <input type="number" id="carStartKmInput" placeholder="Kezdő km-óra állás" min="0" class="bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs">
+                  <input type="date" id="carMotInput" title="Műszaki vizsga lejárata" class="bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs">
+                </div>
+                <button type="submit" class="w-full bg-slate-800 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 py-2.5 rounded-xl text-xs font-bold transition">Új Autó Hozzáadása</button>
+              </form>
+              <div id="adminCarList" class="space-y-2 pt-2"></div>
+            </div>
+          </div>
+<div class="admin-card bg-slate-900/90 border border-cyan-500/40 rounded-xl overflow-hidden shadow-md" id="card_car_live_km">
 <div class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-cyan-500/30" onclick="toggleCardAccordion('card_car_live_km')">
 <div class="flex items-center gap-2">
 <h3 class="text-sm font-bold text-cyan-400 flex items-center gap-1.5">
