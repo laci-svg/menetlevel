@@ -1,40 +1,26 @@
 <!DOCTYPE html>
+
 <html lang="hu">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Digitális Menetlevél Rendszer</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Digitális Menetlevél Rendszer</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
     
-    /* Admin kártyák: valódi, egymástól független oszlopok, hogy a lenyitás ne hagyjon üres helyet a szomszédos oszlopban. */
+    /* Két valóban független admin oszlop: az egyik lenyitása nem mozgatja a másikat. */
     #adminSection.hidden, #driverViewContainer.hidden { display: none !important; }
-    @media (min-width: 1100px) {
-      #adminSection {
-        max-width: 1600px; width: 100% !important; margin: 0 auto !important;
-        display: block !important; column-count: 3; column-gap: 1rem;
-      }
-      #adminSection > .flex.justify-between { column-span: all; margin: 0 0 1rem 0 !important; }
-      #adminSection > .admin-card {
-        display: inline-block; vertical-align: top; width: 100%; min-width: 0;
-        margin: 0 0 1rem 0 !important; break-inside: avoid; -webkit-column-break-inside: avoid;
-        box-shadow: 0 8px 22px rgba(2, 6, 23, .22);
-      }
-    }
-    @media (min-width: 769px) and (max-width: 1099px) {
-      #adminSection { max-width: 100%; width: 100% !important; display: block !important; column-count: 2; column-gap: .85rem; }
-      #adminSection > .flex.justify-between { column-span: all; margin: 0 0 .85rem 0 !important; }
-      #adminSection > .admin-card {
-        display: inline-block; vertical-align: top; width: 100%; min-width: 0;
-        margin: 0 0 .85rem 0 !important; break-inside: avoid; -webkit-column-break-inside: avoid;
-      }
-    }
+    #adminSection { max-width: 1600px; width: 100% !important; margin: 0 auto !important; }
+    .admin-card-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; align-items: start; width: 100%; }
+    .admin-card-column { display: flex; flex-direction: column; gap: 1rem; min-width: 0; align-self: start; }
+    .admin-card-column > .admin-card { width: 100%; min-width: 0; margin: 0 !important; }
+    #adminSosContainer, #superAdminSection { width: 100%; }
     @media (max-width: 768px) {
-      #adminSection { display: block !important; }
-      #adminSection > .admin-card { width: 100%; margin-bottom: .85rem; }
+      .admin-card-columns { grid-template-columns: minmax(0, 1fr); }
+      .admin-card-column { gap: .85rem; }
     }
     /* Minden admin fül tartalma külön, korlátozott magasságú görgetőterület legyen. */
     [id^="content_card_"] {
@@ -97,951 +83,844 @@
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 font-sans min-h-screen bg-cover bg-center bg-fixed transition-all duration-500">
-
-  <!-- BEJELENTKEZÉSI KÉPERNYŐ -->
-  <div id="authScreen" class="min-h-screen flex items-center justify-center p-4">
-    <div class="bg-slate-900/90 border border-slate-800 p-6 rounded-2xl max-w-sm w-full space-y-4 shadow-2xl backdrop-blur-md">
-      <div class="text-center space-y-1">
-        <h1 class="text-xl font-black text-orange-400">🚗 Menetlevél Rendszer</h1>
-        <p class="text-xs text-slate-400">Jelentkezz be a folytatáshoz</p>
-      </div>
-
-      <div id="authError" class="hidden bg-red-950/80 border border-red-800 text-red-300 p-3 rounded-xl text-xs font-semibold text-center"></div>
-
-      <form id="loginForm" class="space-y-3">
-        <div>
-          <label class="block text-xs font-semibold text-slate-400 mb-1">Email cím</label>
-          <input type="email" id="loginEmail" required class="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-xl text-sm focus:ring-2 focus:ring-orange-500 outline-none">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-400 mb-1">Jelszó</label>
-          <input type="password" id="loginPassword" required class="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-xl text-sm focus:ring-2 focus:ring-orange-500 outline-none">
-        </div>
-        <button type="submit" id="loginBtn" class="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:opacity-90 text-white py-3 rounded-xl font-bold text-sm shadow-lg transition">
+<!-- BEJELENTKEZÉSI KÉPERNYŐ -->
+<div class="min-h-screen flex items-center justify-center p-4" id="authScreen">
+<div class="bg-slate-900/90 border border-slate-800 p-6 rounded-2xl max-w-sm w-full space-y-4 shadow-2xl backdrop-blur-md">
+<div class="text-center space-y-1">
+<h1 class="text-xl font-black text-orange-400">🚗 Menetlevél Rendszer</h1>
+<p class="text-xs text-slate-400">Jelentkezz be a folytatáshoz</p>
+</div>
+<div class="hidden bg-red-950/80 border border-red-800 text-red-300 p-3 rounded-xl text-xs font-semibold text-center" id="authError"></div>
+<form class="space-y-3" id="loginForm">
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Email cím</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-xl text-sm focus:ring-2 focus:ring-orange-500 outline-none" id="loginEmail" required="" type="email"/>
+</div>
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Jelszó</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-xl text-sm focus:ring-2 focus:ring-orange-500 outline-none" id="loginPassword" required="" type="password"/>
+</div>
+<button class="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:opacity-90 text-white py-3 rounded-xl font-bold text-sm shadow-lg transition" id="loginBtn" type="submit">
           Bejelentkezés
         </button>
-      </form>
-    </div>
-  </div>
-
-  <!-- FŐ ALKALMAZÁS KÉPERNYŐ -->
-  <div id="appScreen" class="hidden min-h-screen p-3 md:p-6 space-y-4 pb-12">
-    
-    <!-- FEJLÉC & PROFIL BAR -->
-    <div class="max-w-6xl mx-auto flex justify-between items-center bg-slate-900/90 border border-slate-800 p-3.5 rounded-2xl backdrop-blur-md shadow-lg">
-      <div class="flex items-center gap-2">
-        <span class="text-lg">👤</span>
-        <div>
-          <span id="userStatus" class="font-extrabold text-sm text-slate-200"></span>
-          <span class="block text-[10px] text-slate-400 font-mono">Bejelentkezve</span>
-        </div>
-      </div>
-      <div class="flex items-center gap-2">
-        <button id="toggleAdminBtn" onclick="toggleAdminViewPrompt()" class="bg-amber-500/20 border border-amber-500/40 text-amber-400 hover:bg-amber-500/30 px-3 py-2 rounded-xl text-xs font-semibold transition">
+</form>
+</div>
+</div>
+<!-- FŐ ALKALMAZÁS KÉPERNYŐ -->
+<div class="hidden min-h-screen p-3 md:p-6 space-y-4 pb-12" id="appScreen">
+<!-- FEJLÉC & PROFIL BAR -->
+<div class="max-w-6xl mx-auto flex justify-between items-center bg-slate-900/90 border border-slate-800 p-3.5 rounded-2xl backdrop-blur-md shadow-lg">
+<div class="flex items-center gap-2">
+<span class="text-lg">👤</span>
+<div>
+<span class="font-extrabold text-sm text-slate-200" id="userStatus"></span>
+<span class="block text-[10px] text-slate-400 font-mono">Bejelentkezve</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="bg-amber-500/20 border border-amber-500/40 text-amber-400 hover:bg-amber-500/30 px-3 py-2 rounded-xl text-xs font-semibold transition" id="toggleAdminBtn" onclick="toggleAdminViewPrompt()">
           👑 Admin
         </button>
-        <!-- SOS GOMB -->
-<button onclick="window.triggerSOS()" class="bg-red-600/90 hover:bg-red-600 text-white font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1 border border-red-500/50 shadow-lg transition-colors animate-pulse" title="Műszaki hiba / SOS segítségkérés">
-  <span>🚨</span>
-  <span class="font-bold">SOS</span>
+<!-- SOS GOMB -->
+<button class="bg-red-600/90 hover:bg-red-600 text-white font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1 border border-red-500/50 shadow-lg transition-colors animate-pulse" onclick="window.triggerSOS()" title="Műszaki hiba / SOS segítségkérés">
+<span>🚨</span>
+<span class="font-bold">SOS</span>
 </button>
-        <button onclick="logout()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2 rounded-xl text-xs font-semibold border border-slate-700 transition">
+<button class="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2 rounded-xl text-xs font-semibold border border-slate-700 transition" onclick="logout()">
           ⏻
         </button>
-      </div>
-    </div>
-
-    <!-- ADMIN FELÜLET CONTAINER -->
-    <div id="adminSection" class="hidden max-w-6xl mx-auto space-y-4">
-      
-      <div class="flex justify-between items-center bg-slate-900/80 p-3 rounded-xl border border-slate-800">
-        <h2 class="text-sm font-bold text-amber-400 flex items-center gap-2">
-          <span>👑</span> Adminisztrációs Vezérlőpult
+</div>
+</div>
+<!-- ADMIN FELÜLET CONTAINER -->
+<div class="hidden max-w-6xl mx-auto space-y-4" id="adminSection">
+<div class="flex justify-between items-center bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+<h2 class="text-sm font-bold text-amber-400 flex items-center gap-2">
+<span>👑</span> Adminisztrációs Vezérlőpult
         </h2>
-        <div class="flex gap-2">
-          <button onclick="expandAllAdminCards()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg text-xs font-semibold border border-slate-700">Összes megnyitása</button>
-          <button onclick="collapseAllAdminCards()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg text-xs font-semibold border border-slate-700">Összes összecsukása</button>
-        </div>
-      </div>
-
-      <!-- 🚨 AKTÍV SOS RIASZTÁSOK KÁRTYA (ADMIN) -->
-      <div id="adminSosContainer" class="hidden mb-4 border border-red-500/80 bg-red-950/40 rounded-2xl p-4 shadow-2xl backdrop-blur-md animate-pulse">
-        <div class="flex items-center justify-between border-b border-red-800/60 pb-2 mb-3">
-          <h3 class="text-sm font-bold text-red-400 flex items-center gap-2">
-            <span>🚨</span> AKTÍV SOS RIASZTÁSOK
+<div class="flex gap-2">
+<button class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg text-xs font-semibold border border-slate-700" onclick="expandAllAdminCards()">Összes megnyitása</button>
+<button class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg text-xs font-semibold border border-slate-700" onclick="collapseAllAdminCards()">Összes összecsukása</button>
+</div>
+</div>
+<!-- 🚨 AKTÍV SOS RIASZTÁSOK KÁRTYA (ADMIN) -->
+<div class="hidden mb-4 border border-red-500/80 bg-red-950/40 rounded-2xl p-4 shadow-2xl backdrop-blur-md animate-pulse" id="adminSosContainer">
+<div class="flex items-center justify-between border-b border-red-800/60 pb-2 mb-3">
+<h3 class="text-sm font-bold text-red-400 flex items-center gap-2">
+<span>🚨</span> AKTÍV SOS RIASZTÁSOK
           </h3>
-          <span id="sosBadgeCount" class="bg-red-600 text-white font-black text-xs px-2.5 py-0.5 rounded-full">0</span>
-        </div>
-        <div id="adminSosList" class="space-y-3"></div>
-      </div>
-
-      <!-- ⚙️ SOS TELEFONSZÁM BEÁLLÍTÁSOK KÁRTYA (ADMIN) -->
-      <div id="card_sos_settings" class="admin-card bg-slate-900/90 border border-slate-700/80 rounded-xl overflow-hidden shadow-md mb-4">
-        <div onclick="window.toggleCardAccordion('card_sos_settings')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-slate-700/60">
-          <div class="flex items-center gap-2">
-            <h3 class="text-sm font-bold text-red-400 flex items-center gap-1.5">
-              <span>⚙️</span> SOS Riasztási Telefonszámok Beállítása
+<span class="bg-red-600 text-white font-black text-xs px-2.5 py-0.5 rounded-full" id="sosBadgeCount">0</span>
+</div>
+<div class="space-y-3" id="adminSosList"></div>
+</div><div class="admin-card-columns" id="adminCardColumns"><div class="admin-card-column" id="adminCardColumnLeft"><div class="admin-card bg-slate-900/90 border border-slate-700/80 rounded-xl overflow-hidden shadow-md mb-4" id="card_sos_settings">
+<div class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-slate-700/60" onclick="window.toggleCardAccordion('card_sos_settings')">
+<div class="flex items-center gap-2">
+<h3 class="text-sm font-bold text-red-400 flex items-center gap-1.5">
+<span>⚙️</span> SOS Riasztási Telefonszámok Beállítása
             </h3>
-          </div>
-          <span id="arrow_card_sos_settings" class="text-xs text-slate-400 font-bold transition-transform">▼</span>
-        </div>
-
-        <div id="content_card_sos_settings" class="hidden p-4 space-y-3 border-t border-slate-800/80">
-          <p class="text-xs text-slate-400">
+</div>
+<span class="text-xs text-slate-400 font-bold transition-transform" id="arrow_card_sos_settings">▼</span>
+</div>
+<div class="hidden p-4 space-y-3 border-t border-slate-800/80" id="content_card_sos_settings">
+<p class="text-xs text-slate-400">
             Adja meg azokat a telefonszámokat (nemzetközi formátumban, pl. <code class="text-red-300">+36301234567</code>), amelyekre a sofőrök SOS üzeneteit küldje a rendszer. Több szám esetén vesszővel válassza el őket!
           </p>
-          <div class="space-y-1">
-            <label class="block text-xs font-semibold text-slate-300">Címzett telefonszámok (SMS/Viber):</label>
-            <input type="text" id="adminSosPhoneNumbers" placeholder="+36301234567, +36709876543" class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-red-500 outline-none">
-          </div>
-          <div class="flex justify-end">
-            <button onclick="window.saveSosPhoneNumbers()" class="bg-red-600 hover:bg-red-500 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-md transition flex items-center gap-1.5">
-              <span>💾</span> Számok Mentése
+<div class="space-y-1">
+<label class="block text-xs font-semibold text-slate-300">Címzett telefonszámok (SMS/Viber):</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-red-500 outline-none" id="adminSosPhoneNumbers" placeholder="+36301234567, +36709876543" type="text"/>
+</div>
+<div class="flex justify-end">
+<button class="bg-red-600 hover:bg-red-500 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-md transition flex items-center gap-1.5" onclick="window.saveSosPhoneNumbers()">
+<span>💾</span> Számok Mentése
             </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- 1. JÁRMŰPARK FIGYELMEZTETÉSEK & TEENDŐK -->
-      <div id="card_combined_alerts" class="admin-card bg-slate-900/90 border border-amber-500/40 rounded-xl overflow-hidden shadow-md">
-        <div onclick="toggleCardAccordion('card_combined_alerts')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-amber-500/30">
-          <div class="flex items-center gap-2">
-            <h3 class="text-sm font-bold text-amber-400 flex items-center gap-1.5">
-              <span>⚠️</span> Járműpark Figyelmeztetések & Teendők
+</div>
+</div>
+</div><div class="admin-card bg-slate-900/90 border border-teal-500/40 rounded-xl overflow-hidden shadow-md" id="card_admin_wall">
+<div class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-teal-500/30" onclick="toggleCardAccordion('card_admin_wall')">
+<div class="flex items-center gap-2">
+<h3 class="text-sm font-bold text-teal-300 flex items-center gap-1.5">
+<span>📌</span> Belső Admin Üzenőfal
             </h3>
-            <span id="badge_combined_alerts" class="text-[10px] bg-amber-950 text-amber-300 border border-amber-800 px-2 py-0.5 rounded-full font-mono font-bold">0 teendő</span>
-          </div>
-          <span id="arrow_card_combined_alerts" class="text-xs text-slate-400 font-bold transition-transform">▼</span>
-        </div>
-
-        <div id="content_card_combined_alerts" class="hidden p-4 space-y-3 border-t border-slate-800/80">
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
-              <div class="flex justify-between items-center border-b border-slate-800 pb-1.5">
-                <span class="text-xs font-bold text-orange-400">🛢️ Olajcsere Esedékes</span>
-                <span id="badge_oil_service_alert" class="text-[10px] text-slate-400 font-mono">0 autó</span>
-              </div>
-              <div id="oilServiceAlertsContainer" class="space-y-1.5 max-h-[180px] overflow-y-auto pr-1"></div>
-            </div>
-
-            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
-              <div class="flex justify-between items-center border-b border-slate-800 pb-1.5">
-                <span class="text-xs font-bold text-amber-400">📋 Műszaki Vizsga & Matricák</span>
-                <span id="badge_mot_vignette_alert" class="text-[10px] text-slate-400 font-mono">0 eset</span>
-              </div>
-              <div id="motVignetteAlertsContainer" class="space-y-1.5 max-h-[180px] overflow-y-auto pr-1"></div>
-            </div>
-
-            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
-              <div class="flex justify-between items-center border-b border-slate-800 pb-1.5">
-                <span class="text-xs font-bold text-sky-400">📅 Dátumhoz Kötött Szervizek</span>
-                <span id="badge_date_service_alert" class="text-[10px] text-slate-400 font-mono">0 autó</span>
-              </div>
-              <div id="dateServiceAlertsContainer" class="space-y-1.5 max-h-[180px] overflow-y-auto pr-1"></div>
-            </div>
-          </div>
-
-          <div class="pt-2 border-t border-slate-800 flex justify-between items-center flex-wrap gap-2">
-            <div class="flex items-center gap-2">
-              <label class="text-xs text-slate-400 font-medium">Matrica figyelmeztetés korlát:</label>
-              <input type="number" id="globalVignetteAlertDaysInput" min="1" max="60" onchange="updateGlobalVignetteAlertDays(this.value)" class="w-16 bg-slate-800 border border-slate-700 text-white p-1 rounded text-xs font-bold font-mono text-center">
-              <span class="text-xs text-slate-500">nap</span>
-            </div>
-            <button onclick="setMassHUAnnualVignettes()" class="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold transition">
-              🇭🇺 Éves magyar matricák kiosztása az összes autóra
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- 2. BELSŐ ADMIN ÜZENŐFAL -->
-      <div id="card_admin_wall" class="admin-card bg-slate-900/90 border border-teal-500/40 rounded-xl overflow-hidden shadow-md">
-        <div onclick="toggleCardAccordion('card_admin_wall')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-teal-500/30">
-          <div class="flex items-center gap-2">
-            <h3 class="text-sm font-bold text-teal-300 flex items-center gap-1.5">
-              <span>📌</span> Belső Admin Üzenőfal
-            </h3>
-            <span id="badge_admin_wall" class="text-[10px] bg-teal-950 text-teal-300 border border-teal-800 px-2 py-0.5 rounded-full font-mono font-bold">0 bejegyzés</span>
-          </div>
-          <span id="arrow_card_admin_wall" class="text-xs text-slate-400 font-bold transition-transform">▼</span>
-        </div>
-
-        <div id="content_card_admin_wall" class="hidden p-4 space-y-3 border-t border-slate-800/80">
-          <form id="adminWallForm" onsubmit="saveAdminWallPost(event)" class="space-y-2 bg-slate-950 p-3 rounded-xl border border-slate-800">
-            <input type="hidden" id="adminWallEditingPostId" value="">
-            <input type="text" id="adminWallTitle" placeholder="Bejegyzés címe..." required class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs font-bold">
-            <textarea id="adminWallMessage" placeholder="Írd ide a belső adminisztrátori üzenetet..." rows="2" required class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs"></textarea>
-            <div class="flex gap-2">
-              <button type="submit" id="adminWallSubmitBtn" class="bg-teal-700 hover:bg-teal-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow transition">
+<span class="text-[10px] bg-teal-950 text-teal-300 border border-teal-800 px-2 py-0.5 rounded-full font-mono font-bold" id="badge_admin_wall">0 bejegyzés</span>
+</div>
+<span class="text-xs text-slate-400 font-bold transition-transform" id="arrow_card_admin_wall">▼</span>
+</div>
+<div class="hidden p-4 space-y-3 border-t border-slate-800/80" id="content_card_admin_wall">
+<form class="space-y-2 bg-slate-950 p-3 rounded-xl border border-slate-800" id="adminWallForm" onsubmit="saveAdminWallPost(event)">
+<input id="adminWallEditingPostId" type="hidden" value=""/>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs font-bold" id="adminWallTitle" placeholder="Bejegyzés címe..." required="" type="text"/>
+<textarea class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs" id="adminWallMessage" placeholder="Írd ide a belső adminisztrátori üzenetet..." required="" rows="2"></textarea>
+<div class="flex gap-2">
+<button class="bg-teal-700 hover:bg-teal-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow transition" id="adminWallSubmitBtn" type="submit">
                 📌 Bejegyzés Közzététele
               </button>
-              <button type="button" id="adminWallCancelBtn" onclick="resetAdminWallForm()" class="bg-slate-800 text-slate-400 hover:bg-slate-700 px-3 py-2 rounded-xl text-xs font-semibold hidden">
+<button class="bg-slate-800 text-slate-400 hover:bg-slate-700 px-3 py-2 rounded-xl text-xs font-semibold hidden" id="adminWallCancelBtn" onclick="resetAdminWallForm()" type="button">
                 Mégse
               </button>
-            </div>
-          </form>
-
-          <div id="adminWallPostsList" class="space-y-2 max-h-[300px] overflow-y-auto pr-1"></div>
-        </div>
-      </div>
-
-      <!-- 3. SOFŐR ÜZENŐFAL & KÖZLEMÉNYEK -->
-      <div id="card_announcements" class="admin-card bg-slate-900/90 border border-sky-500/40 rounded-xl overflow-hidden shadow-md">
-        <div onclick="toggleCardAccordion('card_announcements')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-sky-500/30">
-          <div class="flex items-center gap-2">
-            <h3 class="text-sm font-bold text-sky-400 flex items-center gap-1.5">
-              <span>📢</span> Sofőr Üzenőfal & Kötelező Közlemények
+</div>
+</form>
+<div class="space-y-2 max-h-[300px] overflow-y-auto pr-1" id="adminWallPostsList"></div>
+</div>
+</div><div class="admin-card bg-slate-900/90 border border-emerald-500/40 rounded-xl overflow-hidden shadow-md" id="card_assignments">
+<div class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-emerald-500/30" onclick="toggleCardAccordion('card_assignments')">
+<div class="flex items-center gap-2">
+<h3 class="text-sm font-bold text-emerald-400 flex items-center gap-1.5">
+<span>📋</span> Megbízások &amp; Diszpécser
             </h3>
-            <span id="badge_announcements" class="text-[10px] bg-sky-950 text-sky-300 border border-sky-800 px-2 py-0.5 rounded-full font-mono font-bold">0 üzenet</span>
-          </div>
-          <span id="arrow_card_announcements" class="text-xs text-slate-400 font-bold transition-transform">▼</span>
-        </div>
-
-        <div id="content_card_announcements" class="hidden p-4 space-y-3 border-t border-slate-800/80">
-          <form id="announcementForm" onsubmit="sendAnnouncement(event)" class="space-y-3 bg-slate-950 p-3 rounded-xl border border-slate-800">
-            <input type="text" id="announcementTitle" placeholder="Üzenet / Közlemény címe..." required class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs font-bold">
-            <textarea id="announcementMessage" placeholder="A közlemény részletes leírása..." rows="3" required class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs"></textarea>
-            
-            <div class="space-y-1.5">
-              <div class="flex justify-between items-center">
-                <label class="text-xs font-semibold text-slate-400">Címzett Sofőrök:</label>
-                <div class="flex gap-2">
-                  <button type="button" onclick="selectAllAnnouncementDrivers(true)" class="text-[10px] text-sky-400 hover:underline font-bold">Mindegyik</button>
-                  <button type="button" onclick="selectAllAnnouncementDrivers(false)" class="text-[10px] text-slate-400 hover:underline">Törlés</button>
-                </div>
-              </div>
-              <div id="announcementDriversContainer" class="flex flex-wrap gap-2 max-h-[100px] overflow-y-auto bg-slate-900 p-2 rounded-lg border border-slate-800"></div>
-            </div>
-
-            <button type="submit" class="w-full bg-gradient-to-r from-sky-500 to-blue-600 hover:opacity-90 text-white py-2.5 rounded-xl text-xs font-bold shadow-md transition">
-              📢 Kötelező Üzenet Kiküldése
-            </button>
-          </form>
-
-          <div id="adminAnnouncementsList" class="space-y-2 max-h-[300px] overflow-y-auto pr-1"></div>
-        </div>
-      </div>
-
-      <!-- 📋 MEGBÍZÁSOK & DISZPÉCSER KÁRTYA (ADMIN) -->
-      <div id="card_assignments" class="admin-card bg-slate-900/90 border border-emerald-500/40 rounded-xl overflow-hidden shadow-md">
-        <div onclick="toggleCardAccordion('card_assignments')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-emerald-500/30">
-          <div class="flex items-center gap-2">
-            <h3 class="text-sm font-bold text-emerald-400 flex items-center gap-1.5">
-              <span>📋</span> Megbízások & Diszpécser
-            </h3>
-            <span id="badge_assignments" class="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded-full font-mono font-bold">0 megbízás</span>
-          </div>
-
-          <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
-            <button type="button" onclick="window.changeAssignmentMonth(-1)" class="bg-slate-800 hover:bg-slate-700 text-emerald-300 px-2 py-1 rounded text-xs font-bold border border-slate-700">◄</button>
-            <span id="assignmentMonthLabel" class="text-xs font-bold text-emerald-400 font-mono"></span>
-            <button type="button" onclick="window.changeAssignmentMonth(1)" class="bg-slate-800 hover:bg-slate-700 text-emerald-300 px-2 py-1 rounded text-xs font-bold border border-slate-700">►</button>
-          </div>
-
-          <span id="arrow_card_assignments" class="text-xs text-slate-400 font-bold transition-transform">▼</span>
-        </div>
-
-        <div id="content_card_assignments" class="hidden p-4 space-y-4 border-t border-slate-800/80">
-          <button onclick="window.openNewAssignmentModal()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs shadow-md transition flex justify-center items-center gap-2">
-            <span>➕</span> Új Megbízás Létrehozása & Kiküldése
+<span class="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded-full font-mono font-bold" id="badge_assignments">0 megbízás</span>
+</div>
+<div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
+<button class="bg-slate-800 hover:bg-slate-700 text-emerald-300 px-2 py-1 rounded text-xs font-bold border border-slate-700" onclick="window.changeAssignmentMonth(-1)" type="button">◄</button>
+<span class="text-xs font-bold text-emerald-400 font-mono" id="assignmentMonthLabel"></span>
+<button class="bg-slate-800 hover:bg-slate-700 text-emerald-300 px-2 py-1 rounded text-xs font-bold border border-slate-700" onclick="window.changeAssignmentMonth(1)" type="button">►</button>
+</div>
+<span class="text-xs text-slate-400 font-bold transition-transform" id="arrow_card_assignments">▼</span>
+</div>
+<div class="hidden p-4 space-y-4 border-t border-slate-800/80" id="content_card_assignments">
+<button class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs shadow-md transition flex justify-center items-center gap-2" onclick="window.openNewAssignmentModal()">
+<span>➕</span> Új Megbízás Létrehozása &amp; Kiküldése
           </button>
-          <div id="adminAssignmentsList" class="space-y-2 max-h-[400px] overflow-y-auto pr-1"></div>
-        </div>
-      </div>
-
-      <!-- 4. HAVI TÚLÓRÁK KÁRTYA -->
-      <div id="card_overtime" class="admin-card bg-slate-900/90 border border-indigo-500/40 rounded-xl overflow-hidden shadow-md">
-        <div onclick="toggleCardAccordion('card_overtime')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-indigo-500/30">
-          <div class="flex items-center gap-2">
-            <h3 class="text-sm font-bold text-indigo-400 flex items-center gap-1.5">
-              <span>⏰</span> Havi Túlórák
+<div class="space-y-2 max-h-[400px] overflow-y-auto pr-1" id="adminAssignmentsList"></div>
+</div>
+</div><div class="admin-card bg-slate-900/90 border border-cyan-500/40 rounded-xl overflow-hidden shadow-md" id="card_shift_hours">
+<div class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-cyan-500/30" onclick="toggleCardAccordion('card_shift_hours')">
+<div class="flex items-center gap-2">
+<h3 class="text-sm font-bold text-cyan-300 flex items-center gap-1.5">
+<span>🕒</span> Ledolgozott műszakórák
             </h3>
-            <span id="badge_overtime" class="text-[10px] bg-indigo-950 text-indigo-300 border border-indigo-800 px-2 py-0.5 rounded-full font-mono font-bold">0 óra</span>
-          </div>
-
-          <!-- Hónap Léptető a Fejlécen -->
-          <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
-            <button type="button" onclick="window.changeOvertimeMonth(-1)" class="bg-slate-800 hover:bg-slate-700 text-indigo-300 px-2 py-1 rounded text-xs font-bold border border-slate-700">◄</button>
-            <span id="overtimeMonthLabel" class="text-xs font-bold text-indigo-400 font-mono"></span>
-            <button type="button" onclick="window.changeOvertimeMonth(1)" class="bg-slate-800 hover:bg-slate-700 text-indigo-300 px-2 py-1 rounded text-xs font-bold border border-slate-700">►</button>
-          </div>
-
-          <span id="arrow_card_overtime" class="text-xs text-slate-400 font-bold transition-transform">▼</span>
-        </div>
-
-        <div id="content_card_overtime" class="hidden p-4 space-y-3 border-t border-slate-800/80">
-          <div id="overtimeListContainer" class="space-y-2 max-h-[350px] overflow-y-auto pr-1"></div>
-        </div>
-      </div>
-
-      <!-- LEDOLGOZOTT MŰSZAKÓRÁK -->
-      <div id="card_shift_hours" class="admin-card bg-slate-900/90 border border-cyan-500/40 rounded-xl overflow-hidden shadow-md">
-        <div onclick="toggleCardAccordion('card_shift_hours')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-cyan-500/30">
-          <div class="flex items-center gap-2">
-            <h3 class="text-sm font-bold text-cyan-300 flex items-center gap-1.5">
-              <span>🕒</span> Ledolgozott műszakórák
+<span class="text-[10px] bg-cyan-950 text-cyan-200 border border-cyan-800 px-2 py-0.5 rounded-full font-mono font-bold" id="badge_shift_hours">0:00</span>
+</div>
+<!-- Hónap Léptető a Fejlécen -->
+<div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
+<button class="bg-slate-800 hover:bg-slate-700 text-cyan-300 px-2 py-1 rounded text-xs font-bold border border-slate-700" onclick="window.changeShiftHoursMonth(-1)" type="button">◄</button>
+<span class="text-xs font-bold text-cyan-300 font-mono" id="shiftHoursMonthLabel"></span>
+<button class="bg-slate-800 hover:bg-slate-700 text-cyan-300 px-2 py-1 rounded text-xs font-bold border border-slate-700" onclick="window.changeShiftHoursMonth(1)" type="button">►</button>
+</div>
+<span class="text-xs text-slate-400 font-bold transition-transform" id="arrow_card_shift_hours">▼</span>
+</div>
+<div class="hidden p-4 border-t border-slate-800/80" id="content_card_shift_hours">
+<div class="space-y-2 max-h-[60vh] overflow-y-auto overscroll-contain pr-1" id="shiftHoursListContainer" style="scrollbar-gutter:stable"></div>
+</div>
+</div><div class="admin-card bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-md" id="card_closed_shifts">
+<div class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-slate-800/50" onclick="toggleCardAccordion('card_closed_shifts')">
+<div class="flex items-center gap-2">
+<h3 class="text-sm font-bold text-orange-400 flex items-center gap-1.5">
+<span>📁</span> Lezárt / Korábbi Műszakok (ABC)
             </h3>
-            <span id="badge_shift_hours" class="text-[10px] bg-cyan-950 text-cyan-200 border border-cyan-800 px-2 py-0.5 rounded-full font-mono font-bold">0:00</span>
-          </div>
-
-          <!-- Hónap Léptető a Fejlécen -->
-          <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
-            <button type="button" onclick="window.changeShiftHoursMonth(-1)" class="bg-slate-800 hover:bg-slate-700 text-cyan-300 px-2 py-1 rounded text-xs font-bold border border-slate-700">◄</button>
-            <span id="shiftHoursMonthLabel" class="text-xs font-bold text-cyan-300 font-mono"></span>
-            <button type="button" onclick="window.changeShiftHoursMonth(1)" class="bg-slate-800 hover:bg-slate-700 text-cyan-300 px-2 py-1 rounded text-xs font-bold border border-slate-700">►</button>
-          </div>
-
-          <span id="arrow_card_shift_hours" class="text-xs text-slate-400 font-bold transition-transform">▼</span>
-        </div>
-
-        <div id="content_card_shift_hours" class="hidden p-4 border-t border-slate-800/80">
-          <div id="shiftHoursListContainer" class="space-y-2 max-h-[60vh] overflow-y-auto overscroll-contain pr-1" style="scrollbar-gutter:stable"></div>
-        </div>
-      </div>
-
-      <!-- 5. STATISZTIKA & ÖSSZESÍTŐ -->
-      <div id="card_stats" class="admin-card bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-md">
-        <div onclick="toggleCardAccordion('card_stats')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-slate-800/50">
-          <div class="flex items-center gap-2">
-            <h3 class="text-sm font-bold text-orange-400 flex items-center gap-1.5">
-              <span>📊</span> Kilométer Statisztika & Összesítő
-            </h3>
-            <span id="badge_stats" class="text-[10px] bg-slate-800 text-orange-300 px-2 py-0.5 rounded-full border border-slate-700 font-mono font-bold">0 km</span>
-          </div>
-          <span id="arrow_card_stats" class="text-xs text-slate-400 font-bold transition-transform">▼</span>
-        </div>
-
-        <div id="content_card_stats" class="hidden p-4 space-y-3 border-t border-slate-800/80">
-          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-800 pb-2 gap-2">
-            <span class="text-xs text-slate-400 font-medium">Statisztika részletei:</span>
-            <div class="flex items-center gap-3 w-full sm:w-auto flex-wrap">
-              <div class="flex items-center gap-1.5">
-                <label class="text-xs text-slate-400 font-medium whitespace-nowrap">Út Típusa:</label>
-                <select id="statsKmTypeSelect" onchange="renderAdminStats()" class="bg-slate-800 border border-slate-700 text-white p-1.5 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-orange-500">
-                  <option value="work" selected>💼 Munkakilométer</option>
-                  <option value="private">🔒 Privát út</option>
-                  <option value="all">📊 Összesített (Munka + Privát)</option>
-                </select>
-              </div>
-              <div class="flex items-center gap-1.5">
-                <label class="text-xs text-slate-400 font-medium whitespace-nowrap">Időszak:</label>
-                <select id="statsPeriodSelect" onchange="toggleStatsCustomDates(); renderAdminStats();" class="bg-slate-800 border border-slate-700 text-white p-1.5 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-orange-500">
-                  <option value="daily">Napi</option>
-                  <option value="weekly">Heti</option>
-                  <option value="monthly" selected>Havi</option>
-                  <option value="yearly">Éves</option>
-                  <option value="custom">Egyedi dátum</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div id="statsCustomDateContainer" class="hidden grid grid-cols-2 gap-2 bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-            <div>
-              <label class="block text-[10px] text-slate-400 mb-0.5">Kezdő dátum</label>
-              <input type="date" id="statsStartDate" onchange="renderAdminStats()" class="w-full bg-slate-800 border border-slate-700 text-white p-1.5 rounded-lg text-xs">
-            </div>
-            <div>
-              <label class="block text-[10px] text-slate-400 mb-0.5">Záró dátum</label>
-              <input type="date" id="statsEndDate" onchange="renderAdminStats()" class="w-full bg-slate-800 border border-slate-700 text-white p-1.5 rounded-lg text-xs">
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-            <div class="bg-slate-950/80 border border-slate-800 p-3 rounded-xl space-y-2">
-              <div class="flex justify-between items-center border-b border-slate-800/80 pb-2">
-                <h4 class="text-xs font-bold text-slate-200 flex items-center gap-1">
-                  <span>👤</span> Sofőrök Teljesítménye (ABC)
-                </h4>
-                <span id="statsTotalDriverKm" class="text-xs font-mono font-bold text-orange-400">0 km</span>
-              </div>
-              <div id="driverStatsContainer" class="space-y-1.5 max-h-[200px] overflow-y-auto pr-1"></div>
-            </div>
-
-            <div class="bg-slate-950/80 border border-slate-800 p-3 rounded-xl space-y-2">
-              <div class="flex justify-between items-center border-b border-slate-800/80 pb-2">
-                <h4 class="text-xs font-bold text-slate-200 flex items-center gap-1">
-                  <span>🚗</span> Autók Futásteljesítménye (ABC)
-                </h4>
-                <span id="statsTotalCarKm" class="text-xs font-mono font-bold text-orange-400">0 km</span>
-              </div>
-              <div id="carStatsContainer" class="space-y-1.5 max-h-[200px] overflow-y-auto pr-1"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-     
-      <div id="card_closed_shifts" class="admin-card bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-md">
-        <div onclick="toggleCardAccordion('card_closed_shifts')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-slate-800/50">
-          <div class="flex items-center gap-2">
-            <h3 class="text-sm font-bold text-orange-400 flex items-center gap-1.5">
-              <span>📁</span> Lezárt / Korábbi Műszakok (ABC)
-            </h3>
-            <span id="badge_closed_shifts" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full border border-slate-700 font-medium">0 műszak archívumban</span>
-          </div>
-
-          <!-- Hónap Léptető a Fejlécen -->
-          <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
-            <button type="button" onclick="window.changeClosedShiftsMonth(-1)" class="bg-slate-800 hover:bg-slate-700 text-orange-400 px-2 py-1 rounded text-xs font-bold border border-slate-700">◄</button>
-            <span id="closedShiftsMonthLabel" class="text-xs font-bold text-orange-400 font-mono"></span>
-            <button type="button" onclick="window.changeClosedShiftsMonth(1)" class="bg-slate-800 hover:bg-slate-700 text-orange-400 px-2 py-1 rounded text-xs font-bold border border-slate-700">►</button>
-          </div>
-
-          <span id="arrow_card_closed_shifts" class="text-xs text-slate-400 font-bold transition-transform">▼</span>
-        </div>
-
-        <div id="content_card_closed_shifts" class="hidden p-4 space-y-3 border-t border-slate-800/80">
-          <div class="rounded-xl border border-indigo-500/30 bg-slate-950/60 p-3 space-y-2">
-            <div class="flex flex-wrap items-center justify-between gap-2">
-              <span class="text-xs font-bold text-indigo-200">Sofőrök kiválasztása a havi összesítőhöz</span>
-              <div class="flex gap-2">
-                <button type="button" onclick="window.setMonthlyDriverSelection(true)" class="text-[10px] text-cyan-300 hover:text-white">Mind kijelöl</button>
-                <button type="button" onclick="window.setMonthlyDriverSelection(false)" class="text-[10px] text-slate-400 hover:text-white">Kijelölés törlése</button>
-              </div>
-            </div>
-            <div id="monthlyDriverSelector" class="grid grid-cols-1 sm:grid-cols-2 gap-1 max-h-44 overflow-y-auto pr-1">
-              <span class="text-[11px] text-slate-400">A sofőrlista betöltése...</span>
-            </div>
-            <p class="text-[10px] text-slate-400">Csak a kijelölt sofőrök havi munka + privát összesítője kerül a ZIP-fájlba.</p>
-          </div>
-          <button type="button" onclick="window.downloadAllWorkMileagePDFsZip()" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-90 text-white font-bold py-2.5 rounded-xl text-xs shadow-md transition flex items-center justify-center gap-2">
+<span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full border border-slate-700 font-medium" id="badge_closed_shifts">0 műszak archívumban</span>
+</div>
+<!-- Hónap Léptető a Fejlécen -->
+<div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
+<button class="bg-slate-800 hover:bg-slate-700 text-orange-400 px-2 py-1 rounded text-xs font-bold border border-slate-700" onclick="window.changeClosedShiftsMonth(-1)" type="button">◄</button>
+<span class="text-xs font-bold text-orange-400 font-mono" id="closedShiftsMonthLabel"></span>
+<button class="bg-slate-800 hover:bg-slate-700 text-orange-400 px-2 py-1 rounded text-xs font-bold border border-slate-700" onclick="window.changeClosedShiftsMonth(1)" type="button">►</button>
+</div>
+<span class="text-xs text-slate-400 font-bold transition-transform" id="arrow_card_closed_shifts">▼</span>
+</div>
+<div class="hidden p-4 space-y-3 border-t border-slate-800/80" id="content_card_closed_shifts">
+<div class="rounded-xl border border-indigo-500/30 bg-slate-950/60 p-3 space-y-2">
+<div class="flex flex-wrap items-center justify-between gap-2">
+<span class="text-xs font-bold text-indigo-200">Sofőrök kiválasztása a havi összesítőhöz</span>
+<div class="flex gap-2">
+<button class="text-[10px] text-cyan-300 hover:text-white" onclick="window.setMonthlyDriverSelection(true)" type="button">Mind kijelöl</button>
+<button class="text-[10px] text-slate-400 hover:text-white" onclick="window.setMonthlyDriverSelection(false)" type="button">Kijelölés törlése</button>
+</div>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-1 max-h-44 overflow-y-auto pr-1" id="monthlyDriverSelector">
+<span class="text-[11px] text-slate-400">A sofőrlista betöltése...</span>
+</div>
+<p class="text-[10px] text-slate-400">Csak a kijelölt sofőrök havi munka + privát összesítője kerül a ZIP-fájlba.</p>
+</div>
+<button class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-90 text-white font-bold py-2.5 rounded-xl text-xs shadow-md transition flex items-center justify-center gap-2" onclick="window.downloadAllWorkMileagePDFsZip()" type="button">
             📦 Az összes havi munkakilométeres menetlevél letöltése (ZIP)
           </button>
-          <button type="button" onclick="window.downloadMonthlyDriverCombinedMileageZip()" class="w-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:opacity-90 text-white font-bold py-2.5 rounded-xl text-xs shadow-md transition flex items-center justify-center gap-2">
+<button class="w-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:opacity-90 text-white font-bold py-2.5 rounded-xl text-xs shadow-md transition flex items-center justify-center gap-2" onclick="window.downloadMonthlyDriverCombinedMileageZip()" type="button">
             📦 Sofőrönkénti havi munka + privát kilométer összesítő letöltése (ZIP)
           </button>
-          <div id="adminClosedShiftsContainer" class="space-y-3 max-h-[650px] overflow-y-auto pr-1"></div>
-        </div>
-      </div>
-
-      <div id="card_car_live_km" class="admin-card bg-slate-900/90 border border-cyan-500/40 rounded-xl overflow-hidden shadow-md">
-        <div onclick="toggleCardAccordion('card_car_live_km')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-cyan-500/30">
-          <div class="flex items-center gap-2">
-            <h3 class="text-sm font-bold text-cyan-400 flex items-center gap-1.5">
-              <span>⏱️</span> Járműpark Aktuális Óraállásai (ABC)
+<div class="space-y-3 max-h-[650px] overflow-y-auto pr-1" id="adminClosedShiftsContainer"></div>
+</div>
+</div><div class="admin-card bg-slate-900/90 border border-emerald-500/30 rounded-xl overflow-hidden shadow-md" id="card_active_shifts">
+<div class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-emerald-500/30" onclick="toggleCardAccordion('card_active_shifts')">
+<div class="flex items-center gap-2">
+<h3 class="text-sm font-bold text-emerald-400 flex items-center gap-1.5">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+</span>
+<span>Jelenleg ÉLŐ Műszakok (ABC)</span>
+</h3>
+<span class="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded-full font-bold" id="badge_active_shifts">0 élő műszak</span>
+</div>
+<span class="text-xs text-slate-400 font-bold transition-transform" id="arrow_card_active_shifts">▼</span>
+</div>
+<div class="hidden p-4 space-y-3 border-t border-slate-800/80" id="content_card_active_shifts">
+<div class="space-y-3 max-h-[350px] overflow-y-auto pr-1" id="adminActiveShiftsContainer"></div>
+</div>
+</div></div><div class="admin-card-column" id="adminCardColumnRight"><div class="admin-card bg-slate-900/90 border border-amber-500/40 rounded-xl overflow-hidden shadow-md" id="card_combined_alerts">
+<div class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-amber-500/30" onclick="toggleCardAccordion('card_combined_alerts')">
+<div class="flex items-center gap-2">
+<h3 class="text-sm font-bold text-amber-400 flex items-center gap-1.5">
+<span>⚠️</span> Járműpark Figyelmeztetések &amp; Teendők
             </h3>
-            <span id="badge_car_live_km" class="text-[9px] bg-cyan-950 text-cyan-300 border border-cyan-800 px-2 py-0.5 rounded-full font-mono truncate max-w-[150px]">ÉLŐ</span>
-          </div>
-          <span id="arrow_card_car_live_km" class="text-xs text-slate-400 font-bold transition-transform">▼</span>
-        </div>
-
-        <div id="content_card_car_live_km" class="hidden p-4 space-y-3 border-t border-slate-800/80">
-          <div id="liveCarKmContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2 max-h-[250px] overflow-y-auto pr-1"></div>
-        </div>
-      </div>
-
-      <div id="card_active_shifts" class="admin-card bg-slate-900/90 border border-emerald-500/30 rounded-xl overflow-hidden shadow-md">
-        <div onclick="toggleCardAccordion('card_active_shifts')" class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-emerald-500/30">
-          <div class="flex items-center gap-2">
-            <h3 class="text-sm font-bold text-emerald-400 flex items-center gap-1.5">
-              <span class="relative flex h-2 w-2">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              <span>Jelenleg ÉLŐ Műszakok (ABC)</span>
+<span class="text-[10px] bg-amber-950 text-amber-300 border border-amber-800 px-2 py-0.5 rounded-full font-mono font-bold" id="badge_combined_alerts">0 teendő</span>
+</div>
+<span class="text-xs text-slate-400 font-bold transition-transform" id="arrow_card_combined_alerts">▼</span>
+</div>
+<div class="hidden p-4 space-y-3 border-t border-slate-800/80" id="content_card_combined_alerts">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+<div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+<div class="flex justify-between items-center border-b border-slate-800 pb-1.5">
+<span class="text-xs font-bold text-orange-400">🛢️ Olajcsere Esedékes</span>
+<span class="text-[10px] text-slate-400 font-mono" id="badge_oil_service_alert">0 autó</span>
+</div>
+<div class="space-y-1.5 max-h-[180px] overflow-y-auto pr-1" id="oilServiceAlertsContainer"></div>
+</div>
+<div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+<div class="flex justify-between items-center border-b border-slate-800 pb-1.5">
+<span class="text-xs font-bold text-amber-400">📋 Műszaki Vizsga &amp; Matricák</span>
+<span class="text-[10px] text-slate-400 font-mono" id="badge_mot_vignette_alert">0 eset</span>
+</div>
+<div class="space-y-1.5 max-h-[180px] overflow-y-auto pr-1" id="motVignetteAlertsContainer"></div>
+</div>
+<div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+<div class="flex justify-between items-center border-b border-slate-800 pb-1.5">
+<span class="text-xs font-bold text-sky-400">📅 Dátumhoz Kötött Szervizek</span>
+<span class="text-[10px] text-slate-400 font-mono" id="badge_date_service_alert">0 autó</span>
+</div>
+<div class="space-y-1.5 max-h-[180px] overflow-y-auto pr-1" id="dateServiceAlertsContainer"></div>
+</div>
+</div>
+<div class="pt-2 border-t border-slate-800 flex justify-between items-center flex-wrap gap-2">
+<div class="flex items-center gap-2">
+<label class="text-xs text-slate-400 font-medium">Matrica figyelmeztetés korlát:</label>
+<input class="w-16 bg-slate-800 border border-slate-700 text-white p-1 rounded text-xs font-bold font-mono text-center" id="globalVignetteAlertDaysInput" max="60" min="1" onchange="updateGlobalVignetteAlertDays(this.value)" type="number"/>
+<span class="text-xs text-slate-500">nap</span>
+</div>
+<button class="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold transition" onclick="setMassHUAnnualVignettes()">
+              🇭🇺 Éves magyar matricák kiosztása az összes autóra
+            </button>
+</div>
+</div>
+</div><div class="admin-card bg-slate-900/90 border border-sky-500/40 rounded-xl overflow-hidden shadow-md" id="card_announcements">
+<div class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-sky-500/30" onclick="toggleCardAccordion('card_announcements')">
+<div class="flex items-center gap-2">
+<h3 class="text-sm font-bold text-sky-400 flex items-center gap-1.5">
+<span>📢</span> Sofőr Üzenőfal &amp; Kötelező Közlemények
             </h3>
-            <span id="badge_active_shifts" class="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded-full font-bold">0 élő műszak</span>
-          </div>
-          <span id="arrow_card_active_shifts" class="text-xs text-slate-400 font-bold transition-transform">▼</span>
-        </div>
-
-        <div id="content_card_active_shifts" class="hidden p-4 space-y-3 border-t border-slate-800/80">
-          <div id="adminActiveShiftsContainer" class="space-y-3 max-h-[350px] overflow-y-auto pr-1"></div>
-        </div>
-      </div>
-
-      <!-- 9. FŐADMIN PANEL (SZABADSÁGOK, LEDOLGOZOTT NAPOK & JOGOK) -->
-      <div id="superAdminSection" class="hidden bg-slate-900/95 border-2 border-amber-500/60 rounded-xl overflow-hidden shadow-xl">
-        <div onclick="toggleCardAccordion('superAdminSection')" class="p-3.5 bg-amber-950/40 cursor-pointer flex justify-between items-center select-none hover:bg-amber-900/40 transition border-b border-amber-500/30">
-          <div class="flex items-center gap-2">
-            <h3 class="text-sm font-bold text-amber-400 flex items-center gap-1.5">
-              <span>👥</span> Admin Jogosultságok, Ledolgozott Napok & Szabadság Keretek (Főadmin)
+<span class="text-[10px] bg-sky-950 text-sky-300 border border-sky-800 px-2 py-0.5 rounded-full font-mono font-bold" id="badge_announcements">0 üzenet</span>
+</div>
+<span class="text-xs text-slate-400 font-bold transition-transform" id="arrow_card_announcements">▼</span>
+</div>
+<div class="hidden p-4 space-y-3 border-t border-slate-800/80" id="content_card_announcements">
+<form class="space-y-3 bg-slate-950 p-3 rounded-xl border border-slate-800" id="announcementForm" onsubmit="sendAnnouncement(event)">
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs font-bold" id="announcementTitle" placeholder="Üzenet / Közlemény címe..." required="" type="text"/>
+<textarea class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs" id="announcementMessage" placeholder="A közlemény részletes leírása..." required="" rows="3"></textarea>
+<div class="space-y-1.5">
+<div class="flex justify-between items-center">
+<label class="text-xs font-semibold text-slate-400">Címzett Sofőrök:</label>
+<div class="flex gap-2">
+<button class="text-[10px] text-sky-400 hover:underline font-bold" onclick="selectAllAnnouncementDrivers(true)" type="button">Mindegyik</button>
+<button class="text-[10px] text-slate-400 hover:underline" onclick="selectAllAnnouncementDrivers(false)" type="button">Törlés</button>
+</div>
+</div>
+<div class="flex flex-wrap gap-2 max-h-[100px] overflow-y-auto bg-slate-900 p-2 rounded-lg border border-slate-800" id="announcementDriversContainer"></div>
+</div>
+<button class="w-full bg-gradient-to-r from-sky-500 to-blue-600 hover:opacity-90 text-white py-2.5 rounded-xl text-xs font-bold shadow-md transition" type="submit">
+              📢 Kötelező Üzenet Kiküldése
+            </button>
+</form>
+<div class="space-y-2 max-h-[300px] overflow-y-auto pr-1" id="adminAnnouncementsList"></div>
+</div>
+</div><div class="admin-card bg-slate-900/90 border border-indigo-500/40 rounded-xl overflow-hidden shadow-md" id="card_overtime">
+<div class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-indigo-500/30" onclick="toggleCardAccordion('card_overtime')">
+<div class="flex items-center gap-2">
+<h3 class="text-sm font-bold text-indigo-400 flex items-center gap-1.5">
+<span>⏰</span> Havi Túlórák
             </h3>
-            <span id="badge_superAdminSection" class="text-[10px] bg-amber-950 text-amber-300 border border-amber-700 px-2 py-0.5 rounded-full font-bold">0 felhasználó</span>
-          </div>
-          <span id="arrow_superAdminSection" class="text-xs text-amber-400 font-bold transition-transform">▼</span>
-        </div>
+<span class="text-[10px] bg-indigo-950 text-indigo-300 border border-indigo-800 px-2 py-0.5 rounded-full font-mono font-bold" id="badge_overtime">0 óra</span>
+</div>
+<!-- Hónap Léptető a Fejlécen -->
+<div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
+<button class="bg-slate-800 hover:bg-slate-700 text-indigo-300 px-2 py-1 rounded text-xs font-bold border border-slate-700" onclick="window.changeOvertimeMonth(-1)" type="button">◄</button>
+<span class="text-xs font-bold text-indigo-400 font-mono" id="overtimeMonthLabel"></span>
+<button class="bg-slate-800 hover:bg-slate-700 text-indigo-300 px-2 py-1 rounded text-xs font-bold border border-slate-700" onclick="window.changeOvertimeMonth(1)" type="button">►</button>
+</div>
+<span class="text-xs text-slate-400 font-bold transition-transform" id="arrow_card_overtime">▼</span>
+</div>
+<div class="hidden p-4 space-y-3 border-t border-slate-800/80" id="content_card_overtime">
+<div class="space-y-2 max-h-[350px] overflow-y-auto pr-1" id="overtimeListContainer"></div>
+</div>
+</div><div class="admin-card bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-md" id="card_stats">
+<div class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-slate-800/50" onclick="toggleCardAccordion('card_stats')">
+<div class="flex items-center gap-2">
+<h3 class="text-sm font-bold text-orange-400 flex items-center gap-1.5">
+<span>📊</span> Kilométer Statisztika &amp; Összesítő
+            </h3>
+<span class="text-[10px] bg-slate-800 text-orange-300 px-2 py-0.5 rounded-full border border-slate-700 font-mono font-bold" id="badge_stats">0 km</span>
+</div>
+<span class="text-xs text-slate-400 font-bold transition-transform" id="arrow_card_stats">▼</span>
+</div>
+<div class="hidden p-4 space-y-3 border-t border-slate-800/80" id="content_card_stats">
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-800 pb-2 gap-2">
+<span class="text-xs text-slate-400 font-medium">Statisztika részletei:</span>
+<div class="flex items-center gap-3 w-full sm:w-auto flex-wrap">
+<div class="flex items-center gap-1.5">
+<label class="text-xs text-slate-400 font-medium whitespace-nowrap">Út Típusa:</label>
+<select class="bg-slate-800 border border-slate-700 text-white p-1.5 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-orange-500" id="statsKmTypeSelect" onchange="renderAdminStats()">
+<option selected="" value="work">💼 Munkakilométer</option>
+<option value="private">🔒 Privát út</option>
+<option value="all">📊 Összesített (Munka + Privát)</option>
+</select>
+</div>
+<div class="flex items-center gap-1.5">
+<label class="text-xs text-slate-400 font-medium whitespace-nowrap">Időszak:</label>
+<select class="bg-slate-800 border border-slate-700 text-white p-1.5 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-orange-500" id="statsPeriodSelect" onchange="toggleStatsCustomDates(); renderAdminStats();">
+<option value="daily">Napi</option>
+<option value="weekly">Heti</option>
+<option selected="" value="monthly">Havi</option>
+<option value="yearly">Éves</option>
+<option value="custom">Egyedi dátum</option>
+</select>
+</div>
+</div>
+</div>
+<div class="hidden grid grid-cols-2 gap-2 bg-slate-950 p-2.5 rounded-xl border border-slate-800" id="statsCustomDateContainer">
+<div>
+<label class="block text-[10px] text-slate-400 mb-0.5">Kezdő dátum</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-1.5 rounded-lg text-xs" id="statsStartDate" onchange="renderAdminStats()" type="date"/>
+</div>
+<div>
+<label class="block text-[10px] text-slate-400 mb-0.5">Záró dátum</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-1.5 rounded-lg text-xs" id="statsEndDate" onchange="renderAdminStats()" type="date"/>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+<div class="bg-slate-950/80 border border-slate-800 p-3 rounded-xl space-y-2">
+<div class="flex justify-between items-center border-b border-slate-800/80 pb-2">
+<h4 class="text-xs font-bold text-slate-200 flex items-center gap-1">
+<span>👤</span> Sofőrök Teljesítménye (ABC)
+                </h4>
+<span class="text-xs font-mono font-bold text-orange-400" id="statsTotalDriverKm">0 km</span>
+</div>
+<div class="space-y-1.5 max-h-[200px] overflow-y-auto pr-1" id="driverStatsContainer"></div>
+</div>
+<div class="bg-slate-950/80 border border-slate-800 p-3 rounded-xl space-y-2">
+<div class="flex justify-between items-center border-b border-slate-800/80 pb-2">
+<h4 class="text-xs font-bold text-slate-200 flex items-center gap-1">
+<span>🚗</span> Autók Futásteljesítménye (ABC)
+                </h4>
+<span class="text-xs font-mono font-bold text-orange-400" id="statsTotalCarKm">0 km</span>
+</div>
+<div class="space-y-1.5 max-h-[200px] overflow-y-auto pr-1" id="carStatsContainer"></div>
+</div>
+</div>
+</div>
+</div><div class="admin-card bg-slate-900/90 border border-cyan-500/40 rounded-xl overflow-hidden shadow-md" id="card_car_live_km">
+<div class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-cyan-500/30" onclick="toggleCardAccordion('card_car_live_km')">
+<div class="flex items-center gap-2">
+<h3 class="text-sm font-bold text-cyan-400 flex items-center gap-1.5">
+<span>⏱️</span> Járműpark Aktuális Óraállásai (ABC)
+            </h3>
+<span class="text-[9px] bg-cyan-950 text-cyan-300 border border-cyan-800 px-2 py-0.5 rounded-full font-mono truncate max-w-[150px]" id="badge_car_live_km">ÉLŐ</span>
+</div>
+<span class="text-xs text-slate-400 font-bold transition-transform" id="arrow_card_car_live_km">▼</span>
+</div>
+<div class="hidden p-4 space-y-3 border-t border-slate-800/80" id="content_card_car_live_km">
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2 max-h-[250px] overflow-y-auto pr-1" id="liveCarKmContainer"></div>
+</div>
+</div></div></div><div class="hidden bg-slate-900/95 border-2 border-amber-500/60 rounded-xl overflow-hidden shadow-xl" id="superAdminSection">
+<div class="p-3.5 bg-amber-950/40 cursor-pointer flex justify-between items-center select-none hover:bg-amber-900/40 transition border-b border-amber-500/30" onclick="toggleCardAccordion('superAdminSection')">
+<div class="flex items-center gap-2">
+<h3 class="text-sm font-bold text-amber-400 flex items-center gap-1.5">
+<span>👥</span> Admin Jogosultságok, Ledolgozott Napok &amp; Szabadság Keretek (Főadmin)
+            </h3>
+<span class="text-[10px] bg-amber-950 text-amber-300 border border-amber-700 px-2 py-0.5 rounded-full font-bold" id="badge_superAdminSection">0 felhasználó</span>
+</div>
+<span class="text-xs text-amber-400 font-bold transition-transform" id="arrow_superAdminSection">▼</span>
+</div>
+<div class="hidden p-4 space-y-3 border-t border-amber-500/30" id="content_superAdminSection">
+<p class="text-xs text-slate-400">Itt állíthatod be a sofőrök ledolgozott napjainak felülbírálását, szabadnap-keretét, valamint az admin modulokhoz és műveletekhez való hozzáférést:</p>
+<div class="space-y-3 pt-1" id="userPermissionsListContainer"></div>
+</div>
+</div>
+<!-- ⚙️ SOS TELEFONSZÁM BEÁLLÍTÁSOK KÁRTYA (ADMIN) -->
 
-        <div id="content_superAdminSection" class="hidden p-4 space-y-3 border-t border-amber-500/30">
-          <p class="text-xs text-slate-400">Itt állíthatod be a sofőrök ledolgozott napjainak felülbírálását, szabadnap-keretét, valamint az admin modulokhoz és műveletekhez való hozzáférést:</p>
-          <div id="userPermissionsListContainer" class="space-y-3 pt-1"></div>
-        </div>
-      </div>
+<!-- 1. JÁRMŰPARK FIGYELMEZTETÉSEK & TEENDŐK -->
 
-    </div> <!-- Ez zárja be megfelelően az #adminSection-t! -->
+<!-- 2. BELSŐ ADMIN ÜZENŐFAL -->
 
-    <!-- SOFŐR FELÜLET -->
-    <div id="driverViewContainer" class="max-w-2xl mx-auto space-y-4">
+<!-- 3. SOFŐR ÜZENŐFAL & KÖZLEMÉNYEK -->
 
-        <!-- SOFŐR STATISZTIKAI KÁRTYA (MUNKANAPOK & SZABADNAPOK) -->
-        <div id="driverStatsCard" class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl shadow-md space-y-2 backdrop-blur-md">
-          <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-            <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Személyes Munkakör & Keret</h3>
-            <span class="text-[10px] text-sky-400 font-bold bg-sky-950 border border-sky-800 px-2 py-0.5 rounded-full">Aktuális Hónap</span>
-          </div>
-          <div class="grid grid-cols-2 gap-3 text-center">
-            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-              <span class="text-[10px] text-slate-400 block font-medium">Ebben a hónapban ledolgozott:</span>
-              <strong id="driverWorkedDaysText" class="text-sm font-extrabold text-orange-400 font-mono">0 nap</strong>
-            </div>
-            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-              <span class="text-[10px] text-slate-400 block font-medium">Hátralévő szabadnap keret:</span>
-              <strong id="driverVacationDaysText" class="text-sm font-extrabold text-emerald-400 font-mono">0 nap</strong>
-            </div>
-          </div>
-        </div>
+<!-- 📋 MEGBÍZÁSOK & DISZPÉCSER KÁRTYA (ADMIN) -->
 
-        <div id="driverCarSection" class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl shadow-md space-y-3 backdrop-blur-md">
-          <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Műszak és Jármű Kezelése</h3>
-          <div id="carSelectContainer" class="space-y-3">
-            <div class="flex gap-2">
-              <select id="availableCarsSelect" class="flex-1 bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-sm"></select>
-              <button id="startShiftBtn" type="button" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow transition">
+<!-- 4. HAVI TÚLÓRÁK KÁRTYA -->
+
+<!-- LEDOLGOZOTT MŰSZAKÓRÁK -->
+
+<!-- 5. STATISZTIKA & ÖSSZESÍTŐ -->
+
+
+
+
+<!-- 9. FŐADMIN PANEL (SZABADSÁGOK, LEDOLGOZOTT NAPOK & JOGOK) -->
+
+</div> <!-- Ez zárja be megfelelően az #adminSection-t! -->
+<!-- SOFŐR FELÜLET -->
+<div class="max-w-2xl mx-auto space-y-4" id="driverViewContainer">
+<!-- SOFŐR STATISZTIKAI KÁRTYA (MUNKANAPOK & SZABADNAPOK) -->
+<div class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl shadow-md space-y-2 backdrop-blur-md" id="driverStatsCard">
+<div class="flex justify-between items-center border-b border-slate-800 pb-2">
+<h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Személyes Munkakör &amp; Keret</h3>
+<span class="text-[10px] text-sky-400 font-bold bg-sky-950 border border-sky-800 px-2 py-0.5 rounded-full">Aktuális Hónap</span>
+</div>
+<div class="grid grid-cols-2 gap-3 text-center">
+<div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+<span class="text-[10px] text-slate-400 block font-medium">Ebben a hónapban ledolgozott:</span>
+<strong class="text-sm font-extrabold text-orange-400 font-mono" id="driverWorkedDaysText">0 nap</strong>
+</div>
+<div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+<span class="text-[10px] text-slate-400 block font-medium">Hátralévő szabadnap keret:</span>
+<strong class="text-sm font-extrabold text-emerald-400 font-mono" id="driverVacationDaysText">0 nap</strong>
+</div>
+</div>
+</div>
+<div class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl shadow-md space-y-3 backdrop-blur-md" id="driverCarSection">
+<h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Műszak és Jármű Kezelése</h3>
+<div class="space-y-3" id="carSelectContainer">
+<div class="flex gap-2">
+<select class="flex-1 bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-sm" id="availableCarsSelect"></select>
+<button class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow transition" id="startShiftBtn" type="button">
                 🚀 Műszak Kezdése
               </button>
-            </div>
-          </div>
-
-          <div id="activeCarContainer" class="hidden space-y-3 bg-slate-950/80 border border-orange-500/30 p-3 rounded-xl">
-            <div class="flex items-center justify-between">
-              <div>
-                <span id="activeCarText" class="font-bold text-sm text-orange-300"></span>
-                <div id="shiftStatusBadge" class="text-[10px] font-semibold text-slate-400 mt-0.5"></div>
-              </div>
-              <button id="endShiftBtn" type="button" class="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow transition">
+</div>
+</div>
+<div class="hidden space-y-3 bg-slate-950/80 border border-orange-500/30 p-3 rounded-xl" id="activeCarContainer">
+<div class="flex items-center justify-between">
+<div>
+<span class="font-bold text-sm text-orange-300" id="activeCarText"></span>
+<div class="text-[10px] font-semibold text-slate-400 mt-0.5" id="shiftStatusBadge"></div>
+</div>
+<button class="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow transition" id="endShiftBtn" type="button">
                 🏁 Műszak Végzése
               </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- ÚJ ÚT RÖGZÍTÉSE Ultra-kompakt kártya -->
-        <div id="tripFormCard" class="bg-slate-900/90 border border-slate-800 p-3 rounded-2xl shadow-xl space-y-2 opacity-50 pointer-events-none backdrop-blur-md transition-all duration-300">
-          <div class="flex justify-between items-center border-b border-slate-800 pb-1">
-            <h3 id="formTitle" class="text-sm font-bold text-orange-400">Új Út Rögzítése</h3>
-            <span id="autoDateTimeDisplay" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full border border-slate-700 font-mono"></span>
-          </div>
-
-          <p id="shiftWarningText" class="text-xs text-amber-400 font-semibold bg-amber-950/40 border border-amber-500/30 p-2 rounded-xl">
+</div>
+</div>
+</div>
+<!-- ÚJ ÚT RÖGZÍTÉSE Ultra-kompakt kártya -->
+<div class="bg-slate-900/90 border border-slate-800 p-3 rounded-2xl shadow-xl space-y-2 opacity-50 pointer-events-none backdrop-blur-md transition-all duration-300" id="tripFormCard">
+<div class="flex justify-between items-center border-b border-slate-800 pb-1">
+<h3 class="text-sm font-bold text-orange-400" id="formTitle">Új Út Rögzítése</h3>
+<span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full border border-slate-700 font-mono" id="autoDateTimeDisplay"></span>
+</div>
+<p class="text-xs text-amber-400 font-semibold bg-amber-950/40 border border-amber-500/30 p-2 rounded-xl" id="shiftWarningText">
             ⚠️ Út rögzítéséhez előbb indítsd el a műszakot a fenti gombbal!
           </p>
-
-          <div id="driver250KmWarning" class="hidden bg-red-950/80 border border-red-600 text-red-200 p-3 rounded-xl text-xs font-bold flex items-center gap-2">
-            <span>⚠️</span>
-            <span>FIGYELEM: Elérted vagy meghaladtad a napi 250 km-es munkakilométer limitet a jelenlegi műszakban!</span>
-          </div>
-
-          <form id="tripForm" class="space-y-3">
-            <input type="hidden" id="editingTripId" value="">
-            <input type="hidden" id="editingTripTime" value="">
-            
-            <div>
-              <label class="block text-xs font-semibold text-slate-400 mb-1">Út Típusa</label>
-              <select id="tripType" required class="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-xl text-sm focus:ring-2 focus:ring-orange-500">
-                <option value="work">Munkaút</option>
-                <option value="private">Privát út</option>
-              </select>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div>
-                <label class="block text-xs font-semibold text-slate-400 mb-1">Indulási Cím</label>
-                <input type="text" id="tripStartLocation" placeholder="pl. Budapest, Fő u. 1." required class="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-xl text-sm">
-              </div>
-              <div>
-                <label class="block text-xs font-semibold text-slate-400 mb-1">Érkezési Cím</label>
-                <input type="text" id="tripEndLocation" placeholder="pl. Debrecen, Kossuth t. 5." required class="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-xl text-sm">
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-2">
-              <div>
-                <label class="block text-xs font-semibold text-slate-400 mb-1">Kezdő km</label>
-                <input type="number" id="tripStartKm" min="0" required oninput="syncStartKmToEndKm()" class="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-xl text-sm">
-              </div>
-              <div>
-                <label class="block text-xs font-semibold text-slate-400 mb-1">Záró km</label>
-                <input type="number" id="tripEndKm" min="0" required oninput="calculateCalculatedKm()" class="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-xl text-sm">
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-2 items-center">
-              <div>
-                <label class="block text-xs font-semibold text-slate-400 mb-1">Megtett km</label>
-                <input type="text" id="tripCalculatedKm" readonly class="w-full bg-slate-950 border border-slate-800 font-bold text-orange-400 p-3 rounded-xl text-sm" value="0 km">
-              </div>
-              <div>
-                <label class="block text-xs font-semibold text-slate-400 mb-1">Utasok száma</label>
-                <input type="number" id="tripPassengers" min="0" value="0" class="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-xl text-sm">
-              </div>
-            </div>
-
-            <div class="flex gap-2 pt-2">
-              <button type="submit" id="saveTripBtn" class="flex-1 bg-gradient-to-r from-orange-500 to-red-600 hover:opacity-90 text-white py-3 rounded-xl font-bold text-sm shadow-lg transition">Mentés</button>
-              <button type="button" id="cancelEditBtn" onclick="resetTripForm()" class="bg-slate-800 text-slate-300 border border-slate-700 px-4 py-3 rounded-xl text-xs hidden">Mégse</button>
-            </div>
-          </form>
-        </div>
-
-        <div class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl shadow-md space-y-4 backdrop-blur-md">
-          <div class="border-b border-slate-800 pb-3">
-            <h3 class="text-base font-bold text-orange-400 flex items-center gap-2">
-              <span>🚗</span> Aktuális Műszak Útjai
+<div class="hidden bg-red-950/80 border border-red-600 text-red-200 p-3 rounded-xl text-xs font-bold flex items-center gap-2" id="driver250KmWarning">
+<span>⚠️</span>
+<span>FIGYELEM: Elérted vagy meghaladtad a napi 250 km-es munkakilométer limitet a jelenlegi műszakban!</span>
+</div>
+<form class="space-y-3" id="tripForm">
+<input id="editingTripId" type="hidden" value=""/>
+<input id="editingTripTime" type="hidden" value=""/>
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Út Típusa</label>
+<select class="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-xl text-sm focus:ring-2 focus:ring-orange-500" id="tripType" required="">
+<option value="work">Munkaút</option>
+<option value="private">Privát út</option>
+</select>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Indulási Cím</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-xl text-sm" id="tripStartLocation" placeholder="pl. Budapest, Fő u. 1." required="" type="text"/>
+</div>
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Érkezési Cím</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-xl text-sm" id="tripEndLocation" placeholder="pl. Debrecen, Kossuth t. 5." required="" type="text"/>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-2">
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Kezdő km</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-xl text-sm" id="tripStartKm" min="0" oninput="syncStartKmToEndKm()" required="" type="number"/>
+</div>
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Záró km</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-xl text-sm" id="tripEndKm" min="0" oninput="calculateCalculatedKm()" required="" type="number"/>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-2 items-center">
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Megtett km</label>
+<input class="w-full bg-slate-950 border border-slate-800 font-bold text-orange-400 p-3 rounded-xl text-sm" id="tripCalculatedKm" readonly="" type="text" value="0 km"/>
+</div>
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Utasok száma</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-3 rounded-xl text-sm" id="tripPassengers" min="0" type="number" value="0"/>
+</div>
+</div>
+<div class="flex gap-2 pt-2">
+<button class="flex-1 bg-gradient-to-r from-orange-500 to-red-600 hover:opacity-90 text-white py-3 rounded-xl font-bold text-sm shadow-lg transition" id="saveTripBtn" type="submit">Mentés</button>
+<button class="bg-slate-800 text-slate-300 border border-slate-700 px-4 py-3 rounded-xl text-xs hidden" id="cancelEditBtn" onclick="resetTripForm()" type="button">Mégse</button>
+</div>
+</form>
+</div>
+<div class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl shadow-md space-y-4 backdrop-blur-md">
+<div class="border-b border-slate-800 pb-3">
+<h3 class="text-base font-bold text-orange-400 flex items-center gap-2">
+<span>🚗</span> Aktuális Műszak Útjai
             </h3>
-            <p class="text-[10px] text-slate-400">Kizárólag a jelenleg nyitott műszakban rögzített utak.</p>
-          </div>
+<p class="text-[10px] text-slate-400">Kizárólag a jelenleg nyitott műszakban rögzített utak.</p>
+</div>
+<div class="overflow-x-auto rounded-xl border border-slate-800">
+<table class="w-full text-left text-xs">
+<thead class="bg-slate-950/80 text-slate-400 border-b border-slate-800">
+<tr>
+<th class="p-2.5">#</th>
+<th class="p-2.5">Időpont</th>
+<th class="p-2.5">Útvonal (Címek)</th>
+<th class="p-2.5 text-right hidden" id="thStartEndKmDriver">Km Állás</th>
+<th class="p-2.5 text-right">Megtett</th>
+<th class="p-2.5 text-center">Művelet</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-800" id="tripsTableBody"></tbody>
+</table>
+</div>
+</div>
+<!-- SOFŐR KORÁBBI ÜZENETEI ARCHÍVUM -->
+<details class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl shadow-md space-y-3 backdrop-blur-md group">
+<summary class="font-bold text-xs text-sky-400 cursor-pointer select-none flex justify-between items-center">
+<span class="flex items-center gap-1.5">📜 Elolvasott Központi Üzenetek Archívuma</span>
+<span class="group-open:rotate-180 transition-transform">▼</span>
+</summary>
+<div class="space-y-2 pt-3 border-t border-slate-800 mt-2" id="driverAnnouncementHistoryList"></div>
+</details>
+</div>
+</div>
 
-          <div class="overflow-x-auto rounded-xl border border-slate-800">
-            <table class="w-full text-left text-xs">
-              <thead class="bg-slate-950/80 text-slate-400 border-b border-slate-800">
-                <tr>
-                  <th class="p-2.5">#</th>
-                  <th class="p-2.5">Időpont</th>
-                  <th class="p-2.5">Útvonal (Címek)</th>
-                  <th id="thStartEndKmDriver" class="p-2.5 text-right hidden">Km Állás</th>
-                  <th class="p-2.5 text-right">Megtett</th>
-                  <th class="p-2.5 text-center">Művelet</th>
-                </tr>
-              </thead>
-              <tbody id="tripsTableBody" class="divide-y divide-slate-800"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- SOFŐR KORÁBBI ÜZENETEI ARCHÍVUM -->
-        <details class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl shadow-md space-y-3 backdrop-blur-md group">
-          <summary class="font-bold text-xs text-sky-400 cursor-pointer select-none flex justify-between items-center">
-            <span class="flex items-center gap-1.5">📜 Elolvasott Központi Üzenetek Archívuma</span>
-            <span class="group-open:rotate-180 transition-transform">▼</span>
-          </summary>
-          <div id="driverAnnouncementHistoryList" class="space-y-2 pt-3 border-t border-slate-800 mt-2"></div>
-        </details>
-
-      </div>
-    </div>
-
-  </div>
-
-  <!-- SOFŐR KÖTELEZŐ ÜZENET POP-UP MODAL -->
-  <div id="driverAnnouncementModal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-slate-900 border-2 border-sky-500/80 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-bounce-short">
-      <div class="border-b border-sky-500/30 pb-3 flex justify-between items-center">
-        <h3 id="modalAnnouncementTitle" class="text-base font-extrabold text-sky-400 flex items-center gap-2">
-          <span>📢</span> Fontos Központi Üzenet
+<!-- SOFŐR KÖTELEZŐ ÜZENET POP-UP MODAL -->
+<div class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4" id="driverAnnouncementModal">
+<div class="bg-slate-900 border-2 border-sky-500/80 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-bounce-short">
+<div class="border-b border-sky-500/30 pb-3 flex justify-between items-center">
+<h3 class="text-base font-extrabold text-sky-400 flex items-center gap-2" id="modalAnnouncementTitle">
+<span>📢</span> Fontos Központi Üzenet
         </h3>
-        <span id="modalAnnouncementDate" class="text-[10px] text-slate-400 font-mono"></span>
-      </div>
-
-      <div id="modalAnnouncementMessage" class="text-xs text-slate-200 whitespace-pre-line leading-relaxed bg-slate-950 p-4 rounded-xl border border-slate-800 max-h-[300px] overflow-y-auto"></div>
-
-      <p class="text-[10px] text-amber-400 font-semibold text-center italic">
+<span class="text-[10px] text-slate-400 font-mono" id="modalAnnouncementDate"></span>
+</div>
+<div class="text-xs text-slate-200 whitespace-pre-line leading-relaxed bg-slate-950 p-4 rounded-xl border border-slate-800 max-h-[300px] overflow-y-auto" id="modalAnnouncementMessage"></div>
+<p class="text-[10px] text-amber-400 font-semibold text-center italic">
         A felület használatának folytatásához igazolnod kell az üzenet elolvasását!
       </p>
-
-      <button id="modalAnnouncementConfirmBtn" type="button" class="w-full bg-gradient-to-r from-sky-500 to-blue-600 hover:opacity-90 text-white font-extrabold py-3.5 rounded-xl text-xs shadow-xl transition active:scale-[0.98]">
+<button class="w-full bg-gradient-to-r from-sky-500 to-blue-600 hover:opacity-90 text-white font-extrabold py-3.5 rounded-xl text-xs shadow-xl transition active:scale-[0.98]" id="modalAnnouncementConfirmBtn" type="button">
         ✔ Láttam és megértettem
       </button>
-    </div>
-  </div>
-
-  <!-- MODALOK (Műszak indítás, lezárás, autó szerkesztés, szervizbe küldés, admin út szerkesztés) -->
-  <div id="startShiftModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-slate-900 border-2 border-orange-500/50 rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl">
-      <div class="border-b border-slate-800 pb-2 flex justify-between items-center">
-        <h3 class="text-base font-bold text-orange-400 flex items-center gap-2">
-          <span>🚀</span> Műszak Indítása & Adatellenőrzés
+</div>
+</div>
+<!-- MODALOK (Műszak indítás, lezárás, autó szerkesztés, szervizbe küldés, admin út szerkesztés) -->
+<div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" id="startShiftModal">
+<div class="bg-slate-900 border-2 border-orange-500/50 rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl">
+<div class="border-b border-slate-800 pb-2 flex justify-between items-center">
+<h3 class="text-base font-bold text-orange-400 flex items-center gap-2">
+<span>🚀</span> Műszak Indítása &amp; Adatellenőrzés
         </h3>
-        <button id="closeStartShiftModalBtn" type="button" class="text-slate-400 hover:text-white text-lg">✕</button>
-      </div>
-
-      <p class="text-xs text-slate-300">
+<button class="text-slate-400 hover:text-white text-lg" id="closeStartShiftModalBtn" type="button">✕</button>
+</div>
+<p class="text-xs text-slate-300">
         Kérlek ellenőrizd az előző sofőr által leadott kilométeróra-állást és utolsó érkezési címet. Eltérés esetén módosíthatod őket!
       </p>
-
-      <div class="space-y-3 bg-slate-950 p-3 rounded-xl border border-slate-800">
-        <div>
-          <label class="block text-xs font-semibold text-slate-400 mb-1">Műszak Kezdő Km Állás</label>
-          <input type="number" id="modalStartKm" class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-sm font-bold text-orange-300">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-400 mb-1">Indulási Cím (Előző leadási cím)</label>
-          <input type="text" id="modalStartLocation" class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-sm font-medium">
-        </div>
-      </div>
-
-      <div class="pt-2 flex gap-2">
-        <button id="confirmStartShiftBtn" type="button" class="flex-1 bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-90 text-white py-3 rounded-xl font-bold text-xs shadow-lg transition">
-          Igen, adatok helyesek & Indítás
+<div class="space-y-3 bg-slate-950 p-3 rounded-xl border border-slate-800">
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Műszak Kezdő Km Állás</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-sm font-bold text-orange-300" id="modalStartKm" type="number"/>
+</div>
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Indulási Cím (Előző leadási cím)</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-sm font-medium" id="modalStartLocation" type="text"/>
+</div>
+</div>
+<div class="pt-2 flex gap-2">
+<button class="flex-1 bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-90 text-white py-3 rounded-xl font-bold text-xs shadow-lg transition" id="confirmStartShiftBtn" type="button">
+          Igen, adatok helyesek &amp; Indítás
         </button>
-        <button id="cancelStartShiftBtn" type="button" class="bg-slate-800 text-slate-400 hover:bg-slate-700 px-4 py-3 rounded-xl text-xs font-semibold">
+<button class="bg-slate-800 text-slate-400 hover:bg-slate-700 px-4 py-3 rounded-xl text-xs font-semibold" id="cancelStartShiftBtn" type="button">
           Mégse
         </button>
-      </div>
-    </div>
-  </div>
-
-  <div id="endShiftModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-slate-900 border-2 border-red-500/50 rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl">
-      <div class="border-b border-slate-800 pb-2 flex justify-between items-center">
-        <h3 class="text-base font-bold text-red-400 flex items-center gap-2">
-          <span>🏁</span> Műszak Lezárása & Túlóra
+</div>
+</div>
+</div>
+<div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" id="endShiftModal">
+<div class="bg-slate-900 border-2 border-red-500/50 rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl">
+<div class="border-b border-slate-800 pb-2 flex justify-between items-center">
+<h3 class="text-base font-bold text-red-400 flex items-center gap-2">
+<span>🏁</span> Műszak Lezárása &amp; Túlóra
         </h3>
-        <button id="closeEndShiftModalBtn" type="button" class="text-slate-400 hover:text-white text-lg">✕</button>
-      </div>
-
-      <p id="endShiftCarInfo" class="text-xs text-slate-300"></p>
-
-      <div class="space-y-3 bg-slate-950 p-3 rounded-xl border border-slate-800">
-        <div>
-          <label class="block text-xs font-semibold text-slate-400 mb-1">Végső kilométeróra-állás (min. <span id="endShiftMinKmText">0</span> km)</label>
-          <input type="number" id="modalEndKm" class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-sm font-bold text-red-300">
-        </div>
-
-        <div class="pt-2 border-t border-slate-800/80">
-          <label class="flex items-center gap-2 cursor-pointer select-none">
-            <input type="checkbox" id="modalHasOvertime" class="rounded bg-slate-800 border-slate-700 text-indigo-500 focus:ring-indigo-500 h-4 w-4">
-            <span class="text-xs font-bold text-indigo-300">Túlórám volt ebben a műszakban</span>
-          </label>
-        </div>
-
-        <div id="overtimeInputContainer" class="hidden space-y-1 pt-1">
-          <label class="block text-xs font-semibold text-slate-400">Túlóra órák száma (pl. 1 vagy 2 óra)</label>
-          <input type="number" id="modalOvertimeHours" min="1" max="24" value="1" class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-sm font-bold text-indigo-300">
-        </div>
-      </div>
-
-      <div class="pt-2 flex gap-2">
-        <button id="confirmEndShiftBtn" type="button" class="flex-1 bg-gradient-to-r from-red-500 to-orange-600 hover:opacity-90 text-white py-3 rounded-xl font-bold text-xs shadow-lg transition">
+<button class="text-slate-400 hover:text-white text-lg" id="closeEndShiftModalBtn" type="button">✕</button>
+</div>
+<p class="text-xs text-slate-300" id="endShiftCarInfo"></p>
+<div class="space-y-3 bg-slate-950 p-3 rounded-xl border border-slate-800">
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Végső kilométeróra-állás (min. <span id="endShiftMinKmText">0</span> km)</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-sm font-bold text-red-300" id="modalEndKm" type="number"/>
+</div>
+<div class="pt-2 border-t border-slate-800/80">
+<label class="flex items-center gap-2 cursor-pointer select-none">
+<input class="rounded bg-slate-800 border-slate-700 text-indigo-500 focus:ring-indigo-500 h-4 w-4" id="modalHasOvertime" type="checkbox"/>
+<span class="text-xs font-bold text-indigo-300">Túlórám volt ebben a műszakban</span>
+</label>
+</div>
+<div class="hidden space-y-1 pt-1" id="overtimeInputContainer">
+<label class="block text-xs font-semibold text-slate-400">Túlóra órák száma (pl. 1 vagy 2 óra)</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-sm font-bold text-indigo-300" id="modalOvertimeHours" max="24" min="1" type="number" value="1"/>
+</div>
+</div>
+<div class="pt-2 flex gap-2">
+<button class="flex-1 bg-gradient-to-r from-red-500 to-orange-600 hover:opacity-90 text-white py-3 rounded-xl font-bold text-xs shadow-lg transition" id="confirmEndShiftBtn" type="button">
           🏁 Műszak Végleges Lezárása
         </button>
-        <button id="cancelEndShiftBtn" type="button" class="bg-slate-800 text-slate-400 hover:bg-slate-700 px-4 py-3 rounded-xl text-xs font-semibold">
+<button class="bg-slate-800 text-slate-400 hover:bg-slate-700 px-4 py-3 rounded-xl text-xs font-semibold" id="cancelEndShiftBtn" type="button">
           Mégse
         </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- AUTÓ SZERKESZTÉSE MODAL -->
-  <div id="editCarModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-slate-900 border-2 border-amber-500/50 rounded-2xl max-w-lg w-full p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-      <div class="border-b border-slate-800 pb-2 flex justify-between items-center">
-        <h3 class="text-base font-bold text-amber-400 flex items-center gap-2">
-          <span>✏️</span> Autó Adatok & Korlátok Szerkesztése
+</div>
+</div>
+</div>
+<!-- AUTÓ SZERKESZTÉSE MODAL -->
+<div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" id="editCarModal">
+<div class="bg-slate-900 border-2 border-amber-500/50 rounded-2xl max-w-lg w-full p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+<div class="border-b border-slate-800 pb-2 flex justify-between items-center">
+<h3 class="text-base font-bold text-amber-400 flex items-center gap-2">
+<span>✏️</span> Autó Adatok &amp; Korlátok Szerkesztése
         </h3>
-        <button type="button" onclick="closeEditCarModal()" class="text-slate-400 hover:text-white text-lg">✕</button>
-      </div>
-
-      <input type="hidden" id="editCarId">
-
-      <div class="space-y-3">
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-semibold text-slate-400 mb-1">Rendszám</label>
-            <input type="text" id="editCarPlate" class="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded-xl text-xs uppercase font-bold">
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-400 mb-1">Típus / Modell</label>
-            <input type="text" id="editCarModel" class="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded-xl text-xs">
-          </div>
-        </div>
-
-        <div class="flex items-center gap-2 pt-1 pb-1">
-    <input type="checkbox" id="editCarIsLargeBus" class="w-4 h-4 accent-red-600 rounded cursor-pointer">
-    <label for="editCarIsLargeBus" class="text-xs font-bold text-red-400 cursor-pointer select-none">🚌 Nagybusz</label>
-  </div>
-
-        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
-          <div class="text-xs font-bold text-amber-300">1. Műszaki Vizsga Beállítások</div>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="block text-[10px] text-slate-400">Lejárati dátum</label>
-              <input type="date" id="editCarMot" class="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded-lg text-xs">
-            </div>
-            <div>
-              <label class="block text-[10px] text-slate-400">Riasztási korlát (nap)</label>
-              <input type="number" id="editMotAlertDays" value="30" class="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded-lg text-xs">
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
-          <div class="text-xs font-bold text-orange-300">2. Olajcsere Periódus Beállítások (Sofőri km alapján)</div>
-          <div class="grid grid-cols-3 gap-2">
-            <div>
-              <label class="block text-[10px] text-slate-400">Utolsó olaj (km)</label>
-              <input type="number" id="editCarLastOilKm" class="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded-lg text-xs font-mono">
-            </div>
-            <div>
-              <label class="block text-[10px] text-slate-400">Periódus (km)</label>
-              <input type="number" id="editCarOilPeriodKm" value="15000" class="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded-lg text-xs font-mono">
-            </div>
-            <div>
-              <label class="block text-[10px] text-slate-400">Riasztás előtte (km)</label>
-              <input type="number" id="editOilAlertKm" value="1000" class="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded-lg text-xs font-mono">
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
-          <div class="flex justify-between items-center">
-            <div class="text-xs font-bold text-amber-300">4. Európai Autópálya Matricák</div>
-          </div>
-
-          <div id="modalVignettesList" class="space-y-1.5 max-h-[120px] overflow-y-auto pr-1"></div>
-
-          <div class="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-800/80">
-            <select id="newVignetteCountry" class="bg-slate-800 border border-slate-700 text-white p-1.5 rounded text-[10px] font-bold">
-              <option value="HU">🇭🇺 HU (Magyar)</option>
-              <option value="AT">🇦🇹 AT (Osztrák)</option>
-              <option value="SK">🇸🇰 SK (Szlovák)</option>
-              <option value="CZ">🇨🇿 CZ (Cseh)</option>
-              <option value="SI">🇸🇮 SI (Szlovén)</option>
-              <option value="CH">🇨🇭 CH (Svájci)</option>
-              <option value="RO">🇷🇴 RO (Román)</option>
-              <option value="BG">🇧🇬 BG (Bolgár)</option>
-              <option value="HR">🇭🇷 HR (Horvát)</option>
-            </select>
-            <input type="date" id="newVignetteStart" class="bg-slate-800 border border-slate-700 text-white p-1.5 rounded text-[10px]" title="Kezdő dátum">
-            <input type="date" id="newVignetteEnd" class="bg-slate-800 border border-slate-700 text-white p-1.5 rounded text-[10px]" title="Lejárati dátum">
-          </div>
-          <button type="button" onclick="addVignetteToEditModal()" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-amber-300 py-1.5 rounded text-xs font-bold transition">
+<button class="text-slate-400 hover:text-white text-lg" onclick="closeEditCarModal()" type="button">✕</button>
+</div>
+<input id="editCarId" type="hidden"/>
+<div class="space-y-3">
+<div class="grid grid-cols-2 gap-2">
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Rendszám</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded-xl text-xs uppercase font-bold" id="editCarPlate" type="text"/>
+</div>
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Típus / Modell</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded-xl text-xs" id="editCarModel" type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-2 pt-1 pb-1">
+<input class="w-4 h-4 accent-red-600 rounded cursor-pointer" id="editCarIsLargeBus" type="checkbox"/>
+<label class="text-xs font-bold text-red-400 cursor-pointer select-none" for="editCarIsLargeBus">🚌 Nagybusz</label>
+</div>
+<div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+<div class="text-xs font-bold text-amber-300">1. Műszaki Vizsga Beállítások</div>
+<div class="grid grid-cols-2 gap-2">
+<div>
+<label class="block text-[10px] text-slate-400">Lejárati dátum</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded-lg text-xs" id="editCarMot" type="date"/>
+</div>
+<div>
+<label class="block text-[10px] text-slate-400">Riasztási korlát (nap)</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded-lg text-xs" id="editMotAlertDays" type="number" value="30"/>
+</div>
+</div>
+</div>
+<div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+<div class="text-xs font-bold text-orange-300">2. Olajcsere Periódus Beállítások (Sofőri km alapján)</div>
+<div class="grid grid-cols-3 gap-2">
+<div>
+<label class="block text-[10px] text-slate-400">Utolsó olaj (km)</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded-lg text-xs font-mono" id="editCarLastOilKm" type="number"/>
+</div>
+<div>
+<label class="block text-[10px] text-slate-400">Periódus (km)</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded-lg text-xs font-mono" id="editCarOilPeriodKm" type="number" value="15000"/>
+</div>
+<div>
+<label class="block text-[10px] text-slate-400">Riasztás előtte (km)</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded-lg text-xs font-mono" id="editOilAlertKm" type="number" value="1000"/>
+</div>
+</div>
+</div>
+<div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+<div class="flex justify-between items-center">
+<div class="text-xs font-bold text-amber-300">4. Európai Autópálya Matricák</div>
+</div>
+<div class="space-y-1.5 max-h-[120px] overflow-y-auto pr-1" id="modalVignettesList"></div>
+<div class="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-800/80">
+<select class="bg-slate-800 border border-slate-700 text-white p-1.5 rounded text-[10px] font-bold" id="newVignetteCountry">
+<option value="HU">🇭🇺 HU (Magyar)</option>
+<option value="AT">🇦🇹 AT (Osztrák)</option>
+<option value="SK">🇸🇰 SK (Szlovák)</option>
+<option value="CZ">🇨🇿 CZ (Cseh)</option>
+<option value="SI">🇸🇮 SI (Szlovén)</option>
+<option value="CH">🇨🇭 CH (Svájci)</option>
+<option value="RO">🇷🇴 RO (Román)</option>
+<option value="BG">🇧🇬 BG (Bolgár)</option>
+<option value="HR">🇭🇷 HR (Horvát)</option>
+</select>
+<input class="bg-slate-800 border border-slate-700 text-white p-1.5 rounded text-[10px]" id="newVignetteStart" title="Kezdő dátum" type="date"/>
+<input class="bg-slate-800 border border-slate-700 text-white p-1.5 rounded text-[10px]" id="newVignetteEnd" title="Lejárati dátum" type="date"/>
+</div>
+<button class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-amber-300 py-1.5 rounded text-xs font-bold transition" onclick="addVignetteToEditModal()" type="button">
             + Matrica Hozzáadása Ennél az Autónál
           </button>
-        </div>
-      </div>
-
-      <div class="pt-3 flex gap-2 border-t border-slate-800">
-        <button type="button" onclick="saveCarEditModal()" class="flex-1 bg-gradient-to-r from-amber-500 to-orange-600 hover:opacity-90 text-white py-2.5 rounded-xl font-bold text-xs shadow-lg transition">
+</div>
+</div>
+<div class="pt-3 flex gap-2 border-t border-slate-800">
+<button class="flex-1 bg-gradient-to-r from-amber-500 to-orange-600 hover:opacity-90 text-white py-2.5 rounded-xl font-bold text-xs shadow-lg transition" onclick="saveCarEditModal()" type="button">
           💾 Módosítások Mentése
         </button>
-        <button type="button" onclick="closeEditCarModal()" class="bg-slate-800 text-slate-400 hover:bg-slate-700 px-4 py-2.5 rounded-xl text-xs font-semibold">
+<button class="bg-slate-800 text-slate-400 hover:bg-slate-700 px-4 py-2.5 rounded-xl text-xs font-semibold" onclick="closeEditCarModal()" type="button">
           Mégse
         </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- SZERVIZBE KÜLDÉS MODAL -->
-  <div id="serviceCarModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-slate-900 border-2 border-amber-500/50 rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl">
-      <div class="border-b border-slate-800 pb-2 flex justify-between items-center">
-        <h3 class="text-base font-bold text-amber-400 flex items-center gap-2">
-          <span>🛠️</span> Autó Szervizbe Küldése
+</div>
+</div>
+</div>
+<!-- SZERVIZBE KÜLDÉS MODAL -->
+<div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" id="serviceCarModal">
+<div class="bg-slate-900 border-2 border-amber-500/50 rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl">
+<div class="border-b border-slate-800 pb-2 flex justify-between items-center">
+<h3 class="text-base font-bold text-amber-400 flex items-center gap-2">
+<span>🛠️</span> Autó Szervizbe Küldése
         </h3>
-        <button type="button" onclick="closeServiceCarModal()" class="text-slate-400 hover:text-white text-lg">✕</button>
-      </div>
-
-      <input type="hidden" id="serviceCarId">
-
-      <div class="space-y-3">
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-semibold text-slate-400 mb-1">Szerviz Dátuma / Esedékesség</label>
-            <input type="date" id="serviceModalDate" class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs">
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-400 mb-1">Riasztási Korlát (nap)</label>
-            <input type="number" id="serviceModalAlertDays" value="2" class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs font-bold text-amber-400">
-          </div>
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-400 mb-1">Szerviz Helyszíne / Műhely Neve</label>
-          <input type="text" id="serviceModalLocation" placeholder="pl. Bp, Márkaszerviz Kft." class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-400 mb-1">Elvégzendő Munka Típusa</label>
-          <input type="text" id="serviceModalWorkType" placeholder="pl. Vezérléscsere + Olajcsere + Fékjavítás" class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs font-bold">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-400 mb-1">Becsült / Várható Költség Ft (Opcionális)</label>
-          <input type="number" id="serviceModalCost" placeholder="pl. 150000" class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs font-mono">
-        </div>
-      </div>
-
-      <p class="text-[10px] text-amber-300 bg-amber-950/60 border border-amber-800/80 p-2 rounded-xl">
+<button class="text-slate-400 hover:text-white text-lg" onclick="closeServiceCarModal()" type="button">✕</button>
+</div>
+<input id="serviceCarId" type="hidden"/>
+<div class="space-y-3">
+<div class="grid grid-cols-2 gap-2">
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Szerviz Dátuma / Esedékesség</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs" id="serviceModalDate" type="date"/>
+</div>
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Riasztási Korlát (nap)</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs font-bold text-amber-400" id="serviceModalAlertDays" type="number" value="2"/>
+</div>
+</div>
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Szerviz Helyszíne / Műhely Neve</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs" id="serviceModalLocation" placeholder="pl. Bp, Márkaszerviz Kft." type="text"/>
+</div>
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Elvégzendő Munka Típusa</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs font-bold" id="serviceModalWorkType" placeholder="pl. Vezérléscsere + Olajcsere + Fékjavítás" type="text"/>
+</div>
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Becsült / Várható Költség Ft (Opcionális)</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs font-mono" id="serviceModalCost" placeholder="pl. 150000" type="number"/>
+</div>
+</div>
+<p class="text-[10px] text-amber-300 bg-amber-950/60 border border-amber-800/80 p-2 rounded-xl">
         ℹ️ A gombra kattintva az autó állapota <strong>"Szervizben"</strong> státuszra vált.
       </p>
-
-      <div class="pt-2 flex gap-2">
-        <button type="button" onclick="confirmSendToService()" class="flex-1 bg-amber-600 hover:bg-amber-500 text-white py-2.5 rounded-xl font-bold text-xs shadow-lg transition">
-          🛠️ Szervizbe Küldés & Autó Inaktiválása
+<div class="pt-2 flex gap-2">
+<button class="flex-1 bg-amber-600 hover:bg-amber-500 text-white py-2.5 rounded-xl font-bold text-xs shadow-lg transition" onclick="confirmSendToService()" type="button">
+          🛠️ Szervizbe Küldés &amp; Autó Inaktiválása
         </button>
-        <button type="button" onclick="closeServiceCarModal()" class="bg-slate-800 text-slate-400 hover:bg-slate-700 px-4 py-2.5 rounded-xl text-xs font-semibold">
+<button class="bg-slate-800 text-slate-400 hover:bg-slate-700 px-4 py-2.5 rounded-xl text-xs font-semibold" onclick="closeServiceCarModal()" type="button">
           Mégse
         </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ADMIN ÚT SZERKESZTÉS MODAL -->
-  <div id="adminEditTripModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-slate-900 border-2 border-amber-500/50 rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl">
-      <div class="border-b border-slate-800 pb-2 flex justify-between items-center">
-        <h3 class="text-base font-bold text-amber-400 flex items-center gap-2">
-          <span>✏️</span> Út Adatainak Szerkesztése
+</div>
+</div>
+</div>
+<!-- ADMIN ÚT SZERKESZTÉS MODAL -->
+<div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" id="adminEditTripModal">
+<div class="bg-slate-900 border-2 border-amber-500/50 rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl">
+<div class="border-b border-slate-800 pb-2 flex justify-between items-center">
+<h3 class="text-base font-bold text-amber-400 flex items-center gap-2">
+<span>✏️</span> Út Adatainak Szerkesztése
         </h3>
-        <button type="button" onclick="closeAdminEditTripModal()" class="text-slate-400 hover:text-white text-lg">✕</button>
-      </div>
-
-      <input type="hidden" id="adminEditingTripId">
-
-      <div class="space-y-3">
-        <div>
-          <label class="block text-xs font-semibold text-slate-400 mb-1">Út Típusa</label>
-          <select id="adminTripType" class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs">
-            <option value="work">Munkaút</option>
-            <option value="private">Privát út</option>
-          </select>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-semibold text-slate-400 mb-1">Indulási Cím</label>
-            <input type="text" id="adminTripStartLoc" class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs">
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-400 mb-1">Érkezési Cím</label>
-            <input type="text" id="adminTripEndLoc" class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs">
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-semibold text-slate-400 mb-1">Kezdő km</label>
-            <input type="number" id="adminTripStartKm" oninput="calculateAdminTripKm()" class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs font-bold text-orange-300">
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-400 mb-1">Záró km</label>
-            <input type="number" id="adminTripEndKm" oninput="calculateAdminTripKm()" class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs font-bold text-orange-300">
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2 items-center">
-          <div>
-            <label class="block text-xs font-semibold text-slate-400 mb-1">Kiszámolt Megtett km</label>
-            <input type="text" id="adminTripCalcKm" readonly class="w-full bg-slate-950 border border-slate-800 font-bold text-orange-400 p-2.5 rounded-xl text-xs" value="0 km">
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-400 mb-1">Utasok száma</label>
-            <input type="number" id="adminTripPassengers" min="0" class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs">
-          </div>
-        </div>
-      </div>
-
-      <div class="pt-2 flex gap-2">
-        <button type="button" onclick="saveAdminTripEdit()" class="flex-1 bg-gradient-to-r from-amber-500 to-orange-600 hover:opacity-90 text-white py-2.5 rounded-xl font-bold text-xs shadow-lg transition">
+<button class="text-slate-400 hover:text-white text-lg" onclick="closeAdminEditTripModal()" type="button">✕</button>
+</div>
+<input id="adminEditingTripId" type="hidden"/>
+<div class="space-y-3">
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Út Típusa</label>
+<select class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs" id="adminTripType">
+<option value="work">Munkaút</option>
+<option value="private">Privát út</option>
+</select>
+</div>
+<div class="grid grid-cols-2 gap-2">
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Indulási Cím</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs" id="adminTripStartLoc" type="text"/>
+</div>
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Érkezési Cím</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs" id="adminTripEndLoc" type="text"/>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-2">
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Kezdő km</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs font-bold text-orange-300" id="adminTripStartKm" oninput="calculateAdminTripKm()" type="number"/>
+</div>
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Záró km</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs font-bold text-orange-300" id="adminTripEndKm" oninput="calculateAdminTripKm()" type="number"/>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-2 items-center">
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Kiszámolt Megtett km</label>
+<input class="w-full bg-slate-950 border border-slate-800 font-bold text-orange-400 p-2.5 rounded-xl text-xs" id="adminTripCalcKm" readonly="" type="text" value="0 km"/>
+</div>
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Utasok száma</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs" id="adminTripPassengers" min="0" type="number"/>
+</div>
+</div>
+</div>
+<div class="pt-2 flex gap-2">
+<button class="flex-1 bg-gradient-to-r from-amber-500 to-orange-600 hover:opacity-90 text-white py-2.5 rounded-xl font-bold text-xs shadow-lg transition" onclick="saveAdminTripEdit()" type="button">
           💾 Mentés
         </button>
-        <button type="button" onclick="closeAdminEditTripModal()" class="bg-slate-800 text-slate-400 hover:bg-slate-700 px-4 py-2.5 rounded-xl text-xs font-semibold">
+<button class="bg-slate-800 text-slate-400 hover:bg-slate-700 px-4 py-2.5 rounded-xl text-xs font-semibold" onclick="closeAdminEditTripModal()" type="button">
           Mégse
         </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- SCRIPT MODUL -->
-  <script type="module">
+</div>
+</div>
+</div>
+<!-- SCRIPT MODUL -->
+<script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { 
       getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged 
@@ -5130,276 +5009,252 @@ window.downloadAssignmentPDF = function(id) {
 // Automatikus indítás a Firestore hallgatóhoz
 listenToAssignments();
   </script>
-
-  <!-- SOFŐR ÚT SZERKESZTŐ POPUP MODAL (A SCRIPT TAG-EN KÍVÜL) -->
-  <div id="driverEditTripModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-2 sm:p-4">
-    <div class="bg-slate-900 border-2 border-orange-500/60 rounded-2xl max-w-md w-full max-h-[92dvh] overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-4 shadow-2xl">
-      <div class="border-b border-slate-800 pb-2 flex justify-between items-center">
-        <h3 class="text-base font-bold text-orange-400 flex items-center gap-2">
-          <span>✏️</span> Út Módosítása
+<!-- SOFŐR ÚT SZERKESZTŐ POPUP MODAL (A SCRIPT TAG-EN KÍVÜL) -->
+<div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-2 sm:p-4" id="driverEditTripModal">
+<div class="bg-slate-900 border-2 border-orange-500/60 rounded-2xl max-w-md w-full max-h-[92dvh] overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-4 shadow-2xl">
+<div class="border-b border-slate-800 pb-2 flex justify-between items-center">
+<h3 class="text-base font-bold text-orange-400 flex items-center gap-2">
+<span>✏️</span> Út Módosítása
         </h3>
-        <button type="button" onclick="window.closeDriverEditTripModal()" class="text-slate-400 hover:text-white text-lg">✕</button>
-      </div>
-
-      <input type="hidden" id="driverEditingTripId">
-
-      <div class="space-y-3">
-        <div>
-          <label class="block text-xs font-semibold text-slate-400 mb-1">Út Típusa</label>
-          <select id="modalDriverTripType" class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs">
-            <option value="work">Munkaút</option>
-            <option value="private">Privát út</option>
-          </select>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-semibold text-slate-400 mb-1">Indulási Cím</label>
-            <input type="text" id="modalDriverTripStartLoc" class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs">
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-400 mb-1">Érkezési Cím</label>
-            <input type="text" id="modalDriverTripEndLoc" class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs">
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-semibold text-slate-400 mb-1">Kezdő km</label>
-            <input type="number" id="modalDriverTripStartKm" oninput="window.calculateDriverModalTripKm()" class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs font-bold text-orange-300">
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-400 mb-1">Záró km</label>
-            <input type="number" id="modalDriverTripEndKm" oninput="window.calculateDriverModalTripKm()" class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs font-bold text-orange-300">
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2 items-center">
-          <div>
-            <label class="block text-xs font-semibold text-slate-400 mb-1">Megtett km</label>
-            <input type="text" id="modalDriverTripCalcKm" readonly class="w-full bg-slate-950 border border-slate-800 font-bold text-orange-400 p-2.5 rounded-xl text-xs" value="0 km">
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-400 mb-1">Utasok száma</label>
-            <input type="number" id="modalDriverTripPassengers" min="0" class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs">
-          </div>
-        </div>
-      </div>
-
-      <div class="pt-2 flex gap-2">
-        <button type="button" onclick="window.saveDriverTripModalEdit()" class="flex-1 bg-gradient-to-r from-orange-500 to-red-600 hover:opacity-90 text-white py-2.5 rounded-xl font-bold text-xs shadow-lg transition">
+<button class="text-slate-400 hover:text-white text-lg" onclick="window.closeDriverEditTripModal()" type="button">✕</button>
+</div>
+<input id="driverEditingTripId" type="hidden"/>
+<div class="space-y-3">
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Út Típusa</label>
+<select class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs" id="modalDriverTripType">
+<option value="work">Munkaút</option>
+<option value="private">Privát út</option>
+</select>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Indulási Cím</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs" id="modalDriverTripStartLoc" type="text"/>
+</div>
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Érkezési Cím</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs" id="modalDriverTripEndLoc" type="text"/>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-2">
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Kezdő km</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs font-bold text-orange-300" id="modalDriverTripStartKm" oninput="window.calculateDriverModalTripKm()" type="number"/>
+</div>
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Záró km</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs font-bold text-orange-300" id="modalDriverTripEndKm" oninput="window.calculateDriverModalTripKm()" type="number"/>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-2 items-center">
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Megtett km</label>
+<input class="w-full bg-slate-950 border border-slate-800 font-bold text-orange-400 p-2.5 rounded-xl text-xs" id="modalDriverTripCalcKm" readonly="" type="text" value="0 km"/>
+</div>
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Utasok száma</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs" id="modalDriverTripPassengers" min="0" type="number"/>
+</div>
+</div>
+</div>
+<div class="pt-2 flex gap-2">
+<button class="flex-1 bg-gradient-to-r from-orange-500 to-red-600 hover:opacity-90 text-white py-2.5 rounded-xl font-bold text-xs shadow-lg transition" onclick="window.saveDriverTripModalEdit()" type="button">
           💾 Módosítás Mentése
         </button>
-        <button type="button" onclick="window.closeDriverEditTripModal()" class="bg-slate-800 text-slate-400 hover:bg-slate-700 px-4 py-2.5 rounded-xl text-xs font-semibold">
+<button class="bg-slate-800 text-slate-400 hover:bg-slate-700 px-4 py-2.5 rounded-xl text-xs font-semibold" onclick="window.closeDriverEditTripModal()" type="button">
           Mégse
         </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- SOS RIASZTÁS MODAL -->
-<div id="sosModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-  <div class="bg-slate-900 border border-red-500/50 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl text-slate-100">
-    
-    <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-      <h3 class="text-lg font-bold text-red-500 flex items-center gap-2">
-        <span>🚨</span> SOS Segítségkérés
-      </h3>
-      <button onclick="window.closeSosModal()" class="text-slate-400 hover:text-white font-bold text-xl px-2">&times;</button>
-    </div>
-
-    <p class="text-xs text-slate-400">Válaszd ki a probléma típusát és küldd el a riasztást. A rendszer rögzíti a GPS helyzetedet is!</p>
-
-    <!-- Probléma típusa -->
-    <div class="space-y-1">
-      <label class="block text-xs font-semibold text-slate-300">Probléma oka:</label>
-      <select id="sosReason" class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-3 text-sm focus:ring-2 focus:ring-red-500 outline-none">
-        <option value="Műszaki hiba / Defekt">🛠️ Műszaki hiba / Defekt</option>
-        <option value="Baleset">🚗 Baleset</option>
-        <option value="Üzemanyag / Lerobbanás">⛽ Üzemanyag / Lerobbanás</option>
-        <option value="Egyéb vészhelyzet">⚠️ Egyéb vészhelyzet</option>
-      </select>
-    </div>
-
-    <!-- Megjegyzés -->
-    <div class="space-y-1">
-      <label class="block text-xs font-semibold text-slate-300">Rövid megjegyzés (opcionális):</label>
-      <textarea id="sosNote" rows="2" placeholder="Pl. Jobb hátsó kerék durrdefekt, M0-s 12-es km..." class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-3 text-sm focus:ring-2 focus:ring-red-500 outline-none"></textarea>
-    </div>
-
-    <!-- Küldés gombok -->
-    <div class="pt-2 space-y-2">
-      <button onclick="window.submitSOS('viber')" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl text-sm shadow-lg flex items-center justify-center gap-2 transition">
-        <span>💬</span> Küldés Viberen + Mentés
-      </button>
-
-      <button onclick="window.submitSOS('sms')" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl text-sm shadow-lg flex items-center justify-center gap-2 transition">
-        <span>📱</span> Küldés SMS-ben + Mentés
-      </button>
-    </div>
-
-  </div>
 </div>
-  <!-- ========================================== -->
-  <!-- SZERVÍZ RÖGZÍTŐ / SZERKESZTŐ MODAL         -->
-  <!-- ========================================== -->
-  <div id="serviceModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl text-slate-100">
-      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-        <h5 class="text-base font-bold text-amber-400" id="serviceModalTitle">Szervíz Bejegyzés</h5>
-        <button type="button" class="text-slate-400 hover:text-white font-bold text-xl px-2" onclick="window.closeServiceModalCustom()">&times;</button>
-      </div>
-      <form id="serviceForm" class="space-y-3">
-        <input type="hidden" id="serviceId">
-        <div>
-          <label class="block text-xs font-semibold text-slate-400 mb-1">Rendszám</label>
-          <select class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs" id="serviceCar" required></select>
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-400 mb-1">Dátum</label>
-          <input type="date" class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs" id="serviceDate" required>
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-400 mb-1">Szervíz típusa / Megnevezés</label>
-          <input type="text" class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs" id="serviceType" placeholder="Pl. Olajcsere, Fékbetét csere" required>
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-400 mb-1">Kilométeróra állása</label>
-          <input type="number" class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs font-mono" id="serviceKm" placeholder="150000" required>
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-400 mb-1">Költség (Ft)</label>
-          <input type="number" class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs font-mono" id="serviceCost" placeholder="45000">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-400 mb-1">Megjegyzés / Részletek</label>
-          <textarea class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs" id="serviceNotes" rows="2"></textarea>
-        </div>
-        <div class="flex gap-2 pt-2">
-          <button type="button" onclick="window.closeServiceModalCustom()" class="w-1/2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl text-xs transition">Mégse</button>
-          <button type="submit" class="w-1/2 bg-amber-600 hover:bg-amber-500 text-white font-bold py-2.5 rounded-xl text-xs transition">Mentés</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- ========================================== -->
-  <!-- SZERVÍZTÖRTÉNET MEGTEKINTŐ MODAL           -->
-  <!-- ========================================== -->
-  <div id="serviceHistoryModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-2xl w-full space-y-4 shadow-2xl text-slate-100 max-h-[90vh] flex flex-col">
-      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-        <h5 class="text-base font-bold text-sky-400" id="historyCarTitle">Szervíztörténet</h5>
-        <button type="button" class="text-slate-400 hover:text-white font-bold text-xl px-2" onclick="window.closeServiceHistoryModalCustom()">&times;</button>
-      </div>
-      <div class="space-y-3 overflow-y-auto pr-1">
-        <div class="flex justify-between items-center mb-3">
-          <button type="button" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3 py-2 rounded-xl transition flex items-center gap-1" onclick="downloadServiceHistoryPDF()">
+</div>
+</div>
+<!-- SOS RIASZTÁS MODAL -->
+<div class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" id="sosModal">
+<div class="bg-slate-900 border border-red-500/50 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl text-slate-100">
+<div class="flex justify-between items-center border-b border-slate-800 pb-3">
+<h3 class="text-lg font-bold text-red-500 flex items-center gap-2">
+<span>🚨</span> SOS Segítségkérés
+      </h3>
+<button class="text-slate-400 hover:text-white font-bold text-xl px-2" onclick="window.closeSosModal()">×</button>
+</div>
+<p class="text-xs text-slate-400">Válaszd ki a probléma típusát és küldd el a riasztást. A rendszer rögzíti a GPS helyzetedet is!</p>
+<!-- Probléma típusa -->
+<div class="space-y-1">
+<label class="block text-xs font-semibold text-slate-300">Probléma oka:</label>
+<select class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-3 text-sm focus:ring-2 focus:ring-red-500 outline-none" id="sosReason">
+<option value="Műszaki hiba / Defekt">🛠️ Műszaki hiba / Defekt</option>
+<option value="Baleset">🚗 Baleset</option>
+<option value="Üzemanyag / Lerobbanás">⛽ Üzemanyag / Lerobbanás</option>
+<option value="Egyéb vészhelyzet">⚠️ Egyéb vészhelyzet</option>
+</select>
+</div>
+<!-- Megjegyzés -->
+<div class="space-y-1">
+<label class="block text-xs font-semibold text-slate-300">Rövid megjegyzés (opcionális):</label>
+<textarea class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-3 text-sm focus:ring-2 focus:ring-red-500 outline-none" id="sosNote" placeholder="Pl. Jobb hátsó kerék durrdefekt, M0-s 12-es km..." rows="2"></textarea>
+</div>
+<!-- Küldés gombok -->
+<div class="pt-2 space-y-2">
+<button class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl text-sm shadow-lg flex items-center justify-center gap-2 transition" onclick="window.submitSOS('viber')">
+<span>💬</span> Küldés Viberen + Mentés
+      </button>
+<button class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl text-sm shadow-lg flex items-center justify-center gap-2 transition" onclick="window.submitSOS('sms')">
+<span>📱</span> Küldés SMS-ben + Mentés
+      </button>
+</div>
+</div>
+</div>
+<!-- ========================================== -->
+<!-- SZERVÍZ RÖGZÍTŐ / SZERKESZTŐ MODAL         -->
+<!-- ========================================== -->
+<div class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" id="serviceModal">
+<div class="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl text-slate-100">
+<div class="flex justify-between items-center border-b border-slate-800 pb-3">
+<h5 class="text-base font-bold text-amber-400" id="serviceModalTitle">Szervíz Bejegyzés</h5>
+<button class="text-slate-400 hover:text-white font-bold text-xl px-2" onclick="window.closeServiceModalCustom()" type="button">×</button>
+</div>
+<form class="space-y-3" id="serviceForm">
+<input id="serviceId" type="hidden"/>
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Rendszám</label>
+<select class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs" id="serviceCar" required=""></select>
+</div>
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Dátum</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs" id="serviceDate" required="" type="date"/>
+</div>
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Szervíz típusa / Megnevezés</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs" id="serviceType" placeholder="Pl. Olajcsere, Fékbetét csere" required="" type="text"/>
+</div>
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Kilométeróra állása</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs font-mono" id="serviceKm" placeholder="150000" required="" type="number"/>
+</div>
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Költség (Ft)</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs font-mono" id="serviceCost" placeholder="45000" type="number"/>
+</div>
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Megjegyzés / Részletek</label>
+<textarea class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs" id="serviceNotes" rows="2"></textarea>
+</div>
+<div class="flex gap-2 pt-2">
+<button class="w-1/2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl text-xs transition" onclick="window.closeServiceModalCustom()" type="button">Mégse</button>
+<button class="w-1/2 bg-amber-600 hover:bg-amber-500 text-white font-bold py-2.5 rounded-xl text-xs transition" type="submit">Mentés</button>
+</div>
+</form>
+</div>
+</div>
+<!-- ========================================== -->
+<!-- SZERVÍZTÖRTÉNET MEGTEKINTŐ MODAL           -->
+<!-- ========================================== -->
+<div class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" id="serviceHistoryModal">
+<div class="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-2xl w-full space-y-4 shadow-2xl text-slate-100 max-h-[90vh] flex flex-col">
+<div class="flex justify-between items-center border-b border-slate-800 pb-3">
+<h5 class="text-base font-bold text-sky-400" id="historyCarTitle">Szervíztörténet</h5>
+<button class="text-slate-400 hover:text-white font-bold text-xl px-2" onclick="window.closeServiceHistoryModalCustom()" type="button">×</button>
+</div>
+<div class="space-y-3 overflow-y-auto pr-1">
+<div class="flex justify-between items-center mb-3">
+<button class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3 py-2 rounded-xl transition flex items-center gap-1" onclick="downloadServiceHistoryPDF()" type="button">
             📄 Letöltés PDF-ben
           </button>
-          <button type="button" class="bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs px-3 py-2 rounded-xl transition" onclick="openServiceModal()">
+<button class="bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs px-3 py-2 rounded-xl transition" onclick="openServiceModal()" type="button">
             + Új szervíz rögzítése
           </button>
-        </div>
-        <div class="overflow-x-auto rounded-xl border border-slate-800">
-          <table class="w-full text-left text-xs">
-            <thead class="bg-slate-950 text-slate-400 border-b border-slate-800">
-              <tr>
-                <th class="p-2.5">Dátum</th>
-                <th class="p-2.5">Típus / Leírás</th>
-                <th class="p-2.5">Km állás</th>
-                <th class="p-2.5">Költség</th>
-                <th class="p-2.5 text-center">Műveletek</th>
-              </tr>
-            </thead>
-            <tbody id="serviceHistoryTableBody" class="divide-y divide-slate-800">
-              <!-- Ide töltődik be a történet -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-  <!-- ÚJ MEGBÍZÁSMODAL (ADMIN) -->
-<div id="assignmentModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-  <div class="bg-slate-900 border-2 border-emerald-500/50 rounded-2xl max-w-xl w-full p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-    <div class="border-b border-slate-800 pb-2 flex justify-between items-center">
-      <h3 class="text-base font-bold text-emerald-400 flex items-center gap-2">
-        <span>📋</span> Új Megbízás Rögzítése
+</div>
+<div class="overflow-x-auto rounded-xl border border-slate-800">
+<table class="w-full text-left text-xs">
+<thead class="bg-slate-950 text-slate-400 border-b border-slate-800">
+<tr>
+<th class="p-2.5">Dátum</th>
+<th class="p-2.5">Típus / Leírás</th>
+<th class="p-2.5">Km állás</th>
+<th class="p-2.5">Költség</th>
+<th class="p-2.5 text-center">Műveletek</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-800" id="serviceHistoryTableBody">
+<!-- Ide töltődik be a történet -->
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+<!-- ÚJ MEGBÍZÁSMODAL (ADMIN) -->
+<div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" id="assignmentModal">
+<div class="bg-slate-900 border-2 border-emerald-500/50 rounded-2xl max-w-xl w-full p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+<div class="border-b border-slate-800 pb-2 flex justify-between items-center">
+<h3 class="text-base font-bold text-emerald-400 flex items-center gap-2">
+<span>📋</span> Új Megbízás Rögzítése
       </h3>
-      <button type="button" onclick="window.closeAssignmentModal()" class="text-slate-400 hover:text-white text-lg">✕</button>
-    </div>
-
-    <form id="assignmentForm" onsubmit="window.saveAssignment(event)" class="space-y-4">
-      <input type="hidden" id="assignmentId">
-
-      <!-- 1. Sofőr & Autó -->
-      <div class="grid grid-cols-2 gap-2">
-        <div>
-          <label class="block text-xs font-semibold text-slate-400 mb-1">Sofőr kiválasztása *</label>
-          <select id="assignDriverSelect" required class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs"></select>
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-400 mb-1">Jármű kiválasztása</label>
-          <select id="assignCarSelect" class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs"></select>
-        </div>
-      </div>
-
-      <!-- 2. Megbízók & Elérhetőségek (Dinamikus + gombbal) -->
-      <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
-        <div class="flex justify-between items-center">
-          <label class="text-xs font-bold text-emerald-300">📞 Megbízó(k) & Elérhetőségek</label>
-          <button type="button" onclick="window.addContactRow()" class="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded-lg font-bold hover:bg-emerald-900">+ Megbízó hozzáadása</button>
-        </div>
-        <div id="contactsContainer" class="space-y-2"></div>
-      </div>
-
-      <!-- 3. Útvonal & Megállók (Dinamikus + gombbal) -->
-      <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
-        <div class="flex justify-between items-center">
-          <label class="text-xs font-bold text-emerald-300">📍 Útvonal & Állomások</label>
-          <button type="button" onclick="window.addRouteRow()" class="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded-lg font-bold hover:bg-emerald-900">+ Megálló hozzáadása</button>
-        </div>
-        <div id="routesContainer" class="space-y-2"></div>
-      </div>
-
-      <!-- 4. Időpontok & Kiküldés ütemezése -->
-      <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-3">
-        <div class="text-xs font-bold text-amber-300">⏱️ Munkavégzés Időpontjai</div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-[10px] text-slate-400">Kiállás / Kezdés *</label>
-            <input type="datetime-local" id="assignStartDateTime" required class="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded-lg text-xs">
-          </div>
-          <div>
-            <label class="block text-[10px] text-slate-400">Visszaindulás / Végzés</label>
-            <input type="datetime-local" id="assignEndDateTime" class="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded-lg text-xs">
-          </div>
-        </div>
-
-        <div class="pt-2 border-t border-slate-800">
-          <label class="block text-xs font-bold text-sky-400 mb-1">📲 Mikor kapja meg a sofőr a megbízást? *</label>
-          <input type="datetime-local" id="assignSendDateTime" required class="w-full bg-slate-800 border border-sky-600/50 text-white p-2 rounded-lg text-xs font-bold">
-          <p class="text-[10px] text-slate-400 mt-1">A megbízás csak ezen időpont után fog megjelenni a sofőr felületén.</p>
-        </div>
-      </div>
-
-      <!-- 5. Megjegyzések -->
-      <div>
-        <label class="block text-xs font-semibold text-slate-400 mb-1">Egyéb megjegyzések / Utasítások</label>
-        <textarea id="assignNotes" rows="2" placeholder="Pl. Parkolóbérlet a kesztyűtartóban, fizetés a helyszínen..." class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs"></textarea>
-      </div>
-
-      <div class="pt-2 flex gap-2">
-        <button type="submit" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs shadow-lg transition">
-          💾 Megbízás Mentése & Ütemezése
+<button class="text-slate-400 hover:text-white text-lg" onclick="window.closeAssignmentModal()" type="button">✕</button>
+</div>
+<form class="space-y-4" id="assignmentForm" onsubmit="window.saveAssignment(event)">
+<input id="assignmentId" type="hidden"/>
+<!-- 1. Sofőr & Autó -->
+<div class="grid grid-cols-2 gap-2">
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Sofőr kiválasztása *</label>
+<select class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs" id="assignDriverSelect" required=""></select>
+</div>
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Jármű kiválasztása</label>
+<select class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs" id="assignCarSelect"></select>
+</div>
+</div>
+<!-- 2. Megbízók & Elérhetőségek (Dinamikus + gombbal) -->
+<div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+<div class="flex justify-between items-center">
+<label class="text-xs font-bold text-emerald-300">📞 Megbízó(k) &amp; Elérhetőségek</label>
+<button class="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded-lg font-bold hover:bg-emerald-900" onclick="window.addContactRow()" type="button">+ Megbízó hozzáadása</button>
+</div>
+<div class="space-y-2" id="contactsContainer"></div>
+</div>
+<!-- 3. Útvonal & Megállók (Dinamikus + gombbal) -->
+<div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+<div class="flex justify-between items-center">
+<label class="text-xs font-bold text-emerald-300">📍 Útvonal &amp; Állomások</label>
+<button class="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded-lg font-bold hover:bg-emerald-900" onclick="window.addRouteRow()" type="button">+ Megálló hozzáadása</button>
+</div>
+<div class="space-y-2" id="routesContainer"></div>
+</div>
+<!-- 4. Időpontok & Kiküldés ütemezése -->
+<div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-3">
+<div class="text-xs font-bold text-amber-300">⏱️ Munkavégzés Időpontjai</div>
+<div class="grid grid-cols-2 gap-2">
+<div>
+<label class="block text-[10px] text-slate-400">Kiállás / Kezdés *</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded-lg text-xs" id="assignStartDateTime" required="" type="datetime-local"/>
+</div>
+<div>
+<label class="block text-[10px] text-slate-400">Visszaindulás / Végzés</label>
+<input class="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded-lg text-xs" id="assignEndDateTime" type="datetime-local"/>
+</div>
+</div>
+<div class="pt-2 border-t border-slate-800">
+<label class="block text-xs font-bold text-sky-400 mb-1">📲 Mikor kapja meg a sofőr a megbízást? *</label>
+<input class="w-full bg-slate-800 border border-sky-600/50 text-white p-2 rounded-lg text-xs font-bold" id="assignSendDateTime" required="" type="datetime-local"/>
+<p class="text-[10px] text-slate-400 mt-1">A megbízás csak ezen időpont után fog megjelenni a sofőr felületén.</p>
+</div>
+</div>
+<!-- 5. Megjegyzések -->
+<div>
+<label class="block text-xs font-semibold text-slate-400 mb-1">Egyéb megjegyzések / Utasítások</label>
+<textarea class="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl text-xs" id="assignNotes" placeholder="Pl. Parkolóbérlet a kesztyűtartóban, fizetés a helyszínen..." rows="2"></textarea>
+</div>
+<div class="pt-2 flex gap-2">
+<button class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs shadow-lg transition" type="submit">
+          💾 Megbízás Mentése &amp; Ütemezése
         </button>
-        <button type="button" onclick="window.closeAssignmentModal()" class="bg-slate-800 text-slate-400 hover:bg-slate-700 px-4 py-2.5 rounded-xl text-xs font-semibold">
+<button class="bg-slate-800 text-slate-400 hover:bg-slate-700 px-4 py-2.5 rounded-xl text-xs font-semibold" onclick="window.closeAssignmentModal()" type="button">
           Mégse
         </button>
-      </div>
-    </form>
-  </div>
+</div>
+</form>
+</div>
 </div>
 </body>
 </html>
