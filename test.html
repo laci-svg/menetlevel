@@ -3452,10 +3452,7 @@ window.saveCarEditModal = async function() {
       }
     };
 
-    }
-}; // <-- 3453. sor (ez a felette lévő függvény lezárása)
-
-// === INNENTŐL ILLESZD BE (új 3454. sortól) ===
+// === ZIP letöltés funkció ===
 window.downloadAllOverlimitPDFsZip = async function() {
   if (typeof JSZip === 'undefined') {
     return alert("A ZIP készítő könyvtár nem töltődött be. Kérlek frissítsd az oldalt!");
