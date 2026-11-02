@@ -1014,6 +1014,20 @@ window.changeClosedShiftsMonth = function(direction) {
       return email.split('@')[0];
     }
 
+    // HTML-biztonságos szövegkiírás a dinamikusan létrehozott kártyasorokhoz.
+    // A hiánya korábban megszakította a renderShiftHoursCard() futását.
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, function (char) {
+        return ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;'
+        })[char];
+      });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
