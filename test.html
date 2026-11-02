@@ -1280,8 +1280,19 @@ window.changeClosedShiftsMonth = function(direction) {
     let selectedShiftHoursMonthDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     let tempModalVignettes = [];
 
-    let dismissedOverlimits = JSON.parse(localStorage.getItem('dismissedOverlimits') || '[]');
-    let cardStates = JSON.parse(localStorage.getItem('adminCardStates') || '{}');
+    // Sérült vagy régi böngésző-táradat ne állítsa le a teljes modult
+    // még a bejelentkezési eseménykezelő beállítása előtt.
+    function readLocalStorageJSON(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : fallback;
+      } catch (error) {
+        console.warn(`Hibás helyi tárolási adat (${key}), alapérték használata:`, error);
+        return fallback;
+      }
+    }
+    let dismissedOverlimits = readLocalStorageJSON('dismissedOverlimits', []);
+    let cardStates = readLocalStorageJSON('adminCardStates', {});
     let lastWarnedKmValue = null;
 
     function getUsernameFromEmail(email) {
