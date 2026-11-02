@@ -1676,6 +1676,65 @@ window.changeClosedShiftsMonth = function(direction) {
       }).join('');
     }
 
+    '</div>';
+  }).join('');
+} // <-- 1677. sor (ez zárja le a képeden lévő függvényt)
+
+// === INNENTŐL ILLESZD BE (1. LÉPÉS) ===
+let currentAnnouncementId = null;
+
+function renderDriverAnnouncements() {
+  if (isAdminMode || !currentUser) return;
+
+  const userEmail = currentUser.email || '';
+  const myUid = currentUser.uid;
+
+  // Megkeressük az első olyan közleményt, amit még NEM olvasott el ez a sofőr
+  const unreadAnnouncement = allAnnouncements.find(a => {
+    const isTargeted = (a.targetDrivers || []).includes('all') || (a.targetDrivers || []).includes(myUid);
+    const hasSeen = (a.seenBy || []).includes(myUid);
+    return isTargeted && !hasSeen;
+  });
+
+  const modal = document.getElementById('driverAnnouncementModal');
+  if (!modal) return;
+
+  if (unreadAnnouncement) {
+    currentAnnouncementId = unreadAnnouncement.id;
+    document.getElementById('modalAnnouncementTitle').textContent = unreadAnnouncement.title || 'Központi Üzenet';
+    document.getElementById('modalAnnouncementDate').textContent = unreadAnnouncement.createdAt || '';
+    document.getElementById('modalAnnouncementMessage').textContent = unreadAnnouncement.message || unreadAnnouncement.content || '';
+    
+    modal.classList.remove('hidden');
+  } else {
+    modal.classList.add('hidden');
+    currentAnnouncementId = null;
+  }
+}
+
+// "Láttam és megértettem" gomb eseménykezelője
+document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click', async () => {
+  if (!currentAnnouncementId || !currentUser) return;
+
+  const announcement = allAnnouncements.find(a => a.id === currentAnnouncementId);
+  if (!announcement) return;
+
+  const currentSeenBy = announcement.seenBy || [];
+  if (!currentSeenBy.includes(currentUser.uid)) {
+    currentSeenBy.push(currentUser.uid);
+  }
+
+  try {
+    await updateDoc(doc(db, "announcements", currentAnnouncementId), {
+      seenBy: currentSeenBy
+    });
+    document.getElementById('driverAnnouncementModal').classList.add('hidden');
+    renderDriverAnnouncements();
+  } catch (err) {
+    console.error("Hiba az elolvasás igazolásakor:", err);
+  }
+});
+
     window.deleteAnnouncement = async function(id) {
       if (confirm("Biztosan törlöd ezt az üzenetet az admin felületről és az archívumokból?")) {
         await deleteDoc(doc(db, "announcements", id));
