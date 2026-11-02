@@ -996,6 +996,9 @@ window.changeClosedShiftsMonth = function(direction) {
       { id: "edit_trip", label: "✏️ Utak szerkesztése (Km / Típus / Címek)" },
       { id: "delete_trip", label: "🗑️ Utak törlése" },
       { id: "delete_shift", label: "❌ Teljes műszak törlése" },
+      { id: "manage_car_data", label: "🚗 Járműadatok hozzáadása és szerkesztése" },
+      { id: "manage_car_service", label: "🛠️ Autó szervizbe helyezése és visszavétele" },
+      { id: "manage_service_history", label: "📜 Szerviztörténet rögzítése, szerkesztése és törlése" },
       { id: "release_car", label: "🔓 Autó felszabadítása & törlése" },
       { id: "edit_admin_wall_other", label: "✏️ Mások admin üzenőfal bejegyzéseinek szerkesztése" },
       { id: "delete_admin_wall", label: "🗑️ Admin üzenőfal bejegyzések törlése" }
@@ -1228,8 +1231,8 @@ window.changeClosedShiftsMonth = function(direction) {
     function hasActionPermission(actionId) {
       const userEmail = (currentUser?.email || auth.currentUser?.email || '').toLowerCase();
       if (userEmail === MASTER_SUPER_ADMIN_EMAIL.toLowerCase() || currentUserData?.isSuperAdmin === true) return true;
-      if (currentUserData?.role === 'admin' && (!currentUserData.actionPermissions || currentUserData.actionPermissions.length === 0)) return true;
-      return (currentUserData?.actionPermissions || []).includes(actionId);
+      // A kártya láthatósága nem ad műveleti jogot. Hiányzó vagy üres lista esetén nincs külön engedély.
+      return Array.isArray(currentUserData?.actionPermissions) && currentUserData.actionPermissions.includes(actionId);
     }
 
     function isUserInactiveByEmail(email) {
@@ -2245,6 +2248,9 @@ window.changeClosedShiftsMonth = function(direction) {
   if (badge) badge.textContent = sortedCars.length + " autó (" + freeCount + " szabad / " + occupiedCount + " foglalt / " + serviceCount + " szervizben)";
 
   const canRelease = hasActionPermission('release_car');
+  const canManageCarData = hasActionPermission('manage_car_data');
+  const canManageCarService = hasActionPermission('manage_car_service');
+  const canManageServiceHistory = hasActionPermission('manage_service_history');
 
   container.innerHTML = sortedCars.map(car => {
     const isOccupied = !!car.currentDriverUid;
@@ -2271,11 +2277,11 @@ window.changeClosedShiftsMonth = function(direction) {
           '<div class="text-[10px] mt-1">' + statusText + '</div>' +
         '</div>' +
         '<div class="flex flex-wrap gap-1 justify-end max-w-[200px]">' +
-          '<button onclick="window.openEditCarModal(\'' + car.id + '\')" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-amber-300 p-1.5 px-2 rounded-lg border border-slate-700 font-bold">✏️ Módosít</button>' +
+          (canManageCarData ? '<button onclick="window.openEditCarModal(\'' + car.id + '\')" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-amber-300 p-1.5 px-2 rounded-lg border border-slate-700 font-bold">✏️ Módosít</button>' : '') +
           '<button onclick="window.openServiceHistory(\'' + car.plateNumber + '\')" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-sky-300 p-1.5 px-2 rounded-lg border border-slate-700 font-bold">📜 Történet</button>' +
-          (!isService ?
+          (canManageCarService ? (!isService ?
             '<button onclick="window.openServiceCarModal(\'' + car.id + '\')" class="text-[10px] bg-amber-950 hover:bg-amber-900 text-amber-200 p-1.5 px-2 rounded-lg border border-amber-800 font-bold">🛠️ Szervizbe</button>' : 
-            '<button onclick="window.returnFromService(\'' + car.id + '\')" class="text-[10px] bg-emerald-950 hover:bg-emerald-900 text-emerald-300 p-1.5 px-2 rounded-lg border border-emerald-800 font-bold">✅ Visszavesz</button>') +
+            '<button onclick="window.returnFromService(\'' + car.id + '\')" class="text-[10px] bg-emerald-950 hover:bg-emerald-900 text-emerald-300 p-1.5 px-2 rounded-lg border border-emerald-800 font-bold">✅ Visszavesz</button>') : '') +
           (isOccupied && canRelease ? '<button onclick="window.forceReleaseCar(\'' + car.id + '\')" class="text-[10px] bg-amber-500/10 text-amber-400 p-1.5 px-2 rounded-lg border border-amber-500/20 font-bold">🔓 Felszabadít</button>' : '') +
           (canRelease ? '<button onclick="window.deleteCar(\'' + car.id + '\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-300 p-1.5 px-2 rounded-lg border border-red-800 font-bold">Törlés</button>' : '') +
         '</div>' +
@@ -2292,6 +2298,7 @@ window.changeClosedShiftsMonth = function(direction) {
 }
 
     window.openServiceCarModal = function(carId) {
+      if (!hasActionPermission('manage_car_service')) return alert('Nincs jogosultságod az autó szervizbe helyezéséhez!');
       const car = allCars.find(c => c.id === carId);
       if (!car) return;
       document.getElementById('serviceCarId').value = carId;
@@ -2307,6 +2314,7 @@ window.changeClosedShiftsMonth = function(direction) {
     };
 
     window.confirmSendToService = async function() {
+      if (!hasActionPermission('manage_car_service')) return alert('Nincs jogosultságod a szervizállapot módosításához!');
       const carId = document.getElementById('serviceCarId').value;
       const date = document.getElementById('serviceModalDate').value;
       const alertDays = Number(document.getElementById('serviceModalAlertDays').value) || 2;
@@ -2333,6 +2341,7 @@ window.changeClosedShiftsMonth = function(direction) {
     };
 
     window.returnFromService = async function(carId) {
+      if (!hasActionPermission('manage_car_service')) return alert('Nincs jogosultságod a szervizállapot módosításához!');
       const car = allCars.find(c => c.id === carId);
       if (!car) return;
 
@@ -2358,6 +2367,7 @@ window.changeClosedShiftsMonth = function(direction) {
     };
 
     window.openEditCarModal = function(carId) {
+      if (!hasActionPermission('manage_car_data')) return alert('Nincs jogosultságod a járműadatok szerkesztéséhez!');
       const car = allCars.find(c => c.id === carId);
       if (!car) return;
 
@@ -2418,6 +2428,7 @@ window.changeClosedShiftsMonth = function(direction) {
       renderModalVignettesList();
     };
 window.saveCarEditModal = async function() {
+  if (!hasActionPermission('manage_car_data')) return alert('Nincs jogosultságod a járműadatok szerkesztéséhez!');
   const carId = document.getElementById('editCarId').value;
   if (!carId) return;
 
@@ -2479,6 +2490,7 @@ window.saveCarEditModal = async function() {
 
     document.getElementById('addCarForm')?.addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (!hasActionPermission('manage_car_data')) return alert('Nincs jogosultságod jármű hozzáadásához!');
       const plateNumber = document.getElementById('carPlateInput').value.trim().toUpperCase();
       const model = document.getElementById('carModelInput').value.trim();
       const startKm = Number(document.getElementById('carStartKmInput').value) || 0;
@@ -3434,7 +3446,7 @@ window.downloadAllOverlimitPDFsZip = async function() {
         }).join('');
 
         const actionCheckboxesHtml = ALL_ACTION_PERMISSIONS.map(act => {
-          const isChecked = (isMaster || (u.actionPermissions === undefined ? true : userActions.includes(act.id))) ? 'checked' : '';
+          const isChecked = (isMaster || (Array.isArray(u.actionPermissions) && userActions.includes(act.id))) ? 'checked' : '';
           const isDisabled = (isMaster || isInactive) ? 'disabled' : '';
           return '<label class="inline-flex items-center gap-1.5 bg-slate-900 px-2 py-1 rounded border border-red-900/40 text-[11px] text-red-200 cursor-pointer">' +
             '<input type="checkbox" ' + isChecked + ' ' + isDisabled + ' onchange="window.toggleUserActionPermission(\'' + u.id + '\', \'' + act.id + '\', this.checked)" class="rounded bg-slate-800 border-slate-700 text-red-500">' +
@@ -3506,7 +3518,7 @@ window.downloadAllOverlimitPDFsZip = async function() {
       await updateDoc(doc(db, "users", userId), {
         role: makeAdmin ? 'admin' : 'sofor',
         adminCards: makeAdmin ? (u.adminCards || ALL_ADMIN_CARDS.map(c => c.id)) : [],
-        actionPermissions: makeAdmin ? (u.actionPermissions || ALL_ACTION_PERMISSIONS.map(a => a.id)) : []
+        actionPermissions: makeAdmin ? (Array.isArray(u.actionPermissions) ? u.actionPermissions : []) : []
       });
     };
 
@@ -3543,9 +3555,7 @@ window.downloadAllOverlimitPDFsZip = async function() {
     window.toggleUserActionPermission = async function(userId, actionId, isChecked) {
       const u = allUsers.find(x => x.id === userId);
       if (!u) return;
-      const currentActions = u.actionPermissions === undefined
-        ? ALL_ACTION_PERMISSIONS.map(a => a.id)
-        : [...(u.actionPermissions || [])];
+      const currentActions = Array.isArray(u.actionPermissions) ? [...u.actionPermissions] : [];
       const nextActions = isChecked
         ? [...new Set([...currentActions, actionId])]
         : currentActions.filter(id => id !== actionId);
@@ -3970,11 +3980,32 @@ if (document.readyState === 'loading') {
     // ==========================================
     // 🛠️ SZERVÍZTÖRTÉNET LOGIKA (Mentés, Szerkesztés, PDF)
     // ==========================================
-    window.serviceData = JSON.parse(localStorage.getItem('serviceHistoryData')) || [];
+    try {
+      window.serviceData = JSON.parse(localStorage.getItem('serviceHistoryData') || '[]');
+      if (!Array.isArray(window.serviceData)) window.serviceData = [];
+    } catch (e) {
+      console.warn('A helyi szervizelőzmény nem olvasható, a Firestore-adatok továbbra is elérhetők.', e);
+      window.serviceData = [];
+    }
     let currentHistoryCar = '';
+
+    // A szervizbe visszavételkor a bejegyzések a cars/{id}.serviceHistory mezőbe kerülnek.
+    // A régebbi, helyi tárolású bejegyzéseket is megőrizzük és megjelenítjük.
+    function getServiceHistoryForCar(plateNumber) {
+      const car = (allCars || []).find(c => c.plateNumber === plateNumber);
+      const firestoreItems = (car && Array.isArray(car.serviceHistory) ? car.serviceHistory : []).map((item, index) => ({
+        ...item, car: plateNumber, _source: 'firestore', _index: index,
+        type: item.type || item.workType || 'Szerviz',
+        notes: item.notes || item.location || '',
+        km: Number(item.km) || 0
+      }));
+      const localItems = (window.serviceData || []).filter(item => item.car === plateNumber).map(item => ({ ...item, _source: 'local' }));
+      return [...firestoreItems, ...localItems].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+    }
 
     // Régi elemek szerkesztése a kártyán
     window.editLegacyService = function(plateNumber, index) {
+      if (!hasActionPermission('manage_service_history')) return alert('Nincs jogosultságod a szerviztörténet szerkesztéséhez!');
       const car = (allCars || []).find(c => c.plateNumber === plateNumber);
       if (!car || !car.serviceHistory || !car.serviceHistory[index]) return;
 
@@ -4004,17 +4035,21 @@ if (document.readyState === 'loading') {
     };
 
     // Régi elemek törlése a kártyán
-    window.deleteLegacyService = function(plateNumber, index) {
-      if (confirm('Biztosan törölni szeretnéd ezt a szervíz bejegyzést?')) {
-        const car = (allCars || []).find(c => c.plateNumber === plateNumber);
-        if (car && car.serviceHistory) {
-          car.serviceHistory.splice(index, 1);
-          if (typeof renderAdminCars === 'function') renderAdminCars();
-        }
-      }
+    window.deleteLegacyService = async function(plateNumber, index) {
+      if (!hasActionPermission('manage_service_history')) return alert('Nincs jogosultságod a szerviztörténet törléséhez!');
+      if (!confirm('Biztosan törölni szeretnéd ezt a szervizbejegyzést?')) return;
+      const car = (allCars || []).find(c => c.plateNumber === plateNumber);
+      if (!car || !Array.isArray(car.serviceHistory) || !car.serviceHistory[index]) return;
+      const nextHistory = [...car.serviceHistory];
+      nextHistory.splice(index, 1);
+      await updateDoc(doc(db, 'cars', car.id), { serviceHistory: nextHistory });
+      car.serviceHistory = nextHistory;
+      if (typeof renderAdminCars === 'function') renderAdminCars();
+      if (currentHistoryCar === plateNumber) window.openServiceHistory(plateNumber);
     };
     
     window.openServiceModal = function(serviceId = null) {
+      if (!hasActionPermission('manage_service_history')) return alert('Nincs jogosultságod a szerviztörténet módosításához!');
       const form = document.getElementById('serviceForm');
       if (form) form.reset();
       
@@ -4056,73 +4091,88 @@ if (document.readyState === 'loading') {
       if (modal) modal.classList.add('hidden');
     };
 
-    document.getElementById('serviceForm')?.addEventListener('submit', function (e) {
+    document.getElementById('serviceForm')?.addEventListener('submit', async function (e) {
       e.preventDefault();
+      if (!hasActionPermission('manage_service_history')) return alert('Nincs jogosultságod a szerviztörténet módosításához!');
 
       const id = document.getElementById('serviceId').value || 'srv_' + Date.now();
+      const plateNumber = document.getElementById('serviceCar').value;
       const serviceEntry = {
         id: id,
-        car: document.getElementById('serviceCar').value,
+        car: plateNumber,
         date: document.getElementById('serviceDate').value,
         type: document.getElementById('serviceType').value,
-        km: Number(document.getElementById('serviceKm').value),
+        workType: document.getElementById('serviceType').value,
+        km: Number(document.getElementById('serviceKm').value) || 0,
         cost: Number(document.getElementById('serviceCost').value) || 0,
-        notes: document.getElementById('serviceNotes').value
+        notes: document.getElementById('serviceNotes').value,
+        location: document.getElementById('serviceNotes').value
       };
+      const car = (allCars || []).find(c => c.plateNumber === plateNumber);
+      if (!car) return alert('A kiválasztott autó nem található.');
 
-      const existingIndex = window.serviceData.findIndex(s => s.id === id);
-      if (existingIndex > -1) {
-        window.serviceData[existingIndex] = serviceEntry;
+      if (id.startsWith('legacy_')) {
+        const index = Number(id.slice(7));
+        const nextHistory = [...(car.serviceHistory || [])];
+        if (!Number.isInteger(index) || !nextHistory[index]) return alert('A szerkesztendő szervizbejegyzés már nem található.');
+        nextHistory[index] = { ...nextHistory[index], date: serviceEntry.date, workType: serviceEntry.workType, type: serviceEntry.type, km: serviceEntry.km, cost: serviceEntry.cost, notes: serviceEntry.notes, location: serviceEntry.location };
+        await updateDoc(doc(db, 'cars', car.id), { serviceHistory: nextHistory });
+        car.serviceHistory = nextHistory;
       } else {
-        window.serviceData.push(serviceEntry);
+        const nextHistory = [...(car.serviceHistory || [])];
+        const existingIndex = nextHistory.findIndex(item => item.id === id);
+        if (existingIndex >= 0) nextHistory[existingIndex] = serviceEntry;
+        else nextHistory.push(serviceEntry);
+        await updateDoc(doc(db, 'cars', car.id), { serviceHistory: nextHistory });
+        car.serviceHistory = nextHistory;
+        window.serviceData = (window.serviceData || []).filter(item => item.id !== id);
+        localStorage.setItem('serviceHistoryData', JSON.stringify(window.serviceData));
       }
-
-      localStorage.setItem('serviceHistoryData', JSON.stringify(window.serviceData));
 
       window.closeServiceModalCustom();
-
-      if (currentHistoryCar) {
-        window.openServiceHistory(currentHistoryCar);
-      }
+      if (currentHistoryCar) window.openServiceHistory(currentHistoryCar);
+      if (typeof renderAdminCars === 'function') renderAdminCars();
     });
 
     window.openServiceHistory = function(carLicensePlate) {
       currentHistoryCar = carLicensePlate;
       const titleEl = document.getElementById('historyCarTitle');
-      if (titleEl) titleEl.textContent = `${carLicensePlate} - Szervíztörténet`;
-      
+      if (titleEl) titleEl.textContent = `${carLicensePlate} - Szerviztörténet`;
+
       const tbody = document.getElementById('serviceHistoryTableBody');
       if (!tbody) return;
       tbody.innerHTML = '';
-
-      const history = window.serviceData
-        .filter(s => s.car === carLicensePlate)
-        .sort((a, b) => new Date(b.date) - new Date(a.date));
+      const history = getServiceHistoryForCar(carLicensePlate);
+      const canEditHistory = hasActionPermission('manage_service_history');
 
       if (history.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="p-3 text-center text-slate-500">Nincs rögzített szervízelőzmény ennél az autónál.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="p-3 text-center text-slate-500">Nincs rögzített szervizelőzmény ennél az autónál.</td></tr>';
       } else {
         history.forEach(item => {
           const tr = document.createElement('tr');
           tr.className = 'border-b border-slate-800 hover:bg-slate-800/50';
+          const description = item.type || item.workType || 'Szerviz';
+          const kmText = Number(item.km) > 0 ? Number(item.km).toLocaleString('hu-HU') + ' km' : '—';
+          const costText = Number(item.cost) > 0 ? Number(item.cost).toLocaleString('hu-HU') + ' Ft' : '-';
+          let actions = '';
+          if (canEditHistory) {
+            actions = item._source === 'firestore'
+              ? '<button class="bg-slate-800 hover:bg-slate-700 text-amber-300 p-1 px-2 rounded border border-slate-700 text-xs font-bold mr-1" onclick="window.editLegacyService(\'' + carLicensePlate + '\', ' + item._index + ')">✏️</button><button class="bg-red-900/40 hover:bg-red-800 text-red-300 p-1 px-2 rounded border border-red-800 text-xs font-bold" onclick="window.deleteLegacyService(\'' + carLicensePlate + '\', ' + item._index + ')">🗑️</button>'
+              : '<button class="bg-slate-800 hover:bg-slate-700 text-amber-300 p-1 px-2 rounded border border-slate-700 text-xs font-bold mr-1" onclick="window.openServiceModal(\'' + item.id + '\')">✏️</button><button class="bg-red-900/40 hover:bg-red-800 text-red-300 p-1 px-2 rounded border border-red-800 text-xs font-bold" onclick="window.deleteService(\'' + item.id + '\')">🗑️</button>';
+          }
           tr.innerHTML = `
-            <td class="p-2.5 font-mono text-slate-300">${item.date}</td>
-            <td class="p-2.5"><strong>${item.type}</strong><br><small class="text-slate-400">${item.notes || ''}</small></td>
-            <td class="p-2.5 font-mono font-bold text-orange-400">${item.km.toLocaleString()} km</td>
-            <td class="p-2.5 font-mono">${item.cost ? item.cost.toLocaleString() + ' Ft' : '-'}</td>
-            <td class="p-2.5 text-center">
-              <button class="bg-slate-800 hover:bg-slate-700 text-amber-300 p-1 px-2 rounded border border-slate-700 text-xs font-bold mr-1" onclick="window.openServiceModal('${item.id}')">
-                ✏️
-              </button>
-              <button class="bg-red-900/40 hover:bg-red-800 text-red-300 p-1 px-2 rounded border border-red-800 text-xs font-bold" onclick="window.deleteService('${item.id}')">
-                🗑️
-              </button>
-            </td>
+            <td class="p-2.5 font-mono text-slate-300">${item.date || ''}</td>
+            <td class="p-2.5"><strong>${description}</strong><br><small class="text-slate-400">${item.notes || item.location || ''}</small></td>
+            <td class="p-2.5 font-mono font-bold text-orange-400">${kmText}</td>
+            <td class="p-2.5 font-mono">${costText}</td>
+            <td class="p-2.5 text-center">${actions}</td>
           `;
           tbody.appendChild(tr);
         });
       }
 
+      const addButton = document.querySelector('#serviceHistoryModal button[onclick="openServiceModal()"]');
+      if (addButton) addButton.classList.toggle('hidden', !canEditHistory);
       const historyModal = document.getElementById('serviceHistoryModal');
       if (historyModal) {
         historyModal.classList.remove('hidden');
@@ -4136,7 +4186,8 @@ if (document.readyState === 'loading') {
     };
 
     window.deleteService = function(id) {
-      if (confirm('Biztosan törölni szeretnéd ezt a szervíz bejegyzést?')) {
+      if (!hasActionPermission('manage_service_history')) return alert('Nincs jogosultságod a szerviztörténet törléséhez!');
+      if (confirm('Biztosan törölni szeretnéd ezt a szervizbejegyzést?')) {
         window.serviceData = window.serviceData.filter(s => s.id !== id);
         localStorage.setItem('serviceHistoryData', JSON.stringify(window.serviceData));
         window.openServiceHistory(currentHistoryCar);
@@ -4145,34 +4196,34 @@ if (document.readyState === 'loading') {
 
     window.downloadServiceHistoryPDF = function() {
       if (!currentHistoryCar) return;
+      if (!window.jspdf || !window.jspdf.jsPDF) return alert('A PDF-készítő könyvtár nem töltődött be. Frissítsd az oldalt, majd próbáld újra.');
+
+      const history = getServiceHistoryForCar(currentHistoryCar)
+        .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+      if (history.length === 0) return alert('Ehhez az autóhoz nincs letölthető szerviztörténet.');
 
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
-
-      const history = window.serviceData
-        .filter(s => s.car === currentHistoryCar)
-        .sort((a, b) => new Date(a.date) - new Date(b.date));
-
       doc.setFontSize(16);
       doc.text(`Szerviztortenet - ${currentHistoryCar}`, 14, 20);
       doc.setFontSize(10);
       doc.text(`Kiallitva: ${new Date().toLocaleDateString('hu-HU')}`, 14, 28);
 
       const tableRows = history.map(item => [
-        item.date,
-        item.type + (item.notes ? ` (${item.notes})` : ''),
-        `${item.km.toLocaleString()} km`,
-        item.cost ? `${item.cost.toLocaleString()} Ft` : '-'
+        item.date || '',
+        (item.workType || item.type || 'Szerviz') + ((item.notes || item.location) ? ` (${item.notes || item.location})` : ''),
+        Number(item.km) > 0 ? `${Number(item.km).toLocaleString('hu-HU')} km` : '-',
+        Number(item.cost) > 0 ? `${Number(item.cost).toLocaleString('hu-HU')} Ft` : '-'
       ]);
 
+      if (typeof doc.autoTable !== 'function') return alert('A PDF táblázatkészítő része nem töltődött be. Frissítsd az oldalt, majd próbáld újra.');
       doc.autoTable({
         startY: 35,
-        head: [['Datum', 'Leiras / Tipus', 'Km allas', 'Koltseg']],
+        head: [['Dátum', 'Leírás / Típus', 'Km állás', 'Költség']],
         body: tableRows,
         theme: 'striped',
         headStyles: { fillColor: [30, 41, 59] }
       });
-
       doc.save(`Szerviztortenet_${currentHistoryCar}.pdf`);
     };
 
