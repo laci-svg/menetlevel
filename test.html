@@ -1558,26 +1558,31 @@ window.changeClosedShiftsMonth = function(direction) {
     }
 
     function checkDriverUnreadAnnouncements() {
-      if (isAdminMode || !currentUser) return;
+  if (isAdminMode || !currentUser) return;
 
-      const unread = allAnnouncements.find(a => {
-        const isTargeted = (a.targetDrivers.includes('all') || a.targetDrivers.includes(currentUser.uid));
-        const seenByList = a.seenBy || [];
-        return isTargeted && !seenByList.includes(currentUser.uid);
-      });
+  const myUid = currentUser.uid;
 
-      const modal = document.getElementById('driverAnnouncementModal');
-      if (unread) {
-        document.getElementById('modalAnnouncementTitle').textContent = unread.title || 'Központi Felhívás';
-        document.getElementById('modalAnnouncementDate').textContent = unread.createdAt || '';
-        document.getElementById('modalAnnouncementMessage').textContent = unread.message || '';
-        modal.dataset.currentAnnouncementId = unread.id;
-        modal.classList.remove('hidden');
-      } else {
-        modal.classList.add('hidden');
-        modal.dataset.currentAnnouncementId = '';
-      }
-    }
+  const unread = allAnnouncements.find(a => {
+    const targets = a.targetDrivers || [];
+    const isTargeted = targets.includes('all') || targets.includes(myUid);
+    const seenByList = a.seenBy || [];
+    return isTargeted && !seenByList.includes(myUid);
+  });
+
+  const modal = document.getElementById('driverAnnouncementModal');
+  if (!modal) return;
+
+  if (unread) {
+    document.getElementById('modalAnnouncementTitle').textContent = unread.title || 'Központi Felhívás';
+    document.getElementById('modalAnnouncementDate').textContent = unread.createdAt || '';
+    document.getElementById('modalAnnouncementMessage').textContent = unread.message || unread.content || '';
+    modal.dataset.currentAnnouncementId = unread.id;
+    modal.classList.remove('hidden');
+  } else {
+    modal.classList.add('hidden');
+    modal.dataset.currentAnnouncementId = '';
+  }
+}
 
     async function confirmDriverAnnouncement() {
       const modal = document.getElementById('driverAnnouncementModal');
