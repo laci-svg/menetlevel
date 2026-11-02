@@ -4898,16 +4898,45 @@ function renderDriverAssignments() {
     return;
   }
 
-  driverBox.innerHTML = `
-    <div class="bg-slate-900/90 border border-emerald-500/50 p-4 rounded-2xl shadow-xl space-y-3 backdrop-blur-md">
-      <h3 class="text-sm font-bold text-emerald-400 flex items-center gap-2 border-b border-slate-800 pb-2">
-        <span>📋</span> Aktuális Megbízásaim
-      </h3>
-      <div class="space-y-3">
+ driverBox.innerHTML = `
+    <!-- SOFŐR MEGBÍZÁS KÁRTYA CONTAINER -->
+    <div id="assignmentCardContainer" class="bg-slate-900/90 border ${myAssignments.some(a => a.status !== 'ACCEPTED') ? 'border-amber-500/80' : 'border-slate-800'} p-3.5 rounded-2xl shadow-xl transition-all duration-300 backdrop-blur-md">
+      
+      <!-- 1. LECSUKHATÓ FÜL / FEJLÉC (Mindig látható) -->
+      <div onclick="window.toggleAssignmentCard()" class="flex items-center justify-between cursor-pointer select-none">
+        <div class="flex items-center gap-2 overflow-hidden mr-2">
+          <span class="text-base">📋</span>
+          <h3 class="font-bold text-white text-sm whitespace-nowrap">Megbízásaim</h3>
+          
+          <!-- LECSUKOTT ÁLLAPOT JELZŐ (Dinamikusan frissül) -->
+          <div id="assignmentSummaryBadge" class="flex items-center gap-2 overflow-hidden">
+            ${myAssignments.some(a => a.status !== 'ACCEPTED') ? `
+              <span class="bg-amber-500/20 text-amber-300 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-amber-500/40 animate-pulse whitespace-nowrap">
+                🔔 Új / Módosult!
+              </span>
+            ` : `
+              <span class="bg-emerald-500/20 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30 whitespace-nowrap">
+                ✓ Elfogadva
+              </span>
+            `}
+            <span class="text-xs text-slate-300 truncate font-medium">
+              📍 ${myAssignments[0]?.routes?.[0] || 'Aktuális megbízás'}
+            </span>
+          </div>
+        </div>
+
+        <!-- Nyíl ikon (Alapból lefelé mutat, mert lecsukva indul) -->
+        <span id="assignmentChevron" class="text-slate-400 text-xs transform transition-transform duration-200">
+          ▼
+        </span>
+      </div>
+
+      <!-- 2. BELSŐ TARTALOM (Alapértelmezetten rejtve: 'hidden') -->
+      <div id="assignmentCardBody" class="hidden mt-3 pt-3 border-t border-slate-800 space-y-3">
         ${myAssignments.map(item => {
           const isAccepted = item.status === 'ACCEPTED';
           
-          const contactsHtml = item.contacts.map(c => `
+          const contactsHtml = (item.contacts || []).map(c => `
             <div class="flex items-center justify-between bg-slate-950 p-2 rounded-lg border border-slate-800">
               <span class="font-bold text-slate-200">👤 ${c.name}</span>
               <a href="tel:${c.phone}" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow">
@@ -4916,14 +4945,14 @@ function renderDriverAssignments() {
             </div>
           `).join('');
 
-          const routeHtml = item.routes.map((r, i) => `
+          const routeHtml = (item.routes || []).map((r, i) => `
             <div class="text-xs text-slate-200"><strong class="text-emerald-400">${i+1}. állomás:</strong> ${r}</div>
           `).join('');
 
           return `
-            <div class="bg-slate-950/80 border ${isAccepted ? 'border-slate-800' : 'border-emerald-500/80 animate-pulse'} p-3 rounded-xl space-y-2 text-xs">
+            <div class="bg-slate-950/80 border ${isAccepted ? 'border-slate-800' : 'border-amber-500/80'} p-3 rounded-xl space-y-2 text-xs">
               <div class="flex justify-between items-center border-b border-slate-800 pb-1.5">
-                <span class="font-bold text-orange-400">📅 Kezdés: ${item.startDateTime.replace('T', ' ')}</span>
+                <span class="font-bold text-orange-400">📅 Kezdés: ${item.startDateTime ? item.startDateTime.replace('T', ' ') : '-'}</span>
                 ${item.carPlate ? `<span class="bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono">🚗 ${item.carPlate}</span>` : ''}
               </div>
 
@@ -4944,24 +4973,7 @@ function renderDriverAssignments() {
               <!-- Gombok (Tudomásulvétel & PDF) -->
               <div class="flex justify-between items-center pt-2">
                 ${!isAccepted ? `
-                  <button onclick="window.acceptAssignment('${item.id}')" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-90 text-white font-extrabold py-2.5 rounded-xl text-xs shadow-lg transition">
-                    ✔ Megbízást Tudomásul Vettem
-                  </button>
-                ` : `
-                  <div class="text-[11px] text-emerald-400 font-bold flex items-center gap-1">
-                    ✔ Tudomásul véve (${item.acceptedAtFormatted || ''})
-                  </div>
-                  <button onclick="window.downloadAssignmentPDF('${item.id}')" class="bg-slate-800 hover:bg-slate-700 text-amber-300 px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-700">
-                    📄 Megbízólevél PDF
-                  </button>
-                `}
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    </div>
-  `;
+                  <button onclick="window.acceptAssignment
 }
     // Percenként ellenőrizzük az időzített megbízások megjelenését a sofőrnél
 setInterval(() => {
