@@ -4982,9 +4982,20 @@ function renderDriverAssignments() {
               ${item.notes ? `<div class="bg-amber-950/30 border border-amber-800/60 p-2 rounded-lg text-amber-300 text-[11px]">📝 <strong>Megjegyzés:</strong> ${item.notes}</div>` : ''}
 
               <!-- Gombok (Tudomásulvétel & PDF) -->
-              <div class="flex justify-between items-center pt-2">
+              <div class="flex justify-between items-center pt-2 gap-2">
                 ${!isAccepted ? `
-                  <button onclick="window.acceptAssignment
+                  <button onclick="window.acceptAssignment('${item.id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-2 rounded-lg font-bold">Tudomásul vettem</button>
+                ` : `
+                  <span class="text-emerald-400 text-xs font-bold">✓ Tudomásul véve</span>
+                `}
+                <button onclick="window.downloadAssignmentPDF('${item.id}')" class="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-2 rounded-lg font-bold">PDF letöltése</button>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
 }
 
 window.toggleAssignmentCard = function() {
