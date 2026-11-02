@@ -4678,8 +4678,10 @@ if (document.readyState === 'loading') {
       });
 
       const finalY = doc.lastAutoTable.finalY + 8;
+      const isWorkPdf = pdfType === 'work';
       doc.setFillColor(248, 250, 252);
-      doc.roundedRect(14, finalY, 182, 32, 2, 2, 'FD');
+      // A munkakilométeres PDF-ben kizárólag a munkához tartozó összesítés jelenjen meg.
+      doc.roundedRect(14, finalY, 182, isWorkPdf ? 26 : 32, 2, 2, 'FD');
 
       doc.setFontSize(9.5);
       doc.setFont(undefined, 'bold');
@@ -4689,8 +4691,12 @@ if (document.readyState === 'loading') {
       doc.setFontSize(8.5);
       doc.setFont(undefined, 'normal');
       doc.text(sanitizeText("Összes munkakilométer: " + totalWorkKm + " km"), 18, finalY + 13);
-      doc.text(sanitizeText("Összes privát kilométer: " + totalPrivateKm + " km"), 18, finalY + 19);
-      doc.text(sanitizeText("Összesített utasszám: " + totalPassengers + " fő"), 18, finalY + 25);
+      if (isWorkPdf) {
+        doc.text(sanitizeText("Összesített utasszám: " + totalPassengers + " fő"), 18, finalY + 20);
+      } else {
+        doc.text(sanitizeText("Összes privát kilométer: " + totalPrivateKm + " km"), 18, finalY + 19);
+        doc.text(sanitizeText("Összesített utasszám: " + totalPassengers + " fő"), 18, finalY + 25);
+      }
 
       if (returnArrayBuffer) return doc.output('arraybuffer');
       doc.save(filename);
