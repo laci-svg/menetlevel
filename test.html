@@ -639,9 +639,12 @@
         </div>
 
         <div id="content_card_overlimit" class="hidden p-4 space-y-3 border-t border-slate-800/80">
-          <div id="overlimitShiftsContainer" class="space-y-2 max-h-[350px] overflow-y-auto pr-1"></div>
-        </div>
-      </div>
+  <!-- ÚJ GOMB BEILLESZTÉSE ITT -->
+  <button onclick="window.downloadAllOverlimitPDFsZip()" class="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:opacity-90 text-white font-bold py-2.5 rounded-xl text-xs shadow-md transition flex items-center justify-center gap-2 mb-3">
+    📦 Összes Munkakilométeres PDF Letöltése (ZIP)
+  </button>
+  <div id="overlimitShiftsContainer" class="space-y-2 max-h-[350px] overflow-y-auto pr-1"></div>
+</div>
 
      <!-- 8. MŰSZAKOK & ÓRAÁLLÁSOK -->
       <div id="card_closed_shifts" class="admin-card bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-md">
