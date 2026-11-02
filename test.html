@@ -7,6 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
     
     /* Admin kártyák: asztali gépen rendezett, egymás melletti oszlopok. */
@@ -56,7 +57,10 @@
     [id^="content_card_"]::-webkit-scrollbar-thumb:hover { background: rgba(45, 212, 191, .8); }
     /* A kártya fejléce látható marad, miközben csak a belső tartalom görgethető. */
     .admin-card { min-width: 0; }
-    .admin-card > div:first-child { position: relative; z-index: 1; }
+    .admin-card > div:first-child { position: relative; z-index: 1; flex-wrap: wrap; gap: .5rem; }
+    .admin-card > div:first-child > div:first-child { min-width: 0; flex: 1 1 55%; }
+    .admin-card > div:first-child > div { min-width: 0; }
+    .admin-card h3 { overflow-wrap: anywhere; }
     .admin-card { transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
     .admin-card:hover { border-color: rgba(100, 116, 139, .7); box-shadow: 0 12px 28px rgba(2, 6, 23, .28); }
     .admin-card > div:first-child { min-height: 3.1rem; }
@@ -639,12 +643,12 @@
         </div>
 
         <div id="content_card_overlimit" class="hidden p-4 space-y-3 border-t border-slate-800/80">
-  <!-- ÚJ GOMB BEILLESZTÉSE ITT -->
-  <button onclick="window.downloadAllOverlimitPDFsZip()" class="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:opacity-90 text-white font-bold py-2.5 rounded-xl text-xs shadow-md transition flex items-center justify-center gap-2 mb-3">
-    📦 Összes Munkakilométeres PDF Letöltése (ZIP)
-  </button>
-  <div id="overlimitShiftsContainer" class="space-y-2 max-h-[350px] overflow-y-auto pr-1"></div>
-</div>
+          <button type="button" onclick="window.downloadAllOverlimitPDFsZip()" class="w-full bg-gradient-to-r from-red-700 to-rose-600 hover:opacity-90 text-white font-bold py-2.5 rounded-xl text-xs shadow-md transition flex items-center justify-center gap-2">
+            📦 Az összes havi kilométer-túlfutásos menetlevél letöltése (ZIP)
+          </button>
+          <div id="overlimitShiftsContainer" class="space-y-2 max-h-[350px] overflow-y-auto pr-1"></div>
+        </div>
+      </div>
 
      <!-- 8. MŰSZAKOK & ÓRAÁLLÁSOK -->
       <div id="card_closed_shifts" class="admin-card bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-md">
@@ -667,6 +671,9 @@
         </div>
 
         <div id="content_card_closed_shifts" class="hidden p-4 space-y-3 border-t border-slate-800/80">
+          <button type="button" onclick="window.downloadAllWorkMileagePDFsZip()" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-90 text-white font-bold py-2.5 rounded-xl text-xs shadow-md transition flex items-center justify-center gap-2">
+            📦 Az összes havi munkakilométeres menetlevél letöltése (ZIP)
+          </button>
           <div id="adminClosedShiftsContainer" class="space-y-3 max-h-[650px] overflow-y-auto pr-1"></div>
         </div>
       </div>
@@ -1559,7 +1566,9 @@ window.changeClosedShiftsMonth = function(direction) {
 
       if (isAdminMode) {
         adminSec.classList.remove('hidden');
+        adminSec.style.setProperty('display', 'grid', 'important');
         driverSec.classList.add('hidden');
+        driverSec.style.setProperty('display', 'none', 'important');
         btn.textContent = '🚗 Sofőr nézet';
         btn.className = 'bg-blue-500/20 border border-blue-500/40 text-blue-400 hover:bg-blue-500/30 px-3 py-2 rounded-xl text-xs font-semibold transition';
         
@@ -1579,7 +1588,9 @@ window.changeClosedShiftsMonth = function(direction) {
         renderSuperAdminPermissionsPanel();
       } else {
         adminSec.classList.add('hidden');
+        adminSec.style.setProperty('display', 'none', 'important');
         driverSec.classList.remove('hidden');
+        driverSec.style.setProperty('display', 'block', 'important');
         btn.textContent = '👑 Admin';
         btn.className = 'bg-amber-500/20 border border-amber-500/40 text-amber-400 hover:bg-amber-500/30 px-3 py-2 rounded-xl text-xs font-semibold transition';
       }
@@ -2979,8 +2990,8 @@ window.saveCarEditModal = async function() {
       const btn = document.getElementById('toggleAdminBtn');
 
       if (isAdminMode) {
-        if (adminSec) adminSec.classList.remove('hidden');
-        if (driverSec) driverSec.classList.add('hidden');
+        if (adminSec) { adminSec.classList.remove('hidden'); adminSec.style.setProperty('display', 'grid', 'important'); }
+        if (driverSec) { driverSec.classList.add('hidden'); driverSec.style.setProperty('display', 'none', 'important'); }
         if (btn) {
           btn.textContent = '🚗 Sofőr nézet';
           btn.className = 'bg-blue-500/20 border border-blue-500/40 text-blue-400 hover:bg-blue-500/30 px-3 py-2 rounded-xl text-xs font-semibold transition';
@@ -3000,8 +3011,8 @@ window.saveCarEditModal = async function() {
         renderAdminStats();
         renderSuperAdminPermissionsPanel();
       } else {
-        if (adminSec) adminSec.classList.add('hidden');
-        if (driverSec) driverSec.classList.remove('hidden'); // <-- Ez teszi újra láthatóvá a sofőri felületet!
+        if (adminSec) { adminSec.classList.add('hidden'); adminSec.style.setProperty('display', 'none', 'important'); }
+        if (driverSec) { driverSec.classList.remove('hidden'); driverSec.style.setProperty('display', 'block', 'important'); } // Sofőr felület kényszerített visszaállítása
         if (btn) {
           btn.textContent = '👑 Admin';
           btn.className = 'bg-amber-500/20 border border-amber-500/40 text-amber-400 hover:bg-amber-500/30 px-3 py-2 rounded-xl text-xs font-semibold transition';
@@ -3452,7 +3463,7 @@ window.saveCarEditModal = async function() {
       }
     };
 
-// === ZIP letöltés funkció ===
+// === INNENTŐL ILLESZD BE (új 3454. sortól) ===
 window.downloadAllOverlimitPDFsZip = async function() {
   if (typeof JSZip === 'undefined') {
     return alert("A ZIP készítő könyvtár nem töltődött be. Kérlek frissítsd az oldalt!");
@@ -4618,7 +4629,7 @@ if (document.readyState === 'loading') {
       }
     };
 
-    function generatePDFForTrips(tripsArray, title, subtitle, filename, pdfType = 'all') {
+    function generatePDFForTrips(tripsArray, title, subtitle, filename, pdfType = 'all', returnArrayBuffer = false) {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
 
@@ -4681,8 +4692,63 @@ if (document.readyState === 'loading') {
       doc.text(sanitizeText("Összes privát kilométer: " + totalPrivateKm + " km"), 18, finalY + 19);
       doc.text(sanitizeText("Összesített utasszám: " + totalPassengers + " fő"), 18, finalY + 25);
 
+      if (returnArrayBuffer) return doc.output('arraybuffer');
       doc.save(filename);
+      return doc;
     }
+
+    window.downloadAllWorkMileagePDFsZip = async function() {
+      if (typeof JSZip === 'undefined') {
+        return alert("A ZIP-készítő könyvtár nem töltődött be. Ellenőrizd az internetkapcsolatot, majd frissítsd az oldalt!");
+      }
+      if (!window.jspdf || !window.jspdf.jsPDF) {
+        return alert("A PDF-készítő könyvtár nem töltődött be. Frissítsd az oldalt, majd próbáld újra.");
+      }
+
+      const year = selectedClosedShiftsMonthDate.getFullYear();
+      const month = selectedClosedShiftsMonthDate.getMonth();
+      const monthNames = ["Január", "Február", "Március", "Április", "Május", "Június", "Július", "Augusztus", "Szeptember", "Október", "November", "December"];
+      const targetMonthStr = year + "-" + String(month + 1).padStart(2, "0");
+      const shifts = (Array.isArray(window.allShifts) ? window.allShifts : allShifts)
+        .filter(shift => shift.status === "closed" && String(shift.startDate || shift.endDate || "").startsWith(targetMonthStr));
+
+      const zip = new JSZip();
+      const folderName = "Munkakilometer_menetlevelek_" + year + "_" + monthNames[month];
+      const folder = zip.folder(folderName);
+      let pdfCount = 0;
+
+      for (const shift of shifts) {
+        const shiftTrips = (Array.isArray(window.allTrips) ? window.allTrips : allTrips)
+          .filter(trip => String(trip.shiftId) === String(shift.id) && trip.type !== "private" && trip.type !== "privat");
+        if (!shiftTrips.length) continue;
+
+        const driverEmail = shift.driverEmail || shift.userEmail || shift.email || "sofor";
+        const driverName = (typeof getUsernameFromEmail === "function") ? getUsernameFromEmail(driverEmail) : driverEmail;
+        const safeDriver = String(driverName).replace(/[^a-z0-9_-]/gi, "_");
+        const safePlate = String(shift.carPlate || "auto").replace(/[^a-z0-9_-]/gi, "_");
+        const date = String(shift.startDate || shift.endDate || "datum").replace(/[^0-9-]/g, "");
+        const filename = "menetlevel_" + safeDriver + "_" + safePlate + "_" + date + "_munka.pdf";
+        const subtitle = "Sofőr: " + driverName + " | Autó: " + (shift.carPlate || "-") + " | Műszak: " + (shift.startTime || "-") + " - " + (shift.endTime || "-");
+        const pdfData = generatePDFForTrips(shiftTrips, "Munkakilométer menetlevél", subtitle, filename, "work", true);
+        folder.file(filename, pdfData);
+        pdfCount++;
+      }
+
+      if (!pdfCount) {
+        return alert("A kiválasztott hónapban nincs letölthető munkakilométeres menetlevél a lezárt műszakok között.");
+      }
+
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(zipBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = folderName + ".zip";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      alert(pdfCount + " db munkakilométeres menetlevél került a ZIP-fájlba.");
+    };
 
     window.generateAdminPDF = function() {
       const driver = document.getElementById('pdfDriverSelect').value;
