@@ -3452,9 +3452,116 @@ window.saveCarEditModal = async function() {
       }
     };
 
-   window.adminEditTripPrompt = function(tripId) {
-  // A sima prompt helyett megnyitjuk a teljes szerkesztő modalt
-  if (typeof window.editDriverTripModalOpen === 'function') {
+    }
+}; // <-- 3453. sor (ez a felette lévő függvény lezárása)
+
+// === INNENTŐL ILLESZD BE (új 3454. sortól) ===
+window.downloadAllOverlimitPDFsZip = async function() {
+  if (typeof JSZip === 'undefined') {
+    return alert("A ZIP készítő könyvtár nem töltődött be. Kérlek frissítsd az oldalt!");
+  }
+
+  const year = selectedOverlimitMonthDate.getFullYear();
+  const month = selectedOverlimitMonthDate.getMonth();
+  const monthNames = ["Január", "Február", "Március", "Április", "Május", "Június", "Július", "Augusztus", "Szeptember", "Október", "November", "December"];
+  const targetMonthStr = year + "-" + String(month + 1).padStart(2, '0');
+
+  // Túlfutott műszakok kigyűjtése
+  const overlimitShifts = [];
+  allShifts.forEach(shift => {
+    if (dismissedOverlimits.includes(shift.id)) return;
+
+    const shiftDate = shift.startDate || shift.endDate || '';
+    if (!shiftDate.startsWith(targetMonthStr)) return;
+
+    const car = (allCars || []).find(c => c.plateNumber === shift.carPlate || c.id === shift.carId);
+    if (car && car.isLargeBus) return; // Nagybuszokat kihagyjuk
+
+    const shiftTrips = allTrips.filter(t => t.shiftId === shift.id);
+    const workKmTotal = shiftTrips.filter(t => t.type === 'work').reduce((sum, t) => sum + Number(t.workKm || 0), 0);
+
+    if (workKmTotal >= 250) {
+      overlimitShifts.push({ shift, workKmTotal, shiftTrips });
+    }
+  });
+
+  if (overlimitShifts.length === 0) {
+    return alert("Ebben a hónapban nincs letölthető 250 km feletti túlfutás!");
+  }
+
+  const zip = new JSZip();
+  const folderName = `Tulfutasok_Munkakilometer_${year}_${monthNames[month]}`;
+  const zipFolder = zip.folder(folderName);
+
+  const { jsPDF } = window.jspdf;
+
+  // Ciklus a kizárólag munkakilométeres PDF-ek generálásához
+  overlimitShifts.forEach(({ shift, workKmTotal, shiftTrips }) => {
+    const workTripsOnly = sortTripsByKmAscending(
+      shiftTrips.filter(t => t.type !== 'private' && t.type !== 'privat')
+    );
+
+    if (workTripsOnly.length === 0) return;
+
+    const doc = new jsPDF();
+    const driverEmail = shift.driverEmail || 'sofor';
+    const driverName = getUsernameFromEmail(driverEmail);
+    const safePlate = (shift.carPlate || 'auto').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const shiftDate = shift.startDate || 'datum';
+
+    doc.setFontSize(15);
+    doc.setFont(undefined, 'bold');
+    doc.text(sanitizeText(`Munkakilometer Menetlevel (Tulfutas: ${workKmTotal} km)`), 14, 15);
+    
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(70, 70, 70);
+    doc.text(sanitizeText(`Sofor: ${driverName} | Auto: ${shift.carPlate || '-'} | Datum: ${shiftDate}`), 14, 21);
+
+    const headers = ['#', 'Idopont', 'Auto', 'Utvonal', 'Megtett Km', 'Utasok'].map(h => sanitizeText(h));
+    const rows = workTripsOnly.map((t, idx) => {
+      const ruralTag = (t.isRuralTrip === true) ? ` [VIDEKI CIM · ${Math.max(0, Number(t.ruralKm || 0))} km]` : '';
+      const route = sanitizeText(`${idx + 1}. ${t.startLocation || '-'} > ${t.endLocation || '-'}${ruralTag}`);
+      return [
+        `${idx + 1}.`,
+        t.time || '-',
+        t.carPlate || '-',
+        route,
+        `${t.workKm || 0} km`,
+        `${t.passengerCount || 0} fo`
+      ];
+    });
+
+    doc.autoTable({
+      startY: 28,
+      head: [headers],
+      body: rows,
+      styles: { fontSize: 8.5, cellPadding: 2.5 },
+      headStyles: { fillColor: [185, 28, 28], textColor: [255, 255, 255], fontStyle: 'bold' }
+    });
+
+    const cleanDriverName = driverName.replace(/[^a-zA-Z0-9]/g, '_');
+    const pdfFileName = `Tulfutas_${shiftDate}_${safePlate}_${cleanDriverName}.pdf`;
+
+    const pdfArrayBuffer = doc.output('arraybuffer');
+    zipFolder.file(pdfFileName, pdfArrayBuffer);
+  });
+
+  alert(`📦 ${overlimitShifts.length} db munkakilométeres PDF generálása folyamatban. A letöltés azonnal indul!`);
+  
+  const zipContent = await zip.generateAsync({ type: "blob" });
+  
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(zipContent);
+  a.download = `${folderName}.zip`;
+  document.body.appendChild(a);
+  a.click();
+ document.body.removeChild(a);
+    };
+
+    window.adminEditTripPrompt = function(tripId) {
+      // A sima prompt helyett megnyitjuk a teljes szerkesztő modalt
+      if (typeof window.editDriverTripModalOpen === 'function') {
     window.editDriverTripModalOpen(tripId);
   } else {
     alert("A szerkesztő modal nem található.");
