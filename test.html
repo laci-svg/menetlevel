@@ -4790,7 +4790,7 @@ let selectedAssignmentMonthDate = new Date();
       <div class="bg-amber-950/30 border border-amber-800/60 p-2.5 rounded-lg text-amber-300 text-[11px] space-y-2">
         ${cleanNotes ? `<div>📝 <strong>Megjegyzés:</strong> ${cleanNotes}</div>` : ''}
         <a href="${match[0]}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow transition">
-          📍 Navigáció indítása Waze-ben
+          📍 Navigáció indítása
         </a>
       </div>
     `;
@@ -4953,7 +4953,7 @@ function renderDriverAssignments() {
       <div class="bg-amber-950/30 border border-amber-800/60 p-2.5 rounded-lg text-amber-300 text-[11px] space-y-2">
         ${cleanNotes ? `<div>📝 <strong>Megjegyzés:</strong> ${cleanNotes}</div>` : ''}
         <a href="${match[0]}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow transition">
-          📍 Navigáció indítása Waze-ben
+          📍 Navigáció indítása
         </a>
       </div>
     `;
@@ -5144,7 +5144,7 @@ doc.autoTable({
       }
 
       // Kattintható Waze link kiírása
-      const linkLabel = "-> Navigacio inditasa a Waze-ben (Kattints ide!)";
+      const linkLabel = "-> Navigacio inditasa (Kattints ide!)";
       doc.setFont(undefined, 'bold');
       doc.setTextColor(15, 118, 110);
       
