@@ -1557,57 +1557,59 @@ window.changeClosedShiftsMonth = function(direction) {
       });
     }
 
-   function checkDriverUnreadAnnouncements() {
-  if (isAdminMode || !currentUser) return;
+    function checkDriverUnreadAnnouncements() {
+      if (isAdminMode || !currentUser) return;
 
-  const myUid = currentUser.uid;
-  const myEmail = (currentUser.email || '').toLowerCase();
+      const myUid = currentUser.uid;
+      const myEmail = (currentUser.email || '').toLowerCase();
 
-  // Keresünk olyan üzenetet, amit még NEM olvasott el ez a sofőr
-  const unread = allAnnouncements.find(a => {
-    const targets = a.targetDrivers || [];
-    
-    // Elfogadjuk, ha 'all', ha a UID szerepel benne, vagy ha az Email cím szerepel benne
-    const isTargeted = targets.includes('all') || 
-                       targets.includes(myUid) || 
-                       targets.some(t => String(t).toLowerCase() === myEmail);
-                       
-    const seenByList = a.seenBy || [];
-    const hasSeen = seenByList.includes(myUid) || seenByList.some(s => String(s).toLowerCase() === myEmail);
+      // Olvasatlan üzenet keresése
+      const unread = allAnnouncements.find(a => {
+        const targets = a.targetDrivers || [];
+        const isTargeted = targets.includes('all') || 
+                           targets.includes(myUid) || 
+                           targets.some(t => String(t).toLowerCase() === myEmail);
+                           
+        const seenByList = a.seenBy || [];
+        const hasSeen = seenByList.includes(myUid) || 
+                        seenByList.some(s => String(s).toLowerCase() === myEmail);
 
-    return isTargeted && !hasSeen;
-  });
+        return isTargeted && !hasSeen;
+      });
 
-  const modal = document.getElementById('driverAnnouncementModal');
-  if (!modal) return;
+      const modal = document.getElementById('driverAnnouncementModal');
+      if (!modal) return;
 
-  if (unread) {
-    console.log("📢 Új olvasatlan üzenet megtalálva:", unread);
-    document.getElementById('modalAnnouncementTitle').textContent = unread.title || 'Központi Felhívás';
-    document.getElementById('modalAnnouncementDate').textContent = unread.createdAt || '';
-    
-    // Támogatja a 'message' és 'content' mezőneveket is!
-    document.getElementById('modalAnnouncementMessage').textContent = unread.message || unread.content || '';
-    
-    modal.dataset.currentAnnouncementId = unread.id;
-    modal.classList.remove('hidden');
-  } else {
-    modal.classList.add('hidden');
-    modal.dataset.currentAnnouncementId = '';
-  }
-}
+      if (unread) {
+        document.getElementById('modalAnnouncementTitle').textContent = unread.title || 'Fontos Központi Üzenet';
+        document.getElementById('modalAnnouncementDate').textContent = unread.createdAt || '';
+        document.getElementById('modalAnnouncementMessage').textContent = unread.message || unread.content || '';
+        
+        modal.dataset.currentAnnouncementId = unread.id;
+        modal.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
+        modal.dataset.currentAnnouncementId = '';
+      }
+    }
 
     async function confirmDriverAnnouncement() {
       const modal = document.getElementById('driverAnnouncementModal');
+      if (!modal) return;
       const announcementId = modal.dataset.currentAnnouncementId;
       if (!announcementId || !currentUser) return;
 
-      await updateDoc(doc(db, "announcements", announcementId), {
-        seenBy: arrayUnion(currentUser.uid)
-      });
-
-      modal.classList.add('hidden');
-      alert("Köszönjük! Az üzenet tudomásul vétele rögzítve lett.");
+      try {
+        await updateDoc(doc(db, "announcements", announcementId), {
+          seenBy: arrayUnion(currentUser.uid)
+        });
+        modal.classList.add('hidden');
+        modal.dataset.currentAnnouncementId = '';
+        alert("✔ Köszönjük! Az üzenet tudomásul vétele rögzítve lett.");
+      } catch (err) {
+        console.error("Hiba az igazoláskor:", err);
+        alert("Hiba történt a visszaigazolás mentésekor.");
+      }
     }
 
     window.selectAllAnnouncementDrivers = function(selectAll) {
@@ -1692,8 +1694,7 @@ window.changeClosedShiftsMonth = function(direction) {
           })() +
         '</div>';
       }).join('');
-  }
-
+    }
 
 let currentAnnouncementId = null;
 
