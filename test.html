@@ -5077,18 +5077,50 @@ window.downloadAssignmentPDF = function(id) {
     headStyles: { fillColor: [15, 118, 110], textColor: [255, 255, 255] }
   });
 
-  // Megjegyzés, ha van
+ // Megjegyzés, ha van (Automatikus link-felismeréssel és tördelt Waze hivatkozással)
   currentY = doc.lastAutoTable.finalY + 6;
   if (item.notes) {
     doc.setFontSize(9);
     doc.setFont(undefined, 'italic');
     doc.setTextColor(80, 80, 80);
-    doc.text(`Megjegyzes: ${fixText(item.notes)}`, 14, currentY);
-    currentY += 8;
-  }
 
-  // 4. IGAZOLÓ BÉLYEGZŐ (Tudomásulvétel elmentése)
-  currentY += 5;
+    const notesText = fixText(item.notes);
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const urlMatch = item.notes.match(urlRegex);
+
+    if (urlMatch && urlMatch.length > 0) {
+      const targetUrl = urlMatch[0];
+      
+      // Megjegyzés szövege a link nélkül
+      const textBeforeUrl = notesText.replace(targetUrl, '').trim();
+      
+      if (textBeforeUrl) {
+        const splitText = doc.splitTextToSize(`Megjegyzes: ${textBeforeUrl}`, 180);
+        doc.text(splitText, 14, currentY);
+        currentY += (splitText.length * 4.5);
+      }
+
+      // Kattintható Waze link kiírása
+      const linkLabel = "📍 Navigacio inditasa a Waze-ben (Kattints ide!)";
+      doc.setFont(undefined, 'bold');
+      doc.setTextColor(15, 118, 110);
+      
+      // Kiírjuk a gombszerű linket a PDF-be
+      doc.text(linkLabel, 14, currentY);
+      
+      // Ráhelyezzük az aktív webes hivatkozást
+      doc.link(14, currentY - 4, 120, 6, { url: targetUrl });
+
+      currentY += 8;
+    } else {
+      // Sima megjegyzés szöveg (ha nincs benne link)
+      const splitNotes = doc.splitTextToSize(`Megjegyzes: ${notesText}`, 180);
+      doc.text(splitNotes, 14, currentY);
+      currentY += (splitNotes.length * 4.5) + 3;
+    }
+  } else {
+    currentY += 2;
+  }
   const isAccepted = item.status === 'ACCEPTED';
   
   doc.setFillColor(isAccepted ? 240 : 254, isAccepted ? 253 : 242, isAccepted ? 244 : 242);
