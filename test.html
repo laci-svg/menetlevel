@@ -5131,45 +5131,43 @@ doc.autoTable({
   });
 
  // Megjegyzés, ha van (Automatikus link-felismeréssel és tördelt Waze hivatkozással)
-  currentY = doc.lastAutoTable.finalY + 6;
+ currentY = doc.lastAutoTable.finalY + 6;
   if (item.notes) {
     doc.setFontSize(9);
     doc.setFont(undefined, 'italic');
     doc.setTextColor(80, 80, 80);
 
-    const notesText = fixText(item.notes);
+    const rawNotes = item.notes;
     const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const urlMatch = item.notes.match(urlRegex);
+    const matches = rawNotes.match(urlRegex) || [];
 
-    if (urlMatch && urlMatch.length > 0) {
-      const targetUrl = urlMatch[0];
-      
-      // Megjegyzés szövege a link nélkül
-      const textBeforeUrl = notesText.replace(targetUrl, '').trim();
-      
-      if (textBeforeUrl) {
-        const splitText = doc.splitTextToSize(`Megjegyzes: ${textBeforeUrl}`, 180);
-        doc.text(splitText, 14, currentY);
-        currentY += (splitText.length * 4.5);
-      }
+    // Eltávolítjuk az ÖSSZES URL-t a nyers szövegből, hogy tiszta maradjon
+    let cleanNotes = fixText(rawNotes.replace(urlRegex, '').trim());
 
-      // Kattintható Waze link kiírása
-      const linkLabel = "-> Navigacio inditasa (Kattints ide!)";
-      doc.setFont(undefined, 'bold');
-      doc.setTextColor(15, 118, 110);
-      
-      // Kiírjuk a gombszerű linket a PDF-be
-      doc.text(linkLabel, 14, currentY);
-      
-      // Ráhelyezzük az aktív webes hivatkozást
-      doc.link(14, currentY - 4, 120, 6, { url: targetUrl });
+    if (cleanNotes) {
+      const splitText = doc.splitTextToSize(`Megjegyzes: ${cleanNotes}`, 180);
+      doc.text(splitText, 14, currentY);
+      currentY += (splitText.length * 4.5);
+    }
 
-      currentY += 8;
+    // Minden talált linkhez külön, jól látható sort adunk hozzá
+    if (matches.length > 0) {
+      currentY += 2;
+      matches.forEach((url, idx) => {
+        const isWaze = url.includes('waze.com');
+        const isMaps = url.includes('maps') || url.includes('goo.gl');
+        let label = `-> Navigacio ${idx + 1}. inditasa (Kattints ide!)`;
+        if (isWaze) label = `-> Navigacio ${idx + 1}. (Waze) - Kattints ide!`;
+        else if (isMaps) label = `-> Navigacio ${idx + 1}. (Google Maps) - Kattints ide!`;
+
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(15, 118, 110);
+        doc.text(label, 14, currentY);
+        doc.link(14, currentY - 4, 130, 6, { url: url.trim() });
+        currentY += 7;
+      });
     } else {
-      // Sima megjegyzés szöveg (ha nincs benne link)
-      const splitNotes = doc.splitTextToSize(`Megjegyzes: ${notesText}`, 180);
-      doc.text(splitNotes, 14, currentY);
-      currentY += (splitNotes.length * 4.5) + 3;
+      currentY += 2;
     }
   } else {
     currentY += 2;
