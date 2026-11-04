@@ -4711,8 +4711,11 @@ window.saveAssignment = async function(e) {
   }
 };
 
-// 3. Valós idejű figyelés (Firestore snapshot)
 function listenToAssignments() {
+  if (typeof renderAdminAssignments === 'function') {
+    renderAdminAssignments();
+  }
+
   onSnapshot(collection(db, "assignments"), (snapshot) => {
     allAssignments = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
     
