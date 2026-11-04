@@ -5083,16 +5083,24 @@ window.downloadAssignmentPDF = function(id) {
   doc.text("MEGBIZO(K) ES HELYSZINI ELERHETOSEGEK", 14, currentY);
 
   const contactRows = item.contacts.map(c => [fixText(c.name), c.phone]);
- doc.autoTable({
+doc.autoTable({
   startY: currentY + 3,
   head: [['Nev / Szervezet', 'Telefonszam']],
   body: contactRows,
   styles: { fontSize: 9, cellPadding: 2.5 },
   headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255] },
+  columnStyles: {
+    1: { textColor: [2, 132, 199], fontStyle: 'bold' }
+  },
   didDrawCell: (data) => {
     if (data.section === 'body' && data.column.index === 1 && data.cell.text[0]) {
       const rawPhone = data.cell.text[0].replace(/\s+/g, '');
       doc.link(data.cell.x, data.cell.y, data.cell.width, data.cell.height, { url: `tel:${rawPhone}` });
+      
+      const textWidth = doc.getTextWidth(data.cell.text[0]);
+      doc.setDrawColor(2, 132, 199);
+      doc.setLineWidth(0.3);
+      doc.line(data.cell.x + 2.5, data.cell.y + data.cell.height - 2, data.cell.x + 2.5 + textWidth, data.cell.y + data.cell.height - 2);
     }
   }
 });
