@@ -1656,54 +1656,52 @@ window.changeClosedShiftsMonth = function(direction) {
       document.getElementById('announcementMessage').value = '';
       alert("📢 Üzenet sikeresen kiküldve a kijelölteknek!");
     };
+function renderAdminAnnouncements() {
+  const container = document.getElementById('adminAnnouncementsList');
+  const driversContainer = document.getElementById('announcementDriversContainer');
+  const badge = document.getElementById('badge_announcements');
+  if (!container) return;
 
-    function renderAdminAnnouncements() {
-      const container = document.getElementById('adminAnnouncementsList');
-      const driversContainer = document.getElementById('announcementDriversContainer');
-      const badge = document.getElementById('badge_announcements');
-      if (!container) return;
+  if (driversContainer) {
+    const activeUsers = allUsers.filter(u => u.email && !u.isInactive).sort((a, b) => getUsernameFromEmail(a.email || '').localeCompare(getUsernameFromEmail(b.email || '')));
+    driversContainer.innerHTML = '<label class="inline-flex items-center gap-1.5 bg-slate-800 px-2.5 py-1 rounded-lg text-xs font-bold text-sky-300 cursor-pointer"><input type="checkbox" value="all" checked class="rounded bg-slate-900 border-slate-700 text-sky-500"> Mindenki (Összes Sofőr)</label>' +
+      activeUsers.map(u => '<label class="inline-flex items-center gap-1.5 bg-slate-800 px-2.5 py-1 rounded-lg text-xs text-slate-200 cursor-pointer"><input type="checkbox" value="' + u.id + '" class="rounded bg-slate-900 border-slate-700 text-sky-500"> ' + getUsernameFromEmail(u.email) + '</label>').join('');
+  }
 
-      if (driversContainer) {
-        const activeUsers = allUsers.filter(u => u.email && !u.isInactive).sort((a, b) => getUsernameFromEmail(a.email || '').localeCompare(getUsernameFromEmail(b.email || '')));
-        driversContainer.innerHTML = '<label class="inline-flex items-center gap-1.5 bg-slate-800 px-2.5 py-1 rounded-lg text-xs font-bold text-sky-300 cursor-pointer"><input type="checkbox" value="all" checked class="rounded bg-slate-900 border-slate-700 text-sky-500"> Mindenki (Összes Sofőr)</label>' +
-          activeUsers.map(u => '<label class="inline-flex items-center gap-1.5 bg-slate-800 px-2.5 py-1 rounded-lg text-xs text-slate-200 cursor-pointer"><input type="checkbox" value="' + u.id + '" class="rounded bg-slate-900 border-slate-700 text-sky-500"> ' + getUsernameFromEmail(u.email) + '</label>').join('');
-      }
+  if (badge) badge.textContent = allAnnouncements.length + " üzenet";
 
-      if (badge) badge.textContent = allAnnouncements.length + " üzenet";
+  if (allAnnouncements.length === 0) {
+    container.innerHTML = '<p class="text-xs text-slate-500 text-center p-3 bg-slate-950/60 rounded-xl">Még nem küldtél központi üzenetet.</p>';
+    return;
+  }
 
-      if (allAnnouncements.length === 0) {
-        container.innerHTML = '<p class="text-xs text-slate-500 text-center p-3 bg-slate-950/60 rounded-xl">Még nem küldtél központi üzenetet.</p>';
-        return;
-      }
+  const sorted = [...allAnnouncements].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 
-      const sorted = [...allAnnouncements].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  container.innerHTML = sorted.map(a => {
+    const seenCount = (a.seenBy || []).length;
+    const targetText = a.targetDrivers.includes('all') ? 'Minden sofőr' : a.targetDrivers.length + ' kijelölt sofőr';
 
-      container.innerHTML = sorted.map(a => {
-        const seenCount = (a.seenBy || []).length;
-        const targetText = a.targetDrivers.includes('all') ? 'Minden sofőr' : a.targetDrivers.length + ' kijelölt sofőr';
+    const seenDetails = (a.seenDetails || []).map(d => {
+      const u = allUsers.find(x => x.id === d.uid);
+      const name = u ? getUsernameFromEmail(u.email) : getUsernameFromEmail(d.email);
+      return `${name} (${d.readAt})`;
+    }).join(', ');
 
-        return '<div class="bg-slate-950 border border-slate-800 p-3 rounded-xl space-y-2">' +
-          '<div class="flex justify-between items-start">' +
-            '<div>' +
-              '<h5 class="text-xs font-bold text-sky-400">' + a.title + '</h5>' +
-              '<span class="text-[10px] text-slate-500 font-mono">📅 ' + a.createdAt + ' • 🎯 ' + targetText + '</span>' +
-            '</div>' +
-            '<button onclick="window.deleteAnnouncement(\'' + a.id + '\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-300 px-2 py-1 rounded border border-red-800 transition">Törlés</button>' +
-          '</div>' +
-          '<p class="text-xs text-slate-300 bg-slate-900/80 p-2 rounded-lg border border-slate-800/80 whitespace-pre-line">' + a.message + '</p>' +
-          (() => {
-            const seenNames = (a.seenBy || []).map(uid => {
-              const u = allUsers.find(x => x.id === uid);
-              return u ? getUsernameFromEmail(u.email) : null;
-            }).filter(Boolean).join(', ');
-
-            return '<div class="text-[10px] text-emerald-400 font-semibold mt-1">' +
-              '✔ Olvasva ' + seenCount + ' sofőr által' + (seenNames ? ' (' + seenNames + ')' : '') +
-            '</div>';
-          })() +
-        '</div>';
-      }).join('');
-    }
+    return '<div class="bg-slate-950 border border-slate-800 p-3 rounded-xl space-y-2">' +
+      '<div class="flex justify-between items-start">' +
+        '<div>' +
+          '<h5 class="text-xs font-bold text-sky-400">' + a.title + '</h5>' +
+          '<span class="text-[10px] text-slate-500 font-mono">📅 ' + a.createdAt + ' • 🎯 ' + targetText + '</span>' +
+        '</div>' +
+        '<button onclick="window.deleteAnnouncement(\'' + a.id + '\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-300 px-2 py-1 rounded border border-red-800 transition">Törlés</button>' +
+      '</div>' +
+      '<p class="text-xs text-slate-300 bg-slate-900/80 p-2 rounded-lg border border-slate-800/80 whitespace-pre-line">' + a.message + '</p>' +
+      '<div class="text-[10px] text-emerald-400 font-semibold mt-1">' +
+        '✔ Olvasva ' + seenCount + ' sofőr által' + (seenDetails ? ' [' + seenDetails + ']' : '') +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
 
 let currentAnnouncementId = null;
 
