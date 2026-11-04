@@ -4781,11 +4781,26 @@ let selectedAssignmentMonthDate = new Date();
             <div class="space-y-1 text-[11px] text-slate-300">
               <div>📞 <strong>Megbízó(k):</strong> ${contactsHtml}</div>
               <div>📍 <strong>Útvonal:</strong> ${routeHtml}</div>
-              ${item.notes ? `<div class="text-slate-400 italic">📝 Megjegyzés: ${item.notes}</div>` : ''}
+             ${item.notes ? (() => {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const match = item.notes.match(urlRegex);
+  if (match) {
+    const cleanNotes = item.notes.replace(urlRegex, '').trim();
+    return `
+      <div class="bg-amber-950/30 border border-amber-800/60 p-2.5 rounded-lg text-amber-300 text-[11px] space-y-2">
+        ${cleanNotes ? `<div>📝 <strong>Megjegyzés:</strong> ${cleanNotes}</div>` : ''}
+        <a href="${match[0]}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow transition">
+          📍 Navigáció indítása Waze-ben
+        </a>
+      </div>
+    `;
+  }
+  return `<div class="bg-amber-950/30 border border-amber-800/60 p-2 rounded-lg text-amber-300 text-[11px]">📝 <strong>Megjegyzés:</strong> ${item.notes}</div>`;
+})() : ''}
             </div>
-          </div>
-        `;
-      }).join('');
+         </div>
+    `;
+  }).join('');
     }
 
     // Megbízás szerkesztésének előkészítése és betöltése a modalba
