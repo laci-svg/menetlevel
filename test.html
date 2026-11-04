@@ -4759,7 +4759,7 @@ let selectedAssignmentMonthDate = new Date();
           ? `<span class="bg-emerald-950 text-emerald-300 border border-emerald-700 px-2 py-0.5 rounded text-[10px] font-bold">✅ Tudomásul véve (${item.acceptedAtFormatted || item.acceptedAt || ''})</span>`
           : `<span class="bg-amber-950 text-amber-300 border border-amber-800 px-2 py-0.5 rounded text-[10px] font-bold">⏳ Várakozik a sofőrre</span>`;
 
-        const contactsHtml = (item.contacts || []).map(c => `👤 ${c.name} (${c.phone})`).join(' | ');
+       const contactsHtml = (item.contacts || []).map(c => `👤 ${c.name} (<a href="tel:${c.phone}" class="text-sky-400 hover:underline font-bold">📞 ${c.phone}</a>)`).join(' | ');
         const routeHtml = (item.routes || []).map((r, i) => `<b>${i+1}.</b> ${r}`).join(' ➔ ');
 
         return `
