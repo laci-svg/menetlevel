@@ -4791,28 +4791,28 @@ let selectedAssignmentMonthDate = new Date(new Date().getFullYear(), new Date().
         <div class="space-y-1 text-[11px] text-slate-300">
           <div>📞 <strong>Megbízó(k):</strong> ${contactsHtml}</div>
           <div>📍 <strong>Útvonal:</strong> ${routeHtml}</div>
-          ${item.notes ? (() => {
-            const urlRegex = /(https?:\/\/[^\s]+)/g;
-            const match = item.notes.match(urlRegex);
-            if (match) {
-              const cleanNotes = item.notes.replace(urlRegex, '').trim();
-              return `
-                <div class="bg-amber-950/30 border border-amber-800/60 p-2.5 rounded-lg text-amber-300 text-[11px] space-y-2">
-                  ${cleanNotes ? `<div>📝 <strong>Megjegyzés:</strong> ${cleanNotes}</div>` : ''}
-                  <a href="${match[0]}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow transition">
-                    📍 Navigáció indítása
-                  </a>
-                </div>
-              `;
-            }
-            return `<div class="bg-amber-950/30 border border-amber-800/60 p-2 rounded-lg text-amber-300 text-[11px]">📝 <strong>Megjegyzés:</strong> ${item.notes}</div>`;
-          })() : ''}
-        </div>
-      </div>
-    `;
-  }).join('');
-}
+         ${item.notes ? (() => {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const matches = item.notes.match(urlRegex) || [];
+  const cleanNotes = item.notes.replace(urlRegex, '').trim();
 
+  let buttonsHtml = '';
+  if (matches.length > 0) {
+    buttonsHtml = '<div class="flex flex-wrap gap-2 pt-1.5">' + matches.map((url, idx) => {
+      const isWaze = url.includes('waze.com');
+      const label = isWaze ? `📍 Waze Navigáció ${idx + 1}` : `📍 Google Maps ${idx + 1}`;
+      return `<a href="${url.trim()}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 bg-sky-600 hover:bg-sky-500 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-lg shadow transition">${label}</a>`;
+    }).join('') + '</div>';
+  }
+
+  return `
+    <div class="bg-amber-950/30 border border-amber-800/60 p-2.5 rounded-lg text-amber-300 text-[11px] space-y-1.5">
+      ${cleanNotes ? `<div>📝 <strong>Megjegyzés:</strong> ${cleanNotes}</div>` : ''}
+      ${buttonsHtml}
+    </div>
+  `;
+})() : ''}
+    
     // Megbízás szerkesztésének előkészítése és betöltése a modalba
     window.editAssignmentModal = function(id) {
       const item = allAssignments.find(a => a.id === id);
