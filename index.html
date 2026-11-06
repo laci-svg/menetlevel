@@ -300,7 +300,13 @@
           </button>
 <div class="space-y-3 max-h-[650px] overflow-y-auto pr-1" id="adminClosedShiftsContainer"></div>
 </div>
-</div></div><div class="admin-card-column" id="adminCardColumnRight"><div class="admin-card bg-slate-900/90 border border-amber-500/40 rounded-xl overflow-hidden shadow-md" id="card_combined_alerts">
+</div>
+<div class="admin-card bg-slate-900/90 border border-emerald-500/40 rounded-xl overflow-hidden shadow-md" id="card_rural_trips">
+<div class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center border-b border-emerald-500/30" onclick="toggleCardAccordion('card_rural_trips')">
+<div class="flex items-center gap-2"><h3 class="text-sm font-bold text-emerald-300">🌄 Vidéki utak</h3><span id="badge_rural_trips" class="text-[10px] bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded-full">0 út</span></div>
+<div class="flex items-center gap-1.5" onclick="event.stopPropagation()"><button class="bg-slate-800 text-emerald-300 px-2 py-1 rounded text-xs" onclick="window.changeRuralTripsMonth(-1)" type="button">◄</button><span id="ruralTripsMonthLabel" class="text-xs font-bold text-emerald-300"></span><button class="bg-slate-800 text-emerald-300 px-2 py-1 rounded text-xs" onclick="window.changeRuralTripsMonth(1)" type="button">►</button></div><span id="arrow_card_rural_trips" class="text-xs text-slate-400 font-bold transition-transform">▼</span></div>
+<div class="hidden p-4 space-y-2" id="content_card_rural_trips"><p class="text-[10px] text-slate-400">Időrendi sorrendben. A PDF az adott sofőr aznapi teljes menetlevelét tartalmazza.</p><div id="adminRuralTripsContainer" class="space-y-2 max-h-[600px] overflow-y-auto pr-1"></div></div></div>
+</div><div class="admin-card-column" id="adminCardColumnRight"><div class="admin-card bg-slate-900/90 border border-amber-500/40 rounded-xl overflow-hidden shadow-md" id="card_combined_alerts">
 <div class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-amber-500/30" onclick="toggleCardAccordion('card_combined_alerts')">
 <div class="flex items-center gap-2">
 <h3 class="text-sm font-bold text-amber-400 flex items-center gap-1.5">
@@ -589,6 +595,7 @@
 <option value="private">Privát út</option>
 </select>
 </div>
+<label class="flex items-center gap-2 text-xs font-semibold text-emerald-300 bg-emerald-950/30 border border-emerald-700/40 rounded-xl p-2.5"><input id="tripIsRural" type="checkbox" class="rounded bg-slate-800 border-slate-600"/> 🌄 Vidéki út</label>
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
 <div>
 <label class="block text-xs font-semibold text-slate-400 mb-1">Indulási Cím</label>
@@ -964,6 +971,39 @@
     const db = getFirestore(app);
 
     let selectedClosedShiftsMonthDate = new Date();
+    let selectedRuralTripsMonthDate = new Date();
+    window.changeRuralTripsMonth = function(direction) {
+      selectedRuralTripsMonthDate.setMonth(selectedRuralTripsMonthDate.getMonth() + direction);
+      window.renderAdminRuralTrips();
+    };
+    window.renderAdminRuralTrips = function() {
+      const box = document.getElementById('adminRuralTripsContainer');
+      if (!box) return;
+      const y = selectedRuralTripsMonthDate.getFullYear(), m = selectedRuralTripsMonthDate.getMonth();
+      const names = ["Január","Február","Március","Április","Május","Június","Július","Augusztus","Szeptember","Október","November","December"];
+      document.getElementById('ruralTripsMonthLabel').textContent = y + ". " + names[m];
+      const monthKey = y + "-" + String(m + 1).padStart(2,"0");
+      const trips = (window.allTrips || allTrips).filter(t => t.isRural && String(t.date || "").startsWith(monthKey))
+        .sort((a,b) => (String(a.date||"")+" "+String(a.time||"")).localeCompare(String(b.date||"")+" "+String(b.time||""),"hu"));
+      document.getElementById('badge_rural_trips').textContent = trips.length + " út";
+      if (!trips.length) { box.innerHTML = '<p class="text-xs text-slate-500 text-center p-3">Ebben a hónapban nincs vidéki útnak jelölt út.</p>'; return; }
+      const groups = new Map();
+      trips.forEach(t => {
+        const shift = (window.allShifts || allShifts).find(s => String(s.id) === String(t.shiftId));
+        const email = (shift && shift.driverEmail) || t.driverEmail || "Ismeretlen";
+        const date = t.date || (shift && shift.startDate) || "Ismeretlen dátum";
+        const key = date + "|" + email;
+        if (!groups.has(key)) groups.set(key,{date,email,shift,items:[]});
+        groups.get(key).items.push(t);
+      });
+      box.innerHTML = Array.from(groups.values()).sort((a,b) => (a.date+" "+(a.items[0].time||"")).localeCompare(b.date+" "+(b.items[0].time||""),"hu")).map(g => {
+        const name = typeof getUsernameFromEmail === "function" ? getUsernameFromEmail(g.email) : g.email;
+        const details = g.items.map(t => '<div class="text-[10px] text-slate-300 border-t border-slate-800 pt-1 mt-1">'+(t.time||"")+" · "+(t.startLocation||"-")+" → "+(t.endLocation||"-")+' <b class="text-emerald-300">('+Number(t.workKm||0)+' km)</b></div>').join("");
+        const pdf = g.shift ? '<button onclick="window.exportShiftPDF(\''+g.shift.id+'\', \'all\')" class="bg-emerald-700 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg">📄 Aznapi PDF</button>' : '<span class="text-[10px] text-amber-300">PDF nem elérhető</span>';
+        return '<div class="bg-slate-950 border border-emerald-800/50 rounded-xl p-3"><div class="flex flex-wrap justify-between items-center gap-2"><div><div class="text-xs font-bold">'+name+'</div><div class="text-[10px] text-emerald-300">'+g.date+'</div></div>'+pdf+'</div>'+details+'</div>';
+      }).join("");
+    };
+
 let selectedStatsMonthDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
 window.changeClosedShiftsMonth = function(direction) {
@@ -2306,71 +2346,96 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
   return `<span class="font-bold text-slate-200">${plateNumber}</span>`;
 };
     
-  function renderAdminCars() {
-  const container = document.getElementById('adminCarList');
-  const badge = document.getElementById('badge_car_manage');
-  if (!container) return;
+ function renderAdminCars() {
+    const container = document.getElementById('adminCarList');
+    const badge = document.getElementById('badge_car_manage');
+    if (!container) return;
 
-  // 1. Rendezés: Kisbuszok felül (A-Z), Nagybuszok alul (A-Z)
-  const sortedCars = [...allCars].sort((a, b) => {
-    const aLarge = !!a.isLargeBus;
-    const bLarge = !!b.isLargeBus;
-    if (aLarge !== bLarge) return aLarge ? 1 : -1;
-    return (a.plateNumber || '').localeCompare(b.plateNumber || '');
-  });
+   const sortedCars = [...allCars].sort((a, b) => {
+      const getStatusPriority = (car) => {
+        if (car.isUnderMaintenance) return 2; // Szervizben (legalul)
+        if (car.isInactive) return 1;         // Inaktív (középen)
+        return 0;                             // Aktív / Szabad / Foglalt (legfelül)
+      };
 
-  const freeCount = sortedCars.filter(c => !c.currentDriverUid && !c.isUnderMaintenance).length;
-  const occupiedCount = sortedCars.filter(c => c.currentDriverUid).length;
-  const serviceCount = sortedCars.filter(c => c.isUnderMaintenance).length;
+      const priorityA = getStatusPriority(a);
+      const priorityB = getStatusPriority(b);
 
-  if (badge) badge.textContent = sortedCars.length + " autó (" + freeCount + " szabad / " + occupiedCount + " foglalt / " + serviceCount + " szervizben)";
+      if (priorityA !== priorityB) return priorityA - priorityB;
 
-  const canRelease = hasActionPermission('release_car');
+      const aLarge = !!a.isLargeBus;
+      const bLarge = !!b.isLargeBus;
+      if (aLarge !== bLarge) return aLarge ? 1 : -1;
 
-  container.innerHTML = sortedCars.map(car => {
-    const isOccupied = !!car.currentDriverUid;
-    const isService = !!car.isUnderMaintenance;
-    const driverName = getUsernameFromEmail(car.currentDriverEmail);
+      return (a.plateNumber || '').localeCompare(b.plateNumber || '');
+    });
+    const freeCount = sortedCars.filter(c => {
+      const hasActiveShift = allShifts.some(s => !s.endDate && (s.carId === c.id || s.carPlate === c.plateNumber));
+      return !c.currentDriverUid && !hasActiveShift && !c.isUnderMaintenance && !c.isInactive;
+    }).length;
 
-    let statusText = '<span class="text-emerald-400 font-semibold">🟢 Szabad</span>';
-    if (isService) {
-      statusText = '<span class="text-amber-400 font-bold bg-amber-950 px-1.5 py-0.5 rounded border border-amber-800">🔧 SZERVIZBEN (' + (car.serviceWorkType || 'Karbantartás') + ')</span>';
-    } else if (isOccupied) {
-      statusText = '<span class="text-amber-400 font-semibold">Foglalt (' + driverName + ')</span>';
-    }
+    const occupiedCount = sortedCars.filter(c => {
+      const hasActiveShift = allShifts.some(s => !s.endDate && (s.carId === c.id || s.carPlate === c.plateNumber));
+      return !!c.currentDriverUid || hasActiveShift;
+    }).length;
 
-    // Nagybusz stílus beállítása
-    const isLarge = !!car.isLargeBus;
-    const cardBg = isLarge ? 'bg-red-950/30 border-red-800/60' : 'bg-slate-950 border-slate-800';
-    const plateStyle = isLarge ? 'text-red-400 font-extrabold' : 'text-slate-200 font-bold';
+    const serviceCount = sortedCars.filter(c => c.isUnderMaintenance).length;
+    const inactiveCount = sortedCars.filter(c => c.isInactive && !c.isUnderMaintenance).length;
 
-    return '<div class="border p-3 rounded-xl space-y-2 text-xs ' + cardBg + '">' +
-      '<div class="flex justify-between items-start">' +
-        '<div>' +
-          '<div class="text-sm ' + plateStyle + '">' + car.plateNumber + (isLarge ? ' <span class="text-[10px] bg-red-900/60 text-red-300 border border-red-700/60 px-1 py-0.5 rounded ml-1 font-normal">NAGYBUSZ</span>' : '') + ' <span class="font-normal text-slate-400 text-xs">(' + car.model + ')</span></div>' +
-          '<div class="text-[10px] text-slate-400 mt-0.5">Óraállás: <strong class="text-orange-400 font-mono">' + (car.lastKm || 0) + ' km</strong> | Utolsó olaj: ' + (car.lastOilKm || 0) + ' km</div>' +
-          '<div class="text-[10px] mt-1">' + statusText + '</div>' +
-        '</div>' +
-        '<div class="flex flex-wrap gap-1 justify-end max-w-[200px]">' +
-          '<button onclick="window.openEditCarModal(\'' + car.id + '\')" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-amber-300 p-1.5 px-2 rounded-lg border border-slate-700 font-bold">✏️ Módosít</button>' +
-          '<button onclick="window.openServiceHistory(\'' + car.plateNumber + '\')" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-sky-300 p-1.5 px-2 rounded-lg border border-slate-700 font-bold">📜 Történet</button>' +
-          (!isService ?
-            '<button onclick="window.openServiceCarModal(\'' + car.id + '\')" class="text-[10px] bg-amber-950 hover:bg-amber-900 text-amber-200 p-1.5 px-2 rounded-lg border border-amber-800 font-bold">🛠️ Szervizbe</button>' : 
-            '<button onclick="window.returnFromService(\'' + car.id + '\')" class="text-[10px] bg-emerald-950 hover:bg-emerald-900 text-emerald-300 p-1.5 px-2 rounded-lg border border-emerald-800 font-bold">✅ Visszavesz</button>') +
-          (isOccupied && canRelease ? '<button onclick="window.forceReleaseCar(\'' + car.id + '\')" class="text-[10px] bg-amber-500/10 text-amber-400 p-1.5 px-2 rounded-lg border border-amber-500/20 font-bold">🔓 Felszabadít</button>' : '') +
-          (canRelease ? '<button onclick="window.deleteCar(\'' + car.id + '\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-300 p-1.5 px-2 rounded-lg border border-red-800 font-bold">Törlés</button>' : '') +
-        '</div>' +
-      '</div>' +
-      ((car.serviceHistory || []).length > 0 ? 
-        '<details class="text-[10px] text-slate-400 pt-1 border-t border-slate-800/80">' +
-          '<summary class="cursor-pointer font-bold text-sky-400 hover:underline">📜 Szerviztörténet megtekintése (' + car.serviceHistory.length + ' bejegyzés)</summary>' +
-          '<div class="space-y-1 mt-1 pl-2 border-l border-slate-800">' +
-           car.serviceHistory.map((h, idx) => '<div class="flex justify-between items-center py-1 border-b border-slate-800/50"><span>🗓️ ' + (h.date || '') + ' • <strong>' + (h.workType || h.type || '') + '</strong> (' + (h.location || h.notes || '') + ')' + (h.cost ? ' - ' + h.cost + ' Ft' : '') + '</span><div class="flex gap-1"><button onclick="window.editLegacyService(\'' + car.plateNumber + '\', ' + idx + ')" class="text-[10px] text-amber-300 hover:text-amber-200 px-1">✏️</button><button onclick="window.deleteLegacyService(\'' + car.plateNumber + '\', ' + idx + ')" class="text-[10px] text-red-400 hover:text-red-300 px-1">🗑️</button></div></div>').join('') +
+    if (badge) badge.textContent = `${sortedCars.length} autó (${freeCount} szabad / ${occupiedCount} foglalt / ${serviceCount} szerviz / ${inactiveCount} inaktív)`;
+
+    const canRelease = hasActionPermission('release_car');
+
+    container.innerHTML = sortedCars.map(car => {
+      const activeShift = allShifts.find(s => !s.endDate && (s.carId === car.id || s.carPlate === car.plateNumber));
+      const isOccupied = !!car.currentDriverUid || !!activeShift;
+      const isService = !!car.isUnderMaintenance;
+      const isInactive = !!car.isInactive;
+
+      const driverEmail = car.currentDriverEmail || (activeShift ? activeShift.driverEmail : '');
+      const driverName = getUsernameFromEmail(driverEmail);
+
+      let statusText = '<span class="text-emerald-400 font-semibold">🟢 Szabad</span>';
+      if (isService) {
+        statusText = '<span class="text-amber-400 font-bold bg-amber-950 px-1.5 py-0.5 rounded border border-amber-800">🔧 SZERVIZBEN (' + (car.serviceWorkType || 'Karbantartás') + ')</span>';
+      } else if (isInactive) {
+        statusText = '<span class="text-red-400 font-bold bg-red-950 px-1.5 py-0.5 rounded border border-red-800">🚫 INAKTÍV</span>';
+      } else if (isOccupied) {
+        statusText = '<span class="text-amber-400 font-semibold">Foglalt (' + (driverName || 'Sofőr') + ')</span>';
+      }
+
+      const isLarge = !!car.isLargeBus;
+      const cardBg = isLarge ? 'bg-red-950/30 border-red-800/60' : 'bg-slate-950 border-slate-800';
+      const plateStyle = isLarge ? 'text-red-400 font-extrabold' : 'text-slate-200 font-bold';
+
+      return '<div class="border p-3 rounded-xl space-y-2 text-xs ' + cardBg + '">' +
+        '<div class="flex justify-between items-start">' +
+          '<div>' +
+            '<div class="text-sm ' + plateStyle + '">' + car.plateNumber + (isLarge ? ' <span class="text-[10px] bg-red-900/60 text-red-300 border border-red-700/60 px-1 py-0.5 rounded ml-1 font-normal">NAGYBUSZ</span>' : '') + ' <span class="font-normal text-slate-400 text-xs">(' + car.model + ')</span></div>' +
+            '<div class="text-[10px] text-slate-400 mt-0.5">Óraállás: <strong class="text-orange-400 font-mono">' + (car.lastKm || 0) + ' km</strong> | Utolsó olaj: ' + (car.lastOilKm || 0) + ' km</div>' +
+            '<div class="text-[10px] mt-1">' + statusText + '</div>' +
           '</div>' +
-        '</details>' : '') +
-    '</div>';
-  }).join('');
-}
+          '<div class="flex flex-wrap gap-1 justify-end max-w-[220px]">' +
+            '<button onclick="window.openEditCarModal(\'' + car.id + '\')" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-amber-300 p-1.5 px-2 rounded-lg border border-slate-700 font-bold">✏️ Módosít</button>' +
+            '<button onclick="window.openServiceHistory(\'' + car.plateNumber + '\')" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-sky-300 p-1.5 px-2 rounded-lg border border-slate-700 font-bold">📜 Történet</button>' +
+            
+            (!isService && !isInactive ? 
+              '<button onclick="window.directSendToService(\'' + car.id + '\')" class="text-[10px] bg-amber-950 hover:bg-amber-900 text-amber-200 p-1.5 px-2 rounded-lg border border-amber-800 font-bold">🛠️ Szervizbe</button>' +
+              '<button onclick="window.toggleCarInactiveState(\'' + car.id + '\', true)" class="text-[10px] bg-red-950 hover:bg-red-900 text-red-200 p-1.5 px-2 rounded-lg border border-red-800 font-bold">🚫 Inaktivál</button>' : '') +
+            
+            (isService ? 
+              '<button onclick="window.returnFromService(\'' + car.id + '\')" class="text-[10px] bg-emerald-950 hover:bg-emerald-900 text-emerald-300 p-1.5 px-2 rounded-lg border border-emerald-800 font-bold">✅ Visszavesz</button>' : '') +
+            
+            (isInactive && !isService ? 
+              '<button onclick="window.toggleCarInactiveState(\'' + car.id + '\', false)" class="text-[10px] bg-emerald-950 hover:bg-emerald-900 text-emerald-300 p-1.5 px-2 rounded-lg border border-emerald-800 font-bold">✅ Aktivál</button>' : '') +
+
+            (isOccupied && canRelease ? '<button onclick="window.forceReleaseCar(\'' + car.id + '\')" class="text-[10px] bg-amber-500/10 text-amber-400 p-1.5 px-2 rounded-lg border border-amber-500/20 font-bold">🔓 Felszabadít</button>' : '') +
+            (canRelease ? '<button onclick="window.deleteCar(\'' + car.id + '\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-300 p-1.5 px-2 rounded-lg border border-red-800 font-bold">Törlés</button>' : '') +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
 
     window.openServiceCarModal = function(carId) {
       const car = allCars.find(c => c.id === carId);
@@ -2388,30 +2453,43 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
     };
 
     window.confirmSendToService = async function() {
-      const carId = document.getElementById('serviceCarId').value;
-      const date = document.getElementById('serviceModalDate').value;
-      const alertDays = Number(document.getElementById('serviceModalAlertDays').value) || 2;
-      const location = document.getElementById('serviceModalLocation').value.trim();
-      const workType = document.getElementById('serviceModalWorkType').value.trim();
-      const cost = document.getElementById('serviceModalCost').value.trim();
+  const carId = document.getElementById('serviceCarId').value;
+  const date = document.getElementById('serviceModalDate').value;
+  const alertDays = Number(document.getElementById('serviceModalAlertDays').value) || 2;
+  const location = document.getElementById('serviceModalLocation').value.trim();
+  const workType = document.getElementById('serviceModalWorkType').value.trim();
+  const cost = document.getElementById('serviceModalCost').value.trim();
 
-      if (!workType) return alert("Kérlek add meg az elvégzendő munka típusát!");
+  if (!workType) return alert("Kérlek add meg az elvégzendő munka típusát!");
 
-      await updateDoc(doc(db, "cars", carId), {
-        isUnderMaintenance: true,
-        nextServiceDate: date,
-        dateServiceAlertDays: alertDays,
-        nextServiceText: workType,
-        serviceLocation: location,
-        serviceWorkType: workType,
-        serviceCost: cost,
-        currentDriverUid: deleteField(),
-        currentDriverEmail: deleteField()
-      });
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const isTodayOrPast = date <= todayStr;
 
-      closeServiceCarModal();
-      alert("🛠️ Autó állapota Szervizben státuszra frissítve és a riasztás beállítva!");
-    };
+  const updateData = {
+    nextServiceDate: date,
+    dateServiceAlertDays: alertDays,
+    nextServiceText: workType,
+    serviceLocation: location,
+    serviceWorkType: workType,
+    serviceCost: cost
+  };
+
+  if (isTodayOrPast) {
+    updateData.isUnderMaintenance = true;
+    updateData.currentDriverUid = deleteField();
+    updateData.currentDriverEmail = deleteField();
+  }
+
+  await updateDoc(doc(db, "cars", carId), updateData);
+
+  closeServiceCarModal();
+
+  if (isTodayOrPast) {
+    alert("🛠️ Az autó állapota 'Szervizben' státuszra frissült és inaktiválva lett a sofőrök elől!");
+  } else {
+    alert("📅 Szerviz emlékeztető elmentve! Az autó továbbra is aktív és használható marad a megadott dátumig.");
+  }
+};
 
     window.returnFromService = async function(carId) {
       const car = allCars.find(c => c.id === carId);
@@ -2437,6 +2515,40 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
         alert("✅ Autó újra aktív és elérhető a sofőrök számára!");
       }
     };
+
+    // Azonnali szervizbe küldés gomb logikája
+window.directSendToService = async function(carId) {
+  const car = allCars.find(c => c.id === carId);
+  if (!car) return;
+
+  if (confirm(`Biztosan szerviz állapotba helyezed a(z) ${car.plateNumber} autót? Ezzel inaktiválod a sofőrök elől.`)) {
+    await updateDoc(doc(db, "cars", carId), {
+      isUnderMaintenance: true,
+      serviceWorkType: 'Karbantartás / Szerviz',
+      currentDriverUid: deleteField(),
+      currentDriverEmail: deleteField()
+    });
+    alert("🛠️ Az autó 'Szervizben' állapotra váltott!");
+  }
+};
+
+// Inaktiválás és aktiválás gomb logikája
+window.toggleCarInactiveState = async function(carId, setInactive) {
+  const car = allCars.find(c => c.id === carId);
+  if (!car) return;
+
+  const actionText = setInactive ? "inaktiválod" : "újraaktiválod";
+  if (confirm(`Biztosan ${actionText} a(z) ${car.plateNumber} autót?`)) {
+    const updateData = { isInactive: setInactive };
+    if (setInactive) {
+      updateData.currentDriverUid = deleteField();
+      updateData.currentDriverEmail = deleteField();
+    }
+
+    await updateDoc(doc(db, "cars", carId), updateData);
+    alert(setInactive ? "🚫 Az autó inaktiválva lett!" : "✅ Az autó újra aktív és elérhető!");
+  }
+};
 
     window.openEditCarModal = function(carId) {
       const car = allCars.find(c => c.id === carId);
@@ -2637,7 +2749,7 @@ window.saveCarEditModal = async function() {
         carSelectContainer.classList.remove('hidden');
 
         select.innerHTML = '<option value="">-- Válassz autót a műszakhoz --</option>';
-        const availableCars = allCars.filter(c => !c.currentDriverUid && !c.isUnderMaintenance).sort((a, b) => (a.plateNumber || '').localeCompare(b.plateNumber || ''));
+        const availableCars = allCars.filter(c => !c.currentDriverUid && !c.isUnderMaintenance && !c.isInactive);
         availableCars.forEach(car => {
           select.innerHTML += '<option value="' + car.id + '">' + car.plateNumber + ' - ' + (car.model || '') + '</option>';
         });
@@ -2730,6 +2842,7 @@ window.saveCarEditModal = async function() {
         date: autoDateStr,
         time: autoTimeStr,
         type: tripType,
+        isRural: !!document.getElementById('tripIsRural').checked,
         startLocation: document.getElementById('tripStartLocation').value.trim(),
         endLocation: document.getElementById('tripEndLocation').value.trim(),
         startKm: startKm,
@@ -3340,6 +3453,7 @@ window.downloadAllOverlimitPDFsZip = async function() {
     };
 
    window.renderAdminShifts = function() {
+  if (typeof window.renderAdminRuralTrips === 'function') window.renderAdminRuralTrips();
   const closedContainer = document.getElementById('adminClosedShiftsContainer');
   const activeContainer = document.getElementById('adminActiveShiftsContainer');
   const badgeClosed = document.getElementById('badge_closed_shifts');
@@ -3384,7 +3498,8 @@ window.downloadAllOverlimitPDFsZip = async function() {
       const isPriv = (t.type === 'private' || t.type === 'privat');
       return '<div class="border-b border-slate-800/50 pb-1.5 space-y-0.5 text-[11px]">' +
         '<div class="flex justify-between items-center">' +
-          '<span>' + (idx+1) + '. ' + t.startLocation + ' &rarr; ' + t.endLocation + (isPriv ? ' <span class="text-[9px] text-amber-400 bg-amber-950 px-1 rounded font-bold">Privát</span>' : '') + '</span>' +
+          '<span>' + (idx+1) + '. ' + t.startLocation + ' &rarr; ' + t.endLocation + (isPriv ? ' <span class="text-[9px] text-amber-400 bg-amber-950 px-1 rounded font-bold">Privát</span>' : '') +
+          (t.isRural ? ' <span class="text-[9px] text-emerald-300 bg-emerald-950 px-1 rounded font-bold">Vidéki</span>' : '') + '</span>' +
           '<span class="font-mono text-orange-400 font-bold">' + t.workKm + ' km</span>' +
         '</div>' +
         '<div class="flex justify-between items-center text-[10px] text-slate-400 font-mono pt-0.5">' +
@@ -3451,7 +3566,7 @@ window.downloadAllOverlimitPDFsZip = async function() {
           return '<tr class="' + (isPriv ? 'bg-amber-950/40 text-amber-200' : '') + '">' +
             '<td class="p-1 font-bold text-slate-500">' + (tIdx + 1) + '.</td>' +
             '<td class="p-1 font-mono text-slate-400">' + (t.time || '') + '</td>' +
-            '<td class="p-1">' + (t.startLocation || '') + ' &rarr; ' + (t.endLocation || '') + '</td>' +
+            '<td class="p-1">' + (t.startLocation || '') + ' &rarr; ' + (t.endLocation || '') + (isPriv ? ' <span class="text-[9px] text-amber-300">Privát</span>' : '') + (t.isRural ? ' <span class="text-[9px] text-emerald-300 font-bold">Vidéki</span>' : '') + '</td>' +
             '<td class="p-1 text-right font-mono text-slate-400">' + (t.startKm || 0) + ' - ' + (t.endKm || 0) + '</td>' +
             '<td class="p-1 text-right font-mono font-semibold text-orange-400">' + (t.workKm || 0) + ' km</td>' +
             '<td class="p-1 text-center whitespace-nowrap">' +
@@ -3685,6 +3800,7 @@ window.editDriverTripModalOpen = function(tripId) {
 
     field('driverEditingTripId').value = trip.id;
     field('modalDriverTripType').value = (trip.type === 'privat' || trip.type === 'private') ? 'private' : 'work';
+    field('modalDriverTripRural').checked = !!trip.isRural;
     field('modalDriverTripStartLoc').value = trip.startLocation || '';
     field('modalDriverTripEndLoc').value = trip.endLocation || '';
     field('modalDriverTripStartKm').value = trip.startKm ?? 0;
@@ -3734,6 +3850,8 @@ window.editTrip = function(tripId) {
 
   setVal('driverEditingTripId', trip.id);
   setVal('modalDriverTripType', (trip.type === 'privat' ? 'private' : (trip.type || 'work')));
+  const ruralFlag = document.getElementById('modalDriverTripRural');
+  if (ruralFlag) ruralFlag.checked = !!trip.isRural;
   setVal('modalDriverTripStartLoc', trip.startLocation || '');
   setVal('modalDriverTripEndLoc', trip.endLocation || '');
   setVal('modalDriverTripStartKm', trip.startKm ?? 0);
@@ -3953,6 +4071,7 @@ window.saveDriverTripModalEdit = async function() {
   try {
     const updatedData = {
       type: type,
+      isRural: !!document.getElementById('modalDriverTripRural').checked,
       startLocation: startLoc,
       endLocation: endLoc,
       startKm: startKm,
@@ -4340,7 +4459,7 @@ if (document.readyState === 'loading') {
       const rows = tripsArray.map((t, idx) => {
         const route = sanitizeText((idx + 1) + ". " + (t.startLocation || '-') + " > " + (t.endLocation || '-'));
         const isPriv = (t.type === 'private' || t.type === 'privat');
-        const kmText = sanitizeText(t.workKm + " km" + (isPriv ? ' (Privát)' : ''));
+        const kmText = sanitizeText(t.workKm + " km" + (isPriv ? ' (Privát)' : '') + (t.isRural ? ' (Vidéki út)' : ''));
         const passText = sanitizeText((t.passengerCount || 0) + " fő");
 
         if (pdfType === 'work') return [(idx + 1) + ".", t.time || '-', t.carPlate || '-', route, kmText, passText];
@@ -5242,6 +5361,7 @@ listenToAssignments();
 <option value="private">Privát út</option>
 </select>
 </div>
+<label class="flex items-center gap-2 text-xs font-semibold text-emerald-300 bg-emerald-950/30 border border-emerald-700/40 rounded-xl p-2.5"><input id="modalDriverTripRural" type="checkbox" class="rounded bg-slate-800 border-slate-600"/> 🌄 Vidéki út</label>
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
 <div>
 <label class="block text-xs font-semibold text-slate-400 mb-1">Indulási Cím</label>
