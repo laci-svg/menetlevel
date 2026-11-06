@@ -2807,6 +2807,7 @@ window.saveCarEditModal = async function() {
         date: autoDateStr,
         time: autoTimeStr,
         type: tripType,
+isCountryside: document.getElementById('tripIsCountryside')?.checked || false,
         startLocation: document.getElementById('tripStartLocation').value.trim(),
         endLocation: document.getElementById('tripEndLocation').value.trim(),
         startKm: startKm,
@@ -2834,6 +2835,8 @@ window.saveCarEditModal = async function() {
     });
 
     window.resetTripForm = function() {
+const countrysideCb = document.getElementById('tripIsCountryside');
+      if (countrysideCb) countrysideCb.checked = false;
       document.getElementById('tripForm').reset();
       document.getElementById('editingTripId').value = '';
       document.getElementById('editingTripTime').value = '';
@@ -2873,14 +2876,19 @@ window.saveCarEditModal = async function() {
         return;
       }
 
-      tbody.innerHTML = displayTrips.map((t, index) => {
+     tbody.innerHTML = displayTrips.map((t, index) => {
         const isPrivate = (t.type === 'private' || t.type === 'privat');
+        const isCountryside = !!t.isCountryside;
         const rowClass = isPrivate ? "border-b border-amber-900/40 bg-amber-950/30 text-amber-200" : "border-b border-slate-800 hover:bg-slate-800/50";
+
+        let badgesHtml = '';
+        if (isPrivate) badgesHtml += ' <span class="text-xs bg-amber-900/60 text-amber-300 px-1.5 py-0.5 rounded ml-1 font-normal">Privát</span>';
+        if (isCountryside) badgesHtml += ' <span class="text-xs bg-sky-950 text-sky-300 border border-sky-800 px-1.5 py-0.5 rounded ml-1 font-normal">🏞️ Vidéki</span>';
 
         return '<tr class="' + rowClass + '">' +
           '<td class="p-2.5 font-bold ' + (isPrivate ? 'text-amber-400' : 'text-slate-400') + '">' + (index + 1) + '.</td>' +
           '<td class="p-2.5 font-mono">' + (t.time || '') + '</td>' +
-          '<td class="p-2.5 font-medium">' + (index + 1) + '. ' + (t.startLocation || '') + ' &rarr; ' + (t.endLocation || '') + (isPrivate ? ' <span class="text-xs bg-amber-900/60 text-amber-300 px-1.5 py-0.5 rounded ml-2 font-normal">Privát</span>' : '') + '</td>' +
+          '<td class="p-2.5 font-medium">' + (index + 1) + '. ' + (t.startLocation || '') + ' &rarr; ' + (t.endLocation || '') + badgesHtml + '</td>' +
           '<td class="p-2.5 text-right font-mono text-slate-400">' + (t.startKm || 0) + ' - ' + (t.endKm || 0) + '</td>' +
           '<td class="p-2.5 text-right font-mono font-semibold ' + (isPrivate ? 'text-amber-400' : '') + '">' + (t.workKm || 0) + ' km</td>' +
           '<td class="p-2.5 text-center">' +
