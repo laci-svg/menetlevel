@@ -2318,8 +2318,16 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
       return (a.plateNumber || '').localeCompare(b.plateNumber || '');
     });
 
-    const freeCount = sortedCars.filter(c => !c.currentDriverUid && !c.isUnderMaintenance && !c.isInactive).length;
-    const occupiedCount = sortedCars.filter(c => c.currentDriverUid).length;
+    const freeCount = sortedCars.filter(c => {
+      const hasActiveShift = allShifts.some(s => !s.endDate && (s.carId === c.id || s.carPlate === c.plateNumber));
+      return !c.currentDriverUid && !hasActiveShift && !c.isUnderMaintenance && !c.isInactive;
+    }).length;
+
+    const occupiedCount = sortedCars.filter(c => {
+      const hasActiveShift = allShifts.some(s => !s.endDate && (s.carId === c.id || s.carPlate === c.plateNumber));
+      return !!c.currentDriverUid || hasActiveShift;
+    }).length;
+
     const serviceCount = sortedCars.filter(c => c.isUnderMaintenance).length;
     const inactiveCount = sortedCars.filter(c => c.isInactive && !c.isUnderMaintenance).length;
 
@@ -2328,10 +2336,13 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
     const canRelease = hasActionPermission('release_car');
 
     container.innerHTML = sortedCars.map(car => {
-      const isOccupied = !!car.currentDriverUid;
+      const activeShift = allShifts.find(s => !s.endDate && (s.carId === car.id || s.carPlate === car.plateNumber));
+      const isOccupied = !!car.currentDriverUid || !!activeShift;
       const isService = !!car.isUnderMaintenance;
       const isInactive = !!car.isInactive;
-      const driverName = getUsernameFromEmail(car.currentDriverEmail);
+
+      const driverEmail = car.currentDriverEmail || (activeShift ? activeShift.driverEmail : '');
+      const driverName = getUsernameFromEmail(driverEmail);
 
       let statusText = '<span class="text-emerald-400 font-semibold">🟢 Szabad</span>';
       if (isService) {
@@ -2339,7 +2350,7 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
       } else if (isInactive) {
         statusText = '<span class="text-red-400 font-bold bg-red-950 px-1.5 py-0.5 rounded border border-red-800">🚫 INAKTÍV</span>';
       } else if (isOccupied) {
-        statusText = '<span class="text-amber-400 font-semibold">Foglalt (' + driverName + ')</span>';
+        statusText = '<span class="text-amber-400 font-semibold">Foglalt (' + (driverName || 'Sofőr') + ')</span>';
       }
 
       const isLarge = !!car.isLargeBus;
