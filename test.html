@@ -2311,13 +2311,24 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
     const badge = document.getElementById('badge_car_manage');
     if (!container) return;
 
-    const sortedCars = [...allCars].sort((a, b) => {
+   const sortedCars = [...allCars].sort((a, b) => {
+      const getStatusPriority = (car) => {
+        if (car.isUnderMaintenance) return 2; // Szervizben (legalul)
+        if (car.isInactive) return 1;         // Inaktív (középen)
+        return 0;                             // Aktív / Szabad / Foglalt (legfelül)
+      };
+
+      const priorityA = getStatusPriority(a);
+      const priorityB = getStatusPriority(b);
+
+      if (priorityA !== priorityB) return priorityA - priorityB;
+
       const aLarge = !!a.isLargeBus;
       const bLarge = !!b.isLargeBus;
       if (aLarge !== bLarge) return aLarge ? 1 : -1;
+
       return (a.plateNumber || '').localeCompare(b.plateNumber || '');
     });
-
     const freeCount = sortedCars.filter(c => {
       const hasActiveShift = allShifts.some(s => !s.endDate && (s.carId === c.id || s.carPlate === c.plateNumber));
       return !c.currentDriverUid && !hasActiveShift && !c.isUnderMaintenance && !c.isInactive;
