@@ -2454,6 +2454,40 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
       }
     };
 
+    // Azonnali szervizbe küldés gomb logikája
+window.directSendToService = async function(carId) {
+  const car = allCars.find(c => c.id === carId);
+  if (!car) return;
+
+  if (confirm(`Biztosan szerviz állapotba helyezed a(z) ${car.plateNumber} autót? Ezzel inaktiválod a sofőrök elől.`)) {
+    await updateDoc(doc(db, "cars", carId), {
+      isUnderMaintenance: true,
+      serviceWorkType: 'Karbantartás / Szerviz',
+      currentDriverUid: deleteField(),
+      currentDriverEmail: deleteField()
+    });
+    alert("🛠️ Az autó 'Szervizben' állapotra váltott!");
+  }
+};
+
+// Inaktiválás és aktiválás gomb logikája
+window.toggleCarInactiveState = async function(carId, setInactive) {
+  const car = allCars.find(c => c.id === carId);
+  if (!car) return;
+
+  const actionText = setInactive ? "inaktiválod" : "újraaktiválod";
+  if (confirm(`Biztosan ${actionText} a(z) ${car.plateNumber} autót?`)) {
+    const updateData = { isInactive: setInactive };
+    if (setInactive) {
+      updateData.currentDriverUid = deleteField();
+      updateData.currentDriverEmail = deleteField();
+    }
+
+    await updateDoc(doc(db, "cars", carId), updateData);
+    alert(setInactive ? "🚫 Az autó inaktiválva lett!" : "✅ Az autó újra aktív és elérhető!");
+  }
+};
+
     window.openEditCarModal = function(carId) {
       const car = allCars.find(c => c.id === carId);
       if (!car) return;
