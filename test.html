@@ -2687,7 +2687,7 @@ window.saveCarEditModal = async function() {
         carSelectContainer.classList.remove('hidden');
 
         select.innerHTML = '<option value="">-- Válassz autót a műszakhoz --</option>';
-        const availableCars = allCars.filter(c => !c.currentDriverUid && !c.isUnderMaintenance).sort((a, b) => (a.plateNumber || '').localeCompare(b.plateNumber || ''));
+        const availableCars = allCars.filter(c => !c.currentDriverUid && !c.isUnderMaintenance && !c.isInactive);
         availableCars.forEach(car => {
           select.innerHTML += '<option value="' + car.id + '">' + car.plateNumber + ' - ' + (car.model || '') + '</option>';
         });
