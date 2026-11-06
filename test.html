@@ -2353,6 +2353,18 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
         statusText = '<span class="text-amber-400 font-semibold">Foglalt (' + (driverName || 'Sofőr') + ')</span>';
       }
 
+      const driverEmail = car.currentDriverEmail || (activeShift ? activeShift.driverEmail : '');
+      const driverName = getUsernameFromEmail(driverEmail);
+
+      let statusText = '<span class="text-emerald-400 font-semibold">🟢 Szabad</span>';
+      if (isService) {
+        statusText = '<span class="text-amber-400 font-bold bg-amber-950 px-1.5 py-0.5 rounded border border-amber-800">🔧 SZERVIZBEN (' + (car.serviceWorkType || 'Karbantartás') + ')</span>';
+      } else if (isInactive) {
+        statusText = '<span class="text-red-400 font-bold bg-red-950 px-1.5 py-0.5 rounded border border-red-800">🚫 INAKTÍV</span>';
+      } else if (isOccupied) {
+        statusText = '<span class="text-amber-400 font-semibold">Foglalt (' + (driverName || 'Sofőr') + ')</span>';
+      }
+
       const isLarge = !!car.isLargeBus;
       const cardBg = isLarge ? 'bg-red-950/30 border-red-800/60' : 'bg-slate-950 border-slate-800';
       const plateStyle = isLarge ? 'text-red-400 font-extrabold' : 'text-slate-200 font-bold';
