@@ -1219,7 +1219,9 @@ window.changeClosedShiftsMonth = function(direction) {
         content.classList.remove('hidden');
         arrow.textContent = '▲';
         cardStates[cardId] = true;
-        if (cardId === 'card_assignments' && typeof renderAdminAssignments === 'function') { renderAdminAssignments(); }\n        if (cardId === 'card_rural_trips' && typeof window.renderAdminRuralTrips === 'function') { window.renderAdminRuralTrips(); }\n        if (cardId === 'card_closed_shifts' && typeof window.renderMonthlyDriverSelector === 'function') {
+        if (cardId === 'card_assignments' && typeof renderAdminAssignments === 'function') { renderAdminAssignments(); }
+        if (cardId === 'card_rural_trips' && typeof window.renderAdminRuralTrips === 'function') { window.renderAdminRuralTrips(); }
+        if (cardId === 'card_closed_shifts' && typeof window.renderMonthlyDriverSelector === 'function') {
           window.renderMonthlyDriverSelector();
         }
       } else {
