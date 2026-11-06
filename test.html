@@ -2388,30 +2388,43 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
     };
 
     window.confirmSendToService = async function() {
-      const carId = document.getElementById('serviceCarId').value;
-      const date = document.getElementById('serviceModalDate').value;
-      const alertDays = Number(document.getElementById('serviceModalAlertDays').value) || 2;
-      const location = document.getElementById('serviceModalLocation').value.trim();
-      const workType = document.getElementById('serviceModalWorkType').value.trim();
-      const cost = document.getElementById('serviceModalCost').value.trim();
+  const carId = document.getElementById('serviceCarId').value;
+  const date = document.getElementById('serviceModalDate').value;
+  const alertDays = Number(document.getElementById('serviceModalAlertDays').value) || 2;
+  const location = document.getElementById('serviceModalLocation').value.trim();
+  const workType = document.getElementById('serviceModalWorkType').value.trim();
+  const cost = document.getElementById('serviceModalCost').value.trim();
 
-      if (!workType) return alert("Kérlek add meg az elvégzendő munka típusát!");
+  if (!workType) return alert("Kérlek add meg az elvégzendő munka típusát!");
 
-      await updateDoc(doc(db, "cars", carId), {
-        isUnderMaintenance: true,
-        nextServiceDate: date,
-        dateServiceAlertDays: alertDays,
-        nextServiceText: workType,
-        serviceLocation: location,
-        serviceWorkType: workType,
-        serviceCost: cost,
-        currentDriverUid: deleteField(),
-        currentDriverEmail: deleteField()
-      });
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const isTodayOrPast = date <= todayStr;
 
-      closeServiceCarModal();
-      alert("🛠️ Autó állapota Szervizben státuszra frissítve és a riasztás beállítva!");
-    };
+  const updateData = {
+    nextServiceDate: date,
+    dateServiceAlertDays: alertDays,
+    nextServiceText: workType,
+    serviceLocation: location,
+    serviceWorkType: workType,
+    serviceCost: cost
+  };
+
+  if (isTodayOrPast) {
+    updateData.isUnderMaintenance = true;
+    updateData.currentDriverUid = deleteField();
+    updateData.currentDriverEmail = deleteField();
+  }
+
+  await updateDoc(doc(db, "cars", carId), updateData);
+
+  closeServiceCarModal();
+
+  if (isTodayOrPast) {
+    alert("🛠️ Az autó állapota 'Szervizben' státuszra frissült és inaktiválva lett a sofőrök elől!");
+  } else {
+    alert("📅 Szerviz emlékeztető elmentve! Az autó továbbra is aktív és használható marad a megadott dátumig.");
+  }
+};
 
     window.returnFromService = async function(carId) {
       const car = allCars.find(c => c.id === carId);
