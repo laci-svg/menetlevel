@@ -1194,26 +1194,11 @@ window.changeClosedShiftsMonth = function(direction) {
             }
 
             try {
-                const userCredential = await signInWithEmailAndPassword(auth, email, pass);
-                const loggedUser = userCredential.user;
-
-                const uDoc = await getDoc(doc(db, "users", loggedUser.uid));
-                
-                // 1. Inaktív fiók ellenőrzése
-                if (uDoc.exists() && uDoc.data().isInactive === true) {
-                    await signOut(auth);
-                    if (errEl) {
-                        errEl.textContent = "Ez a felhasználói fiók inaktiválva lett! Kérlek keresd az adminisztrátort.";
-                        errEl.classList.remove('hidden');
-                    }
-                    return; // Megállítjuk a folyamatot
-                }
-
-                // 2. SIKERES BEJELENTKEZÉS: Képernyők váltása!
-                const authScreen = document.getElementById('authScreen');
-                const appScreen = document.getElementById('appScreen');
-                if (authScreen) authScreen.classList.add('hidden');
-                if (appScreen) appScreen.classList.remove('hidden');
+                // A Firebase Auth állapotváltozás-kezelője végzi a profilbetöltést,
+                // az inaktív fiók ellenőrzését és a képernyőváltást. Itt nem
+                // kérjük le másodszor is a Firestore-profilt, mert ez párhuzamos
+                // lekérést és téves bejelentkezési hibát okozhat.
+                await signInWithEmailAndPassword(auth, email, pass);
 
             } catch (err) {
                 console.error("Bejelentkezési hiba:", err);
@@ -1492,6 +1477,7 @@ window.changeClosedShiftsMonth = function(direction) {
 
     onAuthStateChanged(auth, async (user) => {
       if (user) {
+        try {
         currentUser = user;
         const userDoc = await getDoc(doc(db, "users", user.uid));
         
@@ -1534,6 +1520,16 @@ window.changeClosedShiftsMonth = function(direction) {
         listenToAnnouncements();
         listenToAdminWall();
         loadSosPhoneNumbers();
+        } catch (err) {
+          console.error("Hitelesítés utáni profilbetöltési hiba:", err);
+          const errEl = document.getElementById('authError');
+          if (errEl) {
+            errEl.textContent = "A jelszó ellenőrzése sikerült, de a felhasználói profil nem tölthető be a Firestore adatbázisból. Ellenőrizni kell a Firebase Firestore jogosultságokat. Részletek: " + (err.code || err.message || err);
+            errEl.classList.remove('hidden');
+          }
+          document.getElementById('authScreen')?.classList.remove('hidden');
+          document.getElementById('appScreen')?.classList.add('hidden');
+        }
       } else {
         currentUser = null;
         currentUserData = null;
