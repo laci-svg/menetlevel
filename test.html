@@ -233,7 +233,7 @@
 <!-- Hónap Léptető a Fejlécen -->
 <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
 <button class="bg-slate-800 hover:bg-slate-700 text-cyan-300 px-2 py-1 rounded text-xs font-bold border border-slate-700" onclick="window.changeShiftHoursMonth(-1)" type="button">◄</button>
-<span class="text-xs font-bold text-cyan-300 font-mono" id="shiftHoursMonthLabel"></span><button id="allMonths_shiftHours" class="bg-slate-800 hover:bg-slate-700 text-cyan-300 px-2 py-1 rounded text-[10px] font-bold border border-slate-700" onclick="window.toggleAllMonthsView(\'shiftHours\')" type="button">Összes hónap</button>
+<span class="text-xs font-bold text-cyan-300 font-mono" id="shiftHoursMonthLabel"></span><button id="allMonths_shiftHours" class="bg-slate-800 hover:bg-slate-700 text-cyan-300 px-2 py-1 rounded text-[10px] font-bold border border-slate-700" onclick="window.toggleAllMonthsView('shiftHours')" type="button">Összes hónap</button>
 <button class="bg-slate-800 hover:bg-slate-700 text-cyan-300 px-2 py-1 rounded text-xs font-bold border border-slate-700" onclick="window.changeShiftHoursMonth(1)" type="button">►</button>
 </div>
 <span class="text-xs text-slate-400 font-bold transition-transform" id="arrow_card_shift_hours">▼</span>
@@ -251,7 +251,7 @@
 </div>
 <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
 <button class="bg-slate-800 hover:bg-slate-700 text-red-300 px-2 py-1 rounded text-xs font-bold border border-slate-700" onclick="window.changeOverlimitMonth(-1)" type="button">◄</button>
-<span class="text-xs font-bold text-red-400 font-mono" id="overlimitMonthLabel"></span><button id="allMonths_overlimit" class="bg-slate-800 hover:bg-slate-700 text-red-300 px-2 py-1 rounded text-[10px] font-bold border border-slate-700" onclick="window.toggleAllMonthsView(\'overlimit\')" type="button">Összes hónap</button>
+<span class="text-xs font-bold text-red-400 font-mono" id="overlimitMonthLabel"></span><button id="allMonths_overlimit" class="bg-slate-800 hover:bg-slate-700 text-red-300 px-2 py-1 rounded text-[10px] font-bold border border-slate-700" onclick="window.toggleAllMonthsView('overlimit')" type="button">Összes hónap</button>
 <button class="bg-slate-800 hover:bg-slate-700 text-red-300 px-2 py-1 rounded text-xs font-bold border border-slate-700" onclick="window.changeOverlimitMonth(1)" type="button">►</button>
 </div>
 <span class="text-xs text-slate-400 font-bold transition-transform" id="arrow_card_overlimit">▼</span>
@@ -274,7 +274,7 @@
 <!-- Hónap Léptető a Fejlécen -->
 <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
 <button class="bg-slate-800 hover:bg-slate-700 text-orange-400 px-2 py-1 rounded text-xs font-bold border border-slate-700" onclick="window.changeClosedShiftsMonth(-1)" type="button">◄</button>
-<span class="text-xs font-bold text-orange-400 font-mono" id="closedShiftsMonthLabel"></span><button id="allMonths_closedShifts" class="bg-slate-800 hover:bg-slate-700 text-orange-300 px-2 py-1 rounded text-[10px] font-bold border border-slate-700" onclick="window.toggleAllMonthsView(\'closedShifts\')" type="button">Összes hónap</button>
+<span class="text-xs font-bold text-orange-400 font-mono" id="closedShiftsMonthLabel"></span><button id="allMonths_closedShifts" class="bg-slate-800 hover:bg-slate-700 text-orange-300 px-2 py-1 rounded text-[10px] font-bold border border-slate-700" onclick="window.toggleAllMonthsView('closedShifts')" type="button">Összes hónap</button>
 <button class="bg-slate-800 hover:bg-slate-700 text-orange-400 px-2 py-1 rounded text-xs font-bold border border-slate-700" onclick="window.changeClosedShiftsMonth(1)" type="button">►</button>
 </div>
 <span class="text-xs text-slate-400 font-bold transition-transform" id="arrow_card_closed_shifts">▼</span>
@@ -314,7 +314,7 @@
 <div class="admin-card bg-slate-900/90 border border-emerald-500/40 rounded-xl overflow-hidden shadow-md" id="card_rural_trips">
 <div class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center border-b border-emerald-500/30" onclick="toggleCardAccordion('card_rural_trips')">
 <div class="flex items-center gap-2"><h3 class="text-sm font-bold text-emerald-300">🌄 Vidéki utak</h3><span id="badge_rural_trips" class="text-[10px] bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded-full">0 út</span></div>
-<div class="flex items-center gap-1.5" onclick="event.stopPropagation()"><button class="bg-slate-800 text-emerald-300 px-2 py-1 rounded text-xs" onclick="window.changeRuralTripsMonth(-1)" type="button">◄</button><span id="ruralTripsMonthLabel" class="text-xs font-bold text-emerald-300"></span><button id="allMonths_ruralTrips" class="bg-slate-800 hover:bg-slate-700 text-emerald-300 px-2 py-1 rounded text-[10px] font-bold border border-slate-700" onclick="window.toggleAllMonthsView(\'ruralTrips\')" type="button">Összes hónap</button><button class="bg-slate-800 text-emerald-300 px-2 py-1 rounded text-xs" onclick="window.changeRuralTripsMonth(1)" type="button">►</button></div><span id="arrow_card_rural_trips" class="text-xs text-slate-400 font-bold transition-transform">▼</span></div>
+<div class="flex items-center gap-1.5" onclick="event.stopPropagation()"><button class="bg-slate-800 text-emerald-300 px-2 py-1 rounded text-xs" onclick="window.changeRuralTripsMonth(-1)" type="button">◄</button><span id="ruralTripsMonthLabel" class="text-xs font-bold text-emerald-300"></span><button id="allMonths_ruralTrips" class="bg-slate-800 hover:bg-slate-700 text-emerald-300 px-2 py-1 rounded text-[10px] font-bold border border-slate-700" onclick="window.toggleAllMonthsView('ruralTrips')" type="button">Összes hónap</button><button class="bg-slate-800 text-emerald-300 px-2 py-1 rounded text-xs" onclick="window.changeRuralTripsMonth(1)" type="button">►</button></div><span id="arrow_card_rural_trips" class="text-xs text-slate-400 font-bold transition-transform">▼</span></div>
 <div class="hidden p-4 space-y-2" id="content_card_rural_trips"><p class="text-[10px] text-slate-400">Időrendi sorrendben. A PDF az adott sofőr aznapi teljes menetlevelét tartalmazza.</p><div id="adminRuralTripsContainer" class="space-y-2 max-h-[600px] overflow-y-auto pr-1"></div></div></div>
 </div><div class="admin-card-column" id="adminCardColumnRight"><div class="admin-card bg-slate-900/90 border border-amber-500/40 rounded-xl overflow-hidden shadow-md" id="card_combined_alerts">
 <div class="p-3.5 bg-slate-900/80 cursor-pointer flex justify-between items-center select-none hover:bg-slate-800/60 transition border-b border-amber-500/30" onclick="toggleCardAccordion('card_combined_alerts')">
@@ -402,7 +402,7 @@
 <!-- Hónap Léptető a Fejlécen -->
 <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
 <button class="bg-slate-800 hover:bg-slate-700 text-indigo-300 px-2 py-1 rounded text-xs font-bold border border-slate-700" onclick="window.changeOvertimeMonth(-1)" type="button">◄</button>
-<span class="text-xs font-bold text-indigo-400 font-mono" id="overtimeMonthLabel"></span><button id="allMonths_overtime" class="bg-slate-800 hover:bg-slate-700 text-indigo-300 px-2 py-1 rounded text-[10px] font-bold border border-slate-700" onclick="window.toggleAllMonthsView(\'overtime\')" type="button">Összes hónap</button>
+<span class="text-xs font-bold text-indigo-400 font-mono" id="overtimeMonthLabel"></span><button id="allMonths_overtime" class="bg-slate-800 hover:bg-slate-700 text-indigo-300 px-2 py-1 rounded text-[10px] font-bold border border-slate-700" onclick="window.toggleAllMonthsView('overtime')" type="button">Összes hónap</button>
 <button class="bg-slate-800 hover:bg-slate-700 text-indigo-300 px-2 py-1 rounded text-xs font-bold border border-slate-700" onclick="window.changeOvertimeMonth(1)" type="button">►</button>
 </div>
 <span class="text-xs text-slate-400 font-bold transition-transform" id="arrow_card_overtime">▼</span>
@@ -434,7 +434,7 @@
 </div>
 <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
 <button aria-label="Előző hónap" class="bg-slate-800 hover:bg-slate-700 text-orange-300 px-2 py-1 rounded text-xs font-bold border border-slate-700" onclick="window.changeStatsMonth(-1)" type="button">◄</button>
-<span class="text-xs font-bold text-orange-300 font-mono min-w-[112px] text-center" id="statsMonthLabel"></span><button id="allMonths_stats" class="bg-slate-800 hover:bg-slate-700 text-orange-300 px-2 py-1 rounded text-[10px] font-bold border border-slate-700" onclick="window.toggleAllMonthsView(\'stats\')" type="button">Összes hónap</button>
+<span class="text-xs font-bold text-orange-300 font-mono min-w-[112px] text-center" id="statsMonthLabel"></span><button id="allMonths_stats" class="bg-slate-800 hover:bg-slate-700 text-orange-300 px-2 py-1 rounded text-[10px] font-bold border border-slate-700" onclick="window.toggleAllMonthsView('stats')" type="button">Összes hónap</button>
 <button aria-label="Következő hónap" class="bg-slate-800 hover:bg-slate-700 text-orange-300 px-2 py-1 rounded text-xs font-bold border border-slate-700" onclick="window.changeStatsMonth(1)" type="button">►</button>
 </div>
 </div>
