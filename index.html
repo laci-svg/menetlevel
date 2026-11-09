@@ -2127,26 +2127,6 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
       });
     }
 
-    const isExpired = diffDays < 0;
-        const statusText = isExpired ? `LEJÁRT (${Math.abs(diffDays)} napja)` : `Lejár (${diffDays} nap múlva)`;
-        const cardBorderClass = isExpired ? 'border-red-500 bg-red-950/30' : 'border-amber-500/60 bg-amber-950/30';
-
-        motVigHtml += '<div class="p-2.5 rounded-xl border ' + cardBorderClass + ' flex justify-between items-center gap-2 mb-2">' +
-          '<div>' +
-            '<div class="flex items-center gap-1.5 font-bold text-white text-xs">' +
-              '<span>' + (car.plate || car.carPlate) + '</span>' +
-              '<span class="bg-amber-900/60 text-amber-300 px-1 py-0.2 rounded text-[10px]">' + (v.country || 'HU') + '</span>' +
-            '</div>' +
-            '<div class="text-[11px] ' + (isExpired ? 'text-red-400' : 'text-amber-400') + ' font-semibold mt-0.5">' +
-              'Matrica ' + statusText +
-            '</div>' +
-            '<div class="text-[10px] text-slate-400">Érvényes: ' + (v.endDate || '') + ' ig</div>' +
-          '</div>' +
-          '<button type="button" onclick="deleteCarVignette(\'' + car.id + '\', \'' + (v.country || '') + '\', \'' + (v.endDate || '') + '\')" class="px-2 py-1 bg-red-900/80 hover:bg-red-800 text-red-100 text-xs rounded border border-red-700 transition font-bold" title="Matrica törlése">' +
-            '🗑️ Törlés' +
-          '</button>' +
-        '</div>';
-
     function populateBgDriverDropdown() {
       const select = document.getElementById('bgDriverSelect');
       if (!select) return;
@@ -2282,46 +2262,17 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
               totalAlertsCount++;
               const isExpired = diffDays < 0;
 
-             motVigHtml += '<div class="bg-slate-900 border ' + (isExpired ? 'border-red-500' : 'border-amber-500/50') + ' p-2 rounded-lg flex justify-between items-center text-xs gap-2 mb-1.5">' +
-          '<div>' +
-            '<span class="font-bold text-slate-100">' + car.plateNumber + '</span> <span class="text-[10px] bg-amber-950 text-amber-300 px-1.5 py-0.2 rounded border border-amber-800 font-bold">' + v.country + ' Matrica</span>' +
-            '<div class="text-[10px] text-slate-400">Érvényes: ' + v.endDate + ' -ig</div>' +
-          '</div>' +
-          '<div class="flex items-center gap-2">' +
-            '<span class="text-xs font-mono font-bold ' + (isExpired ? 'text-red-400' : 'text-amber-400') + '">' + (isExpired ? 'LEJÁRT (' + Math.abs(diffDays) + ' napja)' : diffDays + ' nap maradt') + '</span>' +
-            '<button type="button" onclick="window.deleteCarVignette(\'' + car.id + '\', \'' + (v.country || '') + '\', \'' + (v.endDate || '') + '\')" class="text-[10px] bg-red-950 hover:bg-red-900 text-red-200 px-2 py-1 rounded border border-red-700 font-bold transition" title="Matrica törlése">🗑️ Törlés</button>' +
-          '</div>' +
-        '</div>';
+              motVigHtml += '<div class="bg-slate-900 border ' + (isExpired ? 'border-red-500' : 'border-amber-500/50') + ' p-2 rounded-lg flex justify-between items-center text-xs">' +
+                '<div>' +
+                  '<span class="font-bold text-slate-100">' + car.plateNumber + '</span> <span class="text-[10px] bg-amber-950 text-amber-300 px-1.5 py-0.2 rounded border border-amber-800 font-bold">' + v.country + ' Matrica</span>' +
+                  '<div class="text-[10px] text-slate-400">Érvényes: ' + v.endDate + '-ig</div>' +
+                '</div>' +
+                '<span class="text-xs font-mono font-bold ' + (isExpired ? 'text-red-400' : 'text-amber-400') + '">' + (isExpired ? 'LEJÁRT (' + Math.abs(diffDays) + ' napja)' : diffDays + ' nap maradt') + '</span>' +
+              '</div>';
             }
           }
         });
       });
-
-        window.deleteCarVignette = async function(carId, country, endDate) {
-  if (!confirm(`Biztosan törölni szeretnéd a(z) ${country} matricát (${endDate}) erről az autóról?`)) return;
-
-  try {
-    const car = allCars.find(c => c.id === carId);
-    if (!car) return;
-
-    // Kiszűrjük a törlendő matricát az autó matricái közül
-    const updatedVignettes = (car.vignettes || []).filter(v => !(v.country === country && v.endDate === endDate));
-
-    // Firestore frissítése
-    await updateDoc(doc(db, "cars", carId), {
-      vignettes: updatedVignettes
-    });
-
-    // Helyi adat frissítése és az alert kártyák újrarajzolása
-    car.vignettes = updatedVignettes;
-    if (typeof renderCombinedAlerts === 'function') renderCombinedAlerts();
-    if (typeof renderAdminCars === 'function') renderAdminCars();
-
-  } catch (err) {
-    console.error("Hiba a matrica törlésekor:", err);
-    alert("Hiba történt a matrica törlése közben!");
-  }
-};
 
       document.getElementById('badge_mot_vignette_alert').textContent = motVigCount + " eset";
       motVigContainer.innerHTML = motVigHtml || '<p class="text-[11px] text-slate-500 italic text-center p-2">Nincs lejáró matrica vagy műszaki vizsga.</p>';
