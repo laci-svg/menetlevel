@@ -211,6 +211,7 @@
 <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
 <button class="bg-slate-800 hover:bg-slate-700 text-emerald-300 px-2 py-1 rounded text-xs font-bold border border-slate-700" onclick="window.changeAssignmentMonth(-1)" type="button">◄</button>
 <span class="text-xs font-bold text-emerald-400 font-mono" id="assignmentMonthLabel"></span>
+<button id="assignmentAllMonthsBtn" class="bg-slate-800 hover:bg-slate-700 text-emerald-300 px-2 py-1 rounded text-[10px] font-bold border border-slate-700" onclick="window.toggleAllAssignmentMonths()" type="button">Összes hónap</button>
 <button class="bg-slate-800 hover:bg-slate-700 text-emerald-300 px-2 py-1 rounded text-xs font-bold border border-slate-700" onclick="window.changeAssignmentMonth(1)" type="button">►</button>
 </div>
 <span class="text-xs text-slate-400 font-bold transition-transform" id="arrow_card_assignments">▼</span>
@@ -5148,6 +5149,12 @@ function listenToAssignments() {
 }
 
 let selectedAssignmentMonthDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+let showAllAssignmentMonths = false;
+window.toggleAllAssignmentMonths = function() {
+  showAllAssignmentMonths = !showAllAssignmentMonths;
+  renderAdminAssignments();
+};
+
     window.changeAssignmentMonth = function(direction) {
       selectedAssignmentMonthDate.setMonth(selectedAssignmentMonthDate.getMonth() + direction);
       renderAdminAssignments();
@@ -5169,19 +5176,33 @@ let selectedAssignmentMonthDate = new Date(new Date().getFullYear(), new Date().
   }
 
   // Megbízások szűrése a kiválasztott hónapra
-  const filteredAssignments = allAssignments.filter(a => {
-    const dateStr = a.startDateTime || a.sendDateTime || a.createdAt || '';
-    return dateStr.startsWith(targetMonthStr);
-  });
+  const filteredAssignments = showAllAssignmentMonths
+    ? [...allAssignments]
+    : allAssignments.filter(a => {
+        const dateStr = a.startDateTime || a.sendDateTime || a.createdAt || '';
+        return dateStr.startsWith(targetMonthStr);
+      });
+
+  const allMonthsBtn = document.getElementById('assignmentAllMonthsBtn');
+  if (allMonthsBtn) {
+    allMonthsBtn.textContent = showAllAssignmentMonths ? 'Havi nézet' : 'Összes hónap';
+    allMonthsBtn.classList.toggle('bg-emerald-700', showAllAssignmentMonths);
+    allMonthsBtn.classList.toggle('text-white', showAllAssignmentMonths);
+  }
+  if (monthLabel) {
+    monthLabel.textContent = showAllAssignmentMonths
+      ? 'Összes hónap (' + allAssignments.length + ')'
+      : year + '. ' + monthNames[month];
+  }
 
   if (badge) badge.textContent = filteredAssignments.length + " megbízás";
 
   if (filteredAssignments.length === 0) {
-    container.innerHTML = '<p class="text-xs text-slate-500 text-center p-3 bg-slate-950/60 rounded-xl">Ebben a hónapban nincs rögzített megbízás.</p>';
+    container.innerHTML = showAllAssignmentMonths ? '<p class="text-xs text-slate-500 text-center p-3 bg-slate-950/60 rounded-xl">Nincs mentett megbízás az adatbázisban.</p>' : '<p class="text-xs text-slate-500 text-center p-3 bg-slate-950/60 rounded-xl">Ebben a hónapban nincs rögzített megbízás.</p>';
     return;
   }
 
-  const sorted = [...filteredAssignments].sort((a, b) => (b.startDateTime || '').localeCompare(a.startDateTime || ''));
+  const sorted = [...filteredAssignments].sort((a, b) => (b.startDateTime || b.sendDateTime || b.createdAt || '').localeCompare(a.startDateTime || a.sendDateTime || a.createdAt || ''));
 
   container.innerHTML = sorted.map(item => {
     const driverName = getUsernameFromEmail(item.driverEmail);
