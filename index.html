@@ -2127,6 +2127,26 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
       });
     }
 
+    const isExpired = diffDays < 0;
+        const statusText = isExpired ? `LEJÁRT (${Math.abs(diffDays)} napja)` : `Lejár (${diffDays} nap múlva)`;
+        const cardBorderClass = isExpired ? 'border-red-500 bg-red-950/30' : 'border-amber-500/60 bg-amber-950/30';
+
+        motVigHtml += '<div class="p-2.5 rounded-xl border ' + cardBorderClass + ' flex justify-between items-center gap-2 mb-2">' +
+          '<div>' +
+            '<div class="flex items-center gap-1.5 font-bold text-white text-xs">' +
+              '<span>' + (car.plate || car.carPlate) + '</span>' +
+              '<span class="bg-amber-900/60 text-amber-300 px-1 py-0.2 rounded text-[10px]">' + (v.country || 'HU') + '</span>' +
+            '</div>' +
+            '<div class="text-[11px] ' + (isExpired ? 'text-red-400' : 'text-amber-400') + ' font-semibold mt-0.5">' +
+              'Matrica ' + statusText +
+            '</div>' +
+            '<div class="text-[10px] text-slate-400">Érvényes: ' + (v.endDate || '') + ' ig</div>' +
+          '</div>' +
+          '<button type="button" onclick="deleteCarVignette(\'' + car.id + '\', \'' + (v.country || '') + '\', \'' + (v.endDate || '') + '\')" class="px-2 py-1 bg-red-900/80 hover:bg-red-800 text-red-100 text-xs rounded border border-red-700 transition font-bold" title="Matrica törlése">' +
+            '🗑️ Törlés' +
+          '</button>' +
+        '</div>';
+
     function populateBgDriverDropdown() {
       const select = document.getElementById('bgDriverSelect');
       if (!select) return;
