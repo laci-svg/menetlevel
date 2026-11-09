@@ -3485,7 +3485,7 @@ window.deleteVehicleReport = async function(reportId) {
       // Badge frissítése a darabszámmal és az összegzett többlettel
       if (badgeContainer) {
         badgeContainer.textContent = overlimitList.length > 0 
-          ? `${overlimitList.length} eset (+${totalExcessKm} km többlet)` 
+          ? `${overlimitList.length} eset (+${totalExcessKm} km)` 
           : "0 eset";
       }
 
