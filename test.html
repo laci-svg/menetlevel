@@ -3181,6 +3181,94 @@ window.saveCarEditModal = async function() {
       window.renderAdminStats();
     };
 
+    let currentReportMonth = new Date().toISOString().slice(0, 7);
+
+window.changeReportMonth = function(dir) {
+  let [y, m] = currentReportMonth.split('-').map(Number);
+  m += dir;
+  if (m > 12) { y++; m = 1; }
+  if (m < 1) { y--; m = 12; }
+  currentReportMonth = `${y}-${String(m).padStart(2, '0')}`;
+  document.getElementById('reportMonthDisplay').textContent = currentReportMonth;
+  renderAdminVehicleReports();
+};
+
+window.renderAdminVehicleReports = async function() {
+  const container = document.getElementById('adminVehicleReportsContainer');
+  if (!container) return;
+
+  try {
+    const q = query(
+      collection(db, "vehicleReports"),
+      where("monthStr", "==", currentReportMonth),
+      orderBy("timestamp", "desc")
+    );
+
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) {
+      container.innerHTML = `<p class="text-xs text-slate-500 italic text-center py-4">Nincs bejelentés ebben a hónapban (${currentReportMonth}).</p>`;
+      return;
+    }
+
+    let html = '';
+    snapshot.forEach(docSnap => {
+      const rep = docSnap.data();
+      const reportId = docSnap.id;
+      const dateFormatted = rep.timestamp ? new Date(rep.timestamp).toLocaleString('hu-HU') : rep.dateStr;
+
+      let tags = [];
+      if (rep.isEmptyTank) tags.push('<span class="bg-amber-950 text-amber-300 px-1.5 py-0.5 rounded border border-amber-700">⛽ Üzemanyag hiány</span>');
+      if (rep.isDirty) tags.push('<span class="bg-amber-950 text-amber-300 px-1.5 py-0.5 rounded border border-amber-700">🧹 Piszkos</span>');
+      if (rep.hasTechIssue) tags.push('<span class="bg-red-950 text-red-300 px-1.5 py-0.5 rounded border border-red-700">🛠️ Műszaki hiba</span>');
+
+      const timingText = rep.timing === 'pickup' ? '📍 Átvételkor' : '⚡ Műszak közben';
+
+      html += `
+        <div class="p-3 bg-slate-950/60 border border-slate-800 rounded-xl space-y-2 text-xs">
+          <div class="flex justify-between items-start">
+            <div>
+              <span class="font-bold text-white text-sm">${rep.plateNumber}</span>
+              <span class="text-[10px] text-slate-400 ml-2">${timingText}</span>
+            </div>
+            <span class="text-[10px] font-mono text-slate-400">${dateFormatted}</span>
+          </div>
+
+          <div class="flex flex-wrap gap-1 text-[10px] font-bold">
+            ${tags.join(' ')}
+          </div>
+
+          <div class="text-slate-300 bg-slate-900 p-2 rounded border border-slate-800/80">
+            "${rep.description}"
+          </div>
+
+          <div class="flex justify-between items-center pt-1 border-t border-slate-800/60">
+            <span class="text-[10px] text-slate-400">Bejelentő: <b>${rep.driverName}</b></span>
+            <button onclick="deleteVehicleReport('${reportId}')" class="px-2 py-1 bg-emerald-950 hover:bg-emerald-900 text-emerald-300 text-[10px] font-bold rounded border border-emerald-700 transition">
+              ✅ Elintézve / Törlés
+            </button>
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+  } catch (err) {
+    console.error("Hiba a bejelentések betöltésekor:", err);
+    container.innerHTML = `<p class="text-xs text-red-400 text-center py-2">Hiba a betöltés során!</p>`;
+  }
+};
+
+window.deleteVehicleReport = async function(reportId) {
+  if (!confirm("Biztosan elintézettnek jelölöd és törlöd ezt a bejelentést?")) return;
+  try {
+    await deleteDoc(doc(db, "vehicleReports", reportId));
+    renderAdminVehicleReports();
+  } catch (err) {
+    console.error("Hiba a törlésnél:", err);
+    alert("Hiba történt a törlés során!");
+  }
+};
+
     window.renderAdminStats = function() {
       const driverContainer = document.getElementById('driverStatsContainer');
       const carContainer = document.getElementById('carStatsContainer');
