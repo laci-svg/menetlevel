@@ -993,6 +993,46 @@ window.closeVehicleReportModal = function() {
 };
 
 // BEJELENTÉS BEKÜLDÉSE FIRESTORE-BA
+// Az adott jármű bejelentést megelőző, legutóbbi lezárt műszakának sofőrje.
+// Ha a bejelentés aktív műszak közben történik, az aktív műszak kezdete a
+// viszonyítási pont; így nem a bejelentő aktuális sofőrje kerül ide.
+function getPreviousDriverForVehicleReport(report) {
+  const plate = String(report?.plateNumber || report?.carPlate || '').trim().toUpperCase();
+  if (!plate || !Array.isArray(allShifts)) return null;
+
+  const currentShift = report?.shiftId
+    ? allShifts.find(shift => String(shift.id) === String(report.shiftId))
+    : null;
+  const referenceDateTime = currentShift
+    ? `${currentShift.startDate || ''}T${currentShift.startTime || '00:00'}`
+    : String(report?.timestamp || new Date().toISOString());
+  const referenceMs = Date.parse(referenceDateTime);
+  if (!Number.isFinite(referenceMs)) return null;
+
+  const previousShifts = allShifts.map(shift => {
+    const shiftPlate = String(shift.carPlate || shift.plateNumber || '').trim().toUpperCase();
+    const endDate = shift.endDate || shift.startDate || '';
+    const endTime = shift.endTime || '23:59';
+    const endedAt = Date.parse(`${endDate}T${endTime}`);
+    return { shift, shiftPlate, endedAt };
+  }).filter(item =>
+    item.shift.id !== currentShift?.id &&
+    item.shift.status === 'closed' &&
+    item.shiftPlate === plate &&
+    Number.isFinite(item.endedAt) &&
+    item.endedAt <= referenceMs
+  ).sort((a, b) => b.endedAt - a.endedAt);
+
+  const previous = previousShifts[0]?.shift;
+  if (!previous) return null;
+  const driver = previous.driverName || getUsernameFromEmail(previous.driverEmail) || 'Ismeretlen';
+  return {
+    driverName: driver,
+    shiftDate: previous.endDate || previous.startDate || '',
+    shiftId: previous.id || ''
+  };
+}
+
 window.submitVehicleReport = async function(e) {
   e.preventDefault();
 
@@ -1014,6 +1054,11 @@ window.submitVehicleReport = async function(e) {
       driverId: currentUser.uid,
       driverName: currentUser.displayName || currentUser.email || 'Ismeretlen sofőr',
       shiftId: activeShift?.id || '',
+      previousDriver: getPreviousDriverForVehicleReport({
+        plateNumber: activeShift?.carPlate || activeShift?.plateNumber || 'Ismeretlen',
+        shiftId: activeShift?.id || '',
+        timestamp: new Date().toISOString()
+      }),
       timestamp: new Date().toISOString(),
       dateStr: new Date().toISOString().split('T')[0],
       monthStr: new Date().toISOString().slice(0, 7),
@@ -3240,7 +3285,7 @@ window.changeReportMonth = function(dir) {
 };
 
 window.renderAdminVehicleReports = async function() {
-  if (!/^\\d{4}-\\d{2}$/.test(currentReportMonth || '')) {
+  if (!/^\d{4}-\d{2}$/.test(currentReportMonth || '')) {
     const now = new Date();
     currentReportMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   }
@@ -3280,8 +3325,12 @@ window.renderAdminVehicleReports = async function() {
         if (rep.isDirty) tags.push('<span class="bg-amber-950 text-amber-300 px-1.5 py-0.5 rounded border border-amber-700">🧹 Piszkos</span>');
         if (rep.hasTechIssue) tags.push('<span class="bg-red-950 text-red-300 px-1.5 py-0.5 rounded border border-red-700">🛠️ Műszaki hiba</span>');
         const timingText = rep.timing === 'pickup' ? '📍 Átvételkor' : '⚡ Műszak közben';
+        const previousDriver = rep.previousDriver || getPreviousDriverForVehicleReport(rep);
+        const previousDriverHtml = previousDriver?.driverName
+          ? `<span class="inline-flex items-center gap-1 text-[10px] bg-sky-950/70 text-sky-300 border border-sky-800/70 rounded px-2 py-0.5">↩ Előző sofőr: <b>${escapeHtml(previousDriver.driverName)}</b></span>`
+          : `<span class="inline-flex items-center text-[10px] text-slate-500">↩ Előző sofőr: nem állapítható meg</span>`;
         return `<div class="p-3 bg-slate-950/80 border border-slate-800 rounded-xl space-y-2 text-xs">
-          <div class="flex flex-wrap justify-between items-start gap-2"><div><span class="font-bold text-white text-sm">${escapeHtml(rep.plateNumber || 'Ismeretlen jármű')}</span><span class="text-[10px] text-slate-400 ml-2">${timingText}</span></div><span class="text-[10px] font-mono text-slate-400">${escapeHtml(timeLabel)}</span></div>
+          <div class="flex flex-wrap justify-between items-start gap-2"><div><span class="font-bold text-white text-sm">${escapeHtml(rep.plateNumber || 'Ismeretlen jármű')}</span><span class="text-[10px] text-slate-400 ml-2">${timingText}</span><div class="mt-1">${previousDriverHtml}</div></div><span class="text-[10px] font-mono text-slate-400">${escapeHtml(timeLabel)}</span></div>
           <div class="flex flex-wrap gap-1 text-[10px] font-bold">${tags.join(' ')}</div>
           <div class="text-slate-300 bg-slate-900 p-2 rounded border border-slate-800/80 whitespace-pre-wrap">${escapeHtml(rep.description || 'Nincs részletes leírás.')}</div>
           <div class="flex flex-wrap justify-between items-center gap-2 pt-1 border-t border-slate-800/60"><span class="text-[10px] text-slate-400">Bejelentő: <b>${escapeHtml(rep.driverName || 'Ismeretlen')}</b></span>${hasActionPermission('manage_vehicle_reports') ? `<button onclick="window.deleteVehicleReport('${escapeHtml(id)}')" class="px-2 py-1 bg-emerald-950 hover:bg-emerald-900 text-emerald-300 text-[10px] font-bold rounded border border-emerald-700 transition">✅ Elintézve / Törlés</button>` : ''}</div>
@@ -5226,8 +5275,18 @@ let selectedAssignmentMonthDate = new Date(new Date().getFullYear(), new Date().
 
 window.deleteAssignment = async function(id) {
   if (!hasActionPermission('manage_assignments')) return alert('Nincs jogosultságod a megbízások törléséhez!');
-  if (confirm("Biztosan törölni szeretnéd ezt a megbízást?")) {
+  if (!confirm("Biztosan törölni szeretnéd ezt a megbízást? A sofőr felületéről is eltűnik.")) return;
+  try {
+    // A Firestore törlését megvárjuk, majd az admin kliens helyi listájából is
+    // azonnal eltávolítjuk. A többi bejelentkezett kliens az onSnapshot eseményből
+    // kapja meg a törlést, és újrarendereli a saját megbízáslistáját.
     await deleteDoc(doc(db, "assignments", id));
+    allAssignments = allAssignments.filter(item => item.id !== id);
+    renderAdminAssignments();
+    renderDriverAssignments();
+  } catch (err) {
+    console.error("Megbízás törlési hiba:", err);
+    alert("A megbízást nem sikerült törölni: " + (err?.message || err));
   }
 };
 
