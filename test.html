@@ -981,30 +981,21 @@
       getFirestore, collection, addDoc, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, deleteField, arrayUnion, arrayRemove 
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyCzpvcJSdO8o2mpLOibQKEv6tLes0BixFM",
-      authDomain: "menetlevel-3563a.firebaseapp.com",
-      projectId: "menetlevel-3563a",
-      storageBucket: "menetlevel-3563a.firebasestorage.app",
-      messagingSenderId: "306355505023",
-      appId: "1:306355505023:web:fdd44585f7946d6fddfc4a",
-      measurementId: "G-9NNKD3N84H"
-    };
+   const firebaseConfig = {
+    apiKey: "AiZaSyCzpvcJSdO8o2mpLOibQKEv6tLes0BixFM",
+    authDomain: "menetlevel-3563a.firebaseapp.com",
+    projectId: "menetlevel-3563a",
+  };
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
 
-    // MODAL MEGNYITÁSA / BEZÁRÁSA
-window.openVehicleReportModal = function() {
-  if (!currentShift) {
-    alert("⚠️ Hiba bejelentéséhez előbb indítsd el a műszakot!");
-    return;
-  }
-  document.getElementById('vehicleReportForm').reset();
-  document.getElementById('vehicleReportModal').classList.remove('hidden');
-};
-
+  window.openVehicleReportModal = function() {
+    document.getElementById('vehicleReportForm').reset();
+    document.getElementById('vehicleReportModal').classList.remove('hidden');
+  };
+    
 window.closeVehicleReportModal = function() {
   document.getElementById('vehicleReportModal').classList.add('hidden');
 };
