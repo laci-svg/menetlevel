@@ -978,6 +978,67 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
+    // MODAL MEGNYITÁSA / BEZÁRÁSA
+window.openVehicleReportModal = function() {
+  if (!currentShift) {
+    alert("⚠️ Hiba bejelentéséhez előbb indítsd el a műszakot!");
+    return;
+  }
+  document.getElementById('vehicleReportForm').reset();
+  document.getElementById('vehicleReportModal').classList.remove('hidden');
+};
+
+window.closeVehicleReportModal = function() {
+  document.getElementById('vehicleReportModal').classList.add('hidden');
+};
+
+// BEJELENTÉS BEKÜLDÉSE FIRESTORE-BA
+window.submitVehicleReport = async function(e) {
+  e.preventDefault();
+
+  const isEmptyTank = document.getElementById('reportIsEmptyTank').checked;
+  const isDirty = document.getElementById('reportIsDirty').checked;
+  const hasTechIssue = document.getElementById('reportHasTechIssue').checked;
+  const timing = document.querySelector('input[name="reportTiming"]:checked')?.value || 'pickup';
+  const description = document.getElementById('reportDescription').value.trim();
+
+  if (!isEmptyTank && !isDirty && !hasTechIssue) {
+    alert("Kérjük, válassz ki legalább egy problématípust!");
+    return;
+  }
+
+  try {
+    const reportData = {
+      carId: currentShift.carId || '',
+      plateNumber: currentShift.carPlate || currentShift.plateNumber || 'Ismeretlen',
+      driverId: currentUser.uid,
+      driverName: currentUser.displayName || currentUser.email || 'Ismeretlen sofőr',
+      shiftId: currentShift.id || '',
+      timestamp: new Date().toISOString(),
+      dateStr: new Date().toISOString().split('T')[0],
+      monthStr: new Date().toISOString().slice(0, 7),
+      isEmptyTank,
+      isDirty,
+      hasTechIssue,
+      timing,
+      description,
+      status: 'active'
+    };
+
+    await addDoc(collection(db, "vehicleReports"), reportData);
+
+    alert("✅ Bejelentés sikeresen rögzítve!");
+    closeVehicleReportModal();
+
+    if (typeof renderAdminVehicleReports === 'function') {
+      renderAdminVehicleReports();
+    }
+  } catch (err) {
+    console.error("Hiba a bejelentés mentésekor:", err);
+    alert("Hiba történt a bejelentés beküldése során!");
+  }
+};
+
     let selectedClosedShiftsMonthDate = new Date();
     let selectedRuralTripsMonthDate = new Date();
     window.changeRuralTripsMonth = function(direction) {
