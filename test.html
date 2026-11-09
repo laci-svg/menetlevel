@@ -1107,6 +1107,14 @@ window.changeClosedShiftsMonth = function(direction) {
       { id: "delete_trip", label: "🗑️ Utak törlése" },
       { id: "delete_shift", label: "❌ Teljes műszak törlése" },
       { id: "release_car", label: "🔓 Autó felszabadítása & törlése" },
+      { id: "manage_car_fleet", label: "🚗 Járműadatok, szerviz és felszereltség szerkesztése" },
+      { id: "manage_vehicle_reports", label: "🚨 Járműállapot-bejelentések elintézése / törlése" },
+      { id: "manage_assignments", label: "📋 Megbízások létrehozása, szerkesztése és törlése" },
+      { id: "manage_announcements", label: "📢 Sofőrközlemények küldése és törlése" },
+      { id: "manage_overtime", label: "⏰ Havi túlórák módosítása és törlése" },
+      { id: "manage_sos_settings", label: "🆘 SOS telefonszámok beállítása" },
+      { id: "manage_sos_alerts", label: "🚨 SOS riasztások lezárása" },
+      { id: "manage_driver_settings", label: "👤 Sofőr egyedi háttér és beállítások módosítása" },
       { id: "edit_admin_wall_other", label: "✏️ Mások admin üzenőfal bejegyzéseinek szerkesztése" },
       { id: "delete_admin_wall", label: "🗑️ Admin üzenőfal bejegyzések törlése" }
     ];
@@ -1128,6 +1136,7 @@ window.changeClosedShiftsMonth = function(direction) {
     let minAllowedEndKm = 0;
     let selectedOvertimeMonthDate = new Date();
     let selectedShiftHoursMonthDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    let currentReportMonth = (() => { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`; })();
     let tempModalVignettes = [];
 
     // Sérült vagy régi böngésző-táradat ne állítsa le a teljes modult
@@ -1323,8 +1332,10 @@ window.changeClosedShiftsMonth = function(direction) {
     function hasActionPermission(actionId) {
       const userEmail = (currentUser?.email || auth.currentUser?.email || '').toLowerCase();
       if (userEmail === MASTER_SUPER_ADMIN_EMAIL.toLowerCase() || currentUserData?.isSuperAdmin === true) return true;
-      if (currentUserData?.role === 'admin' && (!currentUserData.actionPermissions || currentUserData.actionPermissions.length === 0)) return true;
-      return (currentUserData?.actionPermissions || []).includes(actionId);
+      // Régi admin profilnál (mező még nincs elmentve) megtartjuk a korábbi hozzáférést.
+      // Ha a mező már létezik és üres tömb, az szándékosan nulla műveleti jogosultságot jelent.
+      if (currentUserData?.role === 'admin' && !Array.isArray(currentUserData.actionPermissions)) return true;
+      return Array.isArray(currentUserData?.actionPermissions) && currentUserData.actionPermissions.includes(actionId);
     }
 
     function isUserInactiveByEmail(email) {
@@ -1427,7 +1438,7 @@ window.changeClosedShiftsMonth = function(direction) {
         populatePdfDriverDropdown();
         populateBgDriverDropdown();
         renderAdminStats();
-        renderAdminVehicleReports();
+        window.initializeVehicleReportMonth();
         renderSuperAdminPermissionsPanel();
       } else {
         adminSec.classList.add('hidden');
@@ -1450,7 +1461,7 @@ window.changeClosedShiftsMonth = function(direction) {
       ALL_ADMIN_CARDS.forEach(card => {
         const el = document.getElementById(card.elId);
         if (el) {
-          if (isSuperAdmin || allowedCards.length === 0 || allowedCards.includes(card.id)) {
+          if (isSuperAdmin || currentUserData?.adminCards === undefined || allowedCards.includes(card.id)) {
             el.classList.remove('hidden');
           } else {
             el.classList.add('hidden');
@@ -1562,6 +1573,7 @@ window.changeClosedShiftsMonth = function(direction) {
     }
 
     window.updateGlobalVignetteAlertDays = async function(val) {
+  if (!hasActionPermission('manage_car_fleet')) return alert('Nincs jogosultságod a járműpark beállításainak módosításához!');
       const days = Number(val) || 4;
       await setDoc(doc(db, "settings", "global"), { vignetteAlertDays: days }, { merge: true });
     };
@@ -1574,6 +1586,13 @@ window.changeClosedShiftsMonth = function(direction) {
     }
 
     window.saveAdminWallPost = async function(e) {
+      const editingPostId = document.getElementById('adminWallEditingPostId').value;
+      if (editingPostId) {
+        const existingPost = allAdminWallPosts.find(p => p.id === editingPostId);
+        if (existingPost && existingPost.authorUid !== currentUser?.uid && !hasActionPermission('edit_admin_wall_other')) {
+          return alert("Nincs jogosultságod mások admin üzenőfal-bejegyzéseinek szerkesztéséhez!");
+        }
+      }
       e.preventDefault();
       const postId = document.getElementById('adminWallEditingPostId').value;
       const title = document.getElementById('adminWallTitle').value.trim();
@@ -1750,6 +1769,7 @@ window.changeClosedShiftsMonth = function(direction) {
     };
 
     window.sendAnnouncement = async function(e) {
+  if (!hasActionPermission('manage_announcements')) return alert('Nincs jogosultságod közlemények küldéséhez!');
       e.preventDefault();
       const title = document.getElementById('announcementTitle').value.trim();
       const message = document.getElementById('announcementMessage').value.trim();
@@ -1814,7 +1834,7 @@ function renderAdminAnnouncements() {
           '<h5 class="text-xs font-bold text-sky-400">' + a.title + '</h5>' +
           '<span class="text-[10px] text-slate-500 font-mono">📅 ' + a.createdAt + ' • 🎯 ' + targetText + '</span>' +
         '</div>' +
-        '<button onclick="window.deleteAnnouncement(\'' + a.id + '\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-300 px-2 py-1 rounded border border-red-800 transition">Törlés</button>' +
+        (hasActionPermission('manage_announcements') ? '<button onclick="window.deleteAnnouncement(\'' + a.id + '\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-300 px-2 py-1 rounded border border-red-800 transition">Törlés</button>' : '') +
       '</div>' +
       '<p class="text-xs text-slate-300 bg-slate-900/80 p-2 rounded-lg border border-slate-800/80 whitespace-pre-line">' + a.message + '</p>' +
       '<div class="text-[10px] text-emerald-400 font-semibold mt-1">' +
@@ -1879,6 +1899,7 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
 });
 
     window.deleteAnnouncement = async function(id) {
+  if (!hasActionPermission('manage_announcements')) return alert('Nincs jogosultságod közlemények törléséhez!');
       if (confirm("Biztosan törlöd ezt az üzenetet az admin felületről és az archívumokból?")) {
         await deleteDoc(doc(db, "announcements", id));
       }
@@ -2220,6 +2241,7 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
     }
 
     window.saveDriverBackground = async function(e) {
+  if (!hasActionPermission('manage_driver_settings')) return alert('Nincs jogosultságod a sofőrbeállítások módosításához!');
       e.preventDefault();
       const userId = document.getElementById('bgDriverSelect').value;
       const url = document.getElementById('bgUrlInput').value.trim();
@@ -2241,6 +2263,7 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
     }
 
     window.setMassHUAnnualVignettes = async function() {
+      if (!hasActionPermission('manage_car_fleet')) return alert('Nincs jogosultságod a járműadatok módosításához!');
       if (!confirm("Biztosan beállítod az ÖSSZES autóra a magyar éves autópálya matricát (aktuális év Jan 31 - következő év Jan 31)?")) return;
 
       const currentYear = new Date().getFullYear();
@@ -2396,6 +2419,7 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
     }
 
     window.resetCarOilChange = async function(carId) {
+  if (!hasActionPermission('manage_car_fleet')) return alert('Nincs jogosultságod a járműadatok módosításához!');
       const car = allCars.find(c => c.id === carId);
       if (!car) return;
       if (confirm("Igazolod, hogy az olajcsere megtörtént a " + car.plateNumber + " autónál? A számláló a jelenlegi óraálláshoz (" + (car.lastKm || 0) + " km) frissül!")) {
@@ -2407,6 +2431,7 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
     };
 
     window.clearCarDateService = async function(carId) {
+  if (!hasActionPermission('manage_car_fleet')) return alert('Nincs jogosultságod a járműadatok módosításához!');
   const car = allCars.find(c => c.id === carId);
   if (!car) return;
   
@@ -2467,6 +2492,7 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
     if (badge) badge.textContent = `${sortedCars.length} autó (${freeCount} szabad / ${occupiedCount} foglalt / ${serviceCount} szerviz / ${inactiveCount} inaktív)`;
 
     const canRelease = hasActionPermission('release_car');
+    const canManageCars = hasActionPermission('manage_car_fleet');
 
     container.innerHTML = sortedCars.map(car => {
       const activeShift = allShifts.find(s => !s.endDate && (s.carId === car.id || s.carPlate === car.plateNumber));
@@ -2498,17 +2524,17 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
             '<div class="text-[10px] mt-1">' + statusText + '</div>' +
           '</div>' +
           '<div class="flex flex-wrap gap-1 justify-end max-w-[220px]">' +
-            '<button onclick="window.openEditCarModal(\'' + car.id + '\')" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-amber-300 p-1.5 px-2 rounded-lg border border-slate-700 font-bold">✏️ Módosít</button>' +
+            (canManageCars ? '<button onclick="window.openEditCarModal(\'' + car.id + '\')" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-amber-300 p-1.5 px-2 rounded-lg border border-slate-700 font-bold">✏️ Módosít</button>' : '') +
             '<button onclick="window.openServiceHistory(\'' + car.plateNumber + '\')" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-sky-300 p-1.5 px-2 rounded-lg border border-slate-700 font-bold">📜 Történet</button>' +
             
-            (!isService && !isInactive ? 
+            (canManageCars && !isService && !isInactive ? 
               '<button onclick="window.directSendToService(\'' + car.id + '\')" class="text-[10px] bg-amber-950 hover:bg-amber-900 text-amber-200 p-1.5 px-2 rounded-lg border border-amber-800 font-bold">🛠️ Szervizbe</button>' +
               '<button onclick="window.toggleCarInactiveState(\'' + car.id + '\', true)" class="text-[10px] bg-red-950 hover:bg-red-900 text-red-200 p-1.5 px-2 rounded-lg border border-red-800 font-bold">🚫 Inaktivál</button>' : '') +
             
-            (isService ? 
+            (canManageCars && isService ? 
               '<button onclick="window.returnFromService(\'' + car.id + '\')" class="text-[10px] bg-emerald-950 hover:bg-emerald-900 text-emerald-300 p-1.5 px-2 rounded-lg border border-emerald-800 font-bold">✅ Visszavesz</button>' : '') +
             
-            (isInactive && !isService ? 
+            (canManageCars && isInactive && !isService ? 
               '<button onclick="window.toggleCarInactiveState(\'' + car.id + '\', false)" class="text-[10px] bg-emerald-950 hover:bg-emerald-900 text-emerald-300 p-1.5 px-2 rounded-lg border border-emerald-800 font-bold">✅ Aktivál</button>' : '') +
 
             (isOccupied && canRelease ? '<button onclick="window.forceReleaseCar(\'' + car.id + '\')" class="text-[10px] bg-amber-500/10 text-amber-400 p-1.5 px-2 rounded-lg border border-amber-500/20 font-bold">🔓 Felszabadít</button>' : '') +
@@ -2535,6 +2561,7 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
     };
 
     window.confirmSendToService = async function() {
+  if (!hasActionPermission('manage_car_fleet')) return alert('Nincs jogosultságod a járműadatok módosításához!');
   const carId = document.getElementById('serviceCarId').value;
   const date = document.getElementById('serviceModalDate').value;
   const alertDays = Number(document.getElementById('serviceModalAlertDays').value) || 2;
@@ -2574,6 +2601,7 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
 };
 
     window.returnFromService = async function(carId) {
+  if (!hasActionPermission('manage_car_fleet')) return alert('Nincs jogosultságod a járműadatok módosításához!');
       const car = allCars.find(c => c.id === carId);
       if (!car) return;
 
@@ -2600,6 +2628,7 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
 
     // Azonnali szervizbe küldés gomb logikája
 window.directSendToService = async function(carId) {
+  if (!hasActionPermission('manage_car_fleet')) return alert('Nincs jogosultságod a járműadatok módosításához!');
   const car = allCars.find(c => c.id === carId);
   if (!car) return;
 
@@ -2616,6 +2645,7 @@ window.directSendToService = async function(carId) {
 
 // Inaktiválás és aktiválás gomb logikája
 window.toggleCarInactiveState = async function(carId, setInactive) {
+  if (!hasActionPermission('manage_car_fleet')) return alert('Nincs jogosultságod a járműadatok módosításához!');
   const car = allCars.find(c => c.id === carId);
   if (!car) return;
 
@@ -2693,6 +2723,7 @@ window.toggleCarInactiveState = async function(carId, setInactive) {
       renderModalVignettesList();
     };
 window.saveCarEditModal = async function() {
+  if (!hasActionPermission('manage_car_fleet')) return alert('Nincs jogosultságod a járműadatok módosításához!');
   const carId = document.getElementById('editCarId').value;
   if (!carId) return;
 
@@ -2754,6 +2785,7 @@ window.saveCarEditModal = async function() {
 
     document.getElementById('addCarForm')?.addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (!hasActionPermission('manage_car_fleet')) return alert('Nincs jogosultságod új jármű rögzítéséhez!');
       const plateNumber = document.getElementById('carPlateInput').value.trim().toUpperCase();
       const model = document.getElementById('carModelInput').value.trim();
       const startKm = Number(document.getElementById('carStartKmInput').value) || 0;
@@ -2856,6 +2888,9 @@ window.saveCarEditModal = async function() {
     }
 
     window.renderRoleUI = function() {
+      if (isAdminMode && typeof window.initializeVehicleReportMonth === 'function') {
+        window.initializeVehicleReportMonth();
+      }
       const adminSec = document.getElementById('adminSection');
       const driverSec = document.getElementById('driverViewContainer');
       const btn = document.getElementById('toggleAdminBtn');
@@ -3147,6 +3182,7 @@ window.saveCarEditModal = async function() {
     };
 
     window.adminEditShiftOvertime = async function(shiftId) {
+  if (!hasActionPermission('manage_overtime')) return alert('Nincs jogosultságod a túlórák módosításához!');
       const shift = allShifts.find(s => s.id === shiftId);
       if (!shift) return;
       const newHrsStr = prompt("Túlóra órák módosítása:", shift.overtimeHours || 0);
@@ -3158,6 +3194,7 @@ window.saveCarEditModal = async function() {
     };
 
     window.adminDeleteShiftOvertime = async function(shiftId) {
+  if (!hasActionPermission('manage_overtime')) return alert('Nincs jogosultságod a túlórák törléséhez!');
       if (confirm("Biztosan törlöd a túlórát erről a műszakról?")) {
         await updateDoc(doc(db, "shifts", shiftId), { overtimeHours: 0 });
         alert("Túlóra törölve!");
@@ -3177,7 +3214,14 @@ window.saveCarEditModal = async function() {
       window.renderAdminStats();
     };
 
-    let currentReportMonth = (() => { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`; })();
+    
+window.initializeVehicleReportMonth = function() {
+  const now = new Date();
+  currentReportMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const label = document.getElementById('reportMonthDisplay');
+  if (label) label.textContent = formatReportMonthLabel(currentReportMonth);
+  return window.renderAdminVehicleReports();
+};
 
 function formatReportMonthLabel(monthStr) {
   const [year, month] = monthStr.split('-').map(Number);
@@ -3196,6 +3240,10 @@ window.changeReportMonth = function(dir) {
 };
 
 window.renderAdminVehicleReports = async function() {
+  if (!/^\\d{4}-\\d{2}$/.test(currentReportMonth || '')) {
+    const now = new Date();
+    currentReportMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  }
   const container = document.getElementById('adminVehicleReportsContainer');
   if (!container) return;
   const monthLabel = document.getElementById('reportMonthDisplay');
@@ -3236,7 +3284,7 @@ window.renderAdminVehicleReports = async function() {
           <div class="flex flex-wrap justify-between items-start gap-2"><div><span class="font-bold text-white text-sm">${escapeHtml(rep.plateNumber || 'Ismeretlen jármű')}</span><span class="text-[10px] text-slate-400 ml-2">${timingText}</span></div><span class="text-[10px] font-mono text-slate-400">${escapeHtml(timeLabel)}</span></div>
           <div class="flex flex-wrap gap-1 text-[10px] font-bold">${tags.join(' ')}</div>
           <div class="text-slate-300 bg-slate-900 p-2 rounded border border-slate-800/80 whitespace-pre-wrap">${escapeHtml(rep.description || 'Nincs részletes leírás.')}</div>
-          <div class="flex flex-wrap justify-between items-center gap-2 pt-1 border-t border-slate-800/60"><span class="text-[10px] text-slate-400">Bejelentő: <b>${escapeHtml(rep.driverName || 'Ismeretlen')}</b></span><button onclick="window.deleteVehicleReport('${escapeHtml(id)}')" class="px-2 py-1 bg-emerald-950 hover:bg-emerald-900 text-emerald-300 text-[10px] font-bold rounded border border-emerald-700 transition">✅ Elintézve / Törlés</button></div>
+          <div class="flex flex-wrap justify-between items-center gap-2 pt-1 border-t border-slate-800/60"><span class="text-[10px] text-slate-400">Bejelentő: <b>${escapeHtml(rep.driverName || 'Ismeretlen')}</b></span>${hasActionPermission('manage_vehicle_reports') ? `<button onclick="window.deleteVehicleReport('${escapeHtml(id)}')" class="px-2 py-1 bg-emerald-950 hover:bg-emerald-900 text-emerald-300 text-[10px] font-bold rounded border border-emerald-700 transition">✅ Elintézve / Törlés</button>` : ''}</div>
         </div>`;
       }).join('');
       return `<details class="border border-amber-500/20 bg-slate-950/70 rounded-xl overflow-hidden" open><summary class="flex items-center justify-between gap-2 p-3 cursor-pointer hover:bg-slate-900"><span class="text-xs font-bold text-amber-200">📅 ${dayLabel}</span><span class="text-[10px] font-mono text-amber-300">${dayReports.length} bejelentés</span></summary><div class="p-2 border-t border-slate-800 space-y-2">${reportCards}</div></details>`;
@@ -3250,6 +3298,7 @@ window.renderAdminVehicleReports = async function() {
 };
 
 window.deleteVehicleReport = async function(reportId) {
+  if (!hasActionPermission('manage_vehicle_reports')) return alert("Nincs jogosultságod a járműállapot-bejelentések kezeléséhez!");
   if (!confirm("Biztosan elintézettnek jelölöd és törlöd ezt a bejelentést?")) return;
   try {
     await deleteDoc(doc(db, "vehicleReports", reportId));
@@ -3865,16 +3914,19 @@ window.downloadAllOverlimitPDFsZip = async function() {
     }
 
     window.updateUserWorkedDaysOverride = async function(userId, val) {
+      if (!currentUserData?.isSuperAdmin && (currentUser?.email || '').toLowerCase() !== MASTER_SUPER_ADMIN_EMAIL.toLowerCase()) return alert('Ezt a műveletet csak a főadmin végezheti!');
       const value = val === "" ? deleteField() : Number(val);
       await updateDoc(doc(db, "users", userId), { overrideWorkedDays: value });
     };
 
     window.updateUserVacationQuota = async function(userId, val) {
+      if (!currentUserData?.isSuperAdmin && (currentUser?.email || '').toLowerCase() !== MASTER_SUPER_ADMIN_EMAIL.toLowerCase()) return alert('Ezt a műveletet csak a főadmin végezheti!');
       const quota = Number(val) || 0;
       await updateDoc(doc(db, "users", userId), { vacationDaysQuota: quota });
     };
 
     window.toggleUserActiveStatus = async function(userId, setInactive) {
+      if (!currentUserData?.isSuperAdmin && (currentUser?.email || '').toLowerCase() !== MASTER_SUPER_ADMIN_EMAIL.toLowerCase()) return alert('Ezt a műveletet csak a főadmin végezheti!');
       const u = allUsers.find(x => x.id === userId);
       if (!u) return;
       if (u.email.toLowerCase() === MASTER_SUPER_ADMIN_EMAIL.toLowerCase()) return alert("A Mester Főadmin fiók nem inaktiválható!");
@@ -3884,6 +3936,7 @@ window.downloadAllOverlimitPDFsZip = async function() {
     };
 
     window.toggleUserAdminRole = async function(userId, makeAdmin) {
+      if (!currentUserData?.isSuperAdmin && (currentUser?.email || '').toLowerCase() !== MASTER_SUPER_ADMIN_EMAIL.toLowerCase()) return alert('Ezt a műveletet csak a főadmin végezheti!');
       const u = allUsers.find(x => x.id === userId);
       if (!u || u.email.toLowerCase() === MASTER_SUPER_ADMIN_EMAIL.toLowerCase()) return;
       await updateDoc(doc(db, "users", userId), {
@@ -3896,6 +3949,9 @@ window.downloadAllOverlimitPDFsZip = async function() {
     // A jogosultságokat azonnal frissítjük a memóriában is, így gyors egymás utáni
     // kattintások nem írják felül egymás módosításait a régi allUsers adatokkal.
     async function saveUserPermissionArray(userId, fieldName, value) {
+      if (!currentUserData?.isSuperAdmin && (currentUser?.email || '').toLowerCase() !== MASTER_SUPER_ADMIN_EMAIL.toLowerCase()) {
+        throw new Error('A jogosultságokat csak a főadmin módosíthatja.');
+      }
       const u = allUsers.find(x => x.id === userId);
       if (!u) return;
       const previous = Array.isArray(u[fieldName]) ? [...u[fieldName]] : undefined;
@@ -3903,6 +3959,10 @@ window.downloadAllOverlimitPDFsZip = async function() {
       renderSuperAdminPermissionsPanel();
       try {
         await updateDoc(doc(db, "users", userId), { [fieldName]: [...value] });
+      if (userId === currentUser?.uid) {
+        currentUserData = { ...(currentUserData || {}), [fieldName]: [...value] };
+        if (fieldName === 'adminCards') applyCardVisibilityPermissions();
+      }
       } catch (error) {
         if (previous === undefined) delete u[fieldName]; else u[fieldName] = previous;
         renderSuperAdminPermissionsPanel();
@@ -4074,6 +4134,7 @@ async function loadSosPhoneNumbers() {
 
 // 2. Telefonszámok mentése az Admin felületről (Firebase v10)
 window.saveSosPhoneNumbers = async function() {
+  if (!hasActionPermission('manage_sos_settings')) return alert('Nincs jogosultságod az SOS beállítások módosításához!');
   const input = document.getElementById('adminSosPhoneNumbers');
   if (!input) return;
 
@@ -4338,6 +4399,7 @@ function initAdminSosListener() {
 
 // SOS Riasztás lezárása az Admin által
 window.resolveSosAlert = function(alertId) {
+  if (!hasActionPermission('manage_sos_alerts')) return alert('Nincs jogosultságod az SOS riasztások kezeléséhez!');
   if (!confirm("Biztosan lezárod ezt az SOS riasztást?")) return;
 
   if (typeof db !== 'undefined' && db.collection) {
@@ -4362,6 +4424,7 @@ if (document.readyState === 'loading') {
 
     // Régi elemek szerkesztése a kártyán
     window.editLegacyService = function(plateNumber, index) {
+      if (!hasActionPermission('manage_car_fleet')) return alert('Nincs jogosultságod a járműadatok módosításához!');
       const car = (allCars || []).find(c => c.plateNumber === plateNumber);
       if (!car || !car.serviceHistory || !car.serviceHistory[index]) return;
 
@@ -4392,6 +4455,7 @@ if (document.readyState === 'loading') {
 
     // Régi elemek törlése a kártyán
     window.deleteLegacyService = function(plateNumber, index) {
+      if (!hasActionPermission('manage_car_fleet')) return alert('Nincs jogosultságod a járműadatok módosításához!');
       if (confirm('Biztosan törölni szeretnéd ezt a szervíz bejegyzést?')) {
         const car = (allCars || []).find(c => c.plateNumber === plateNumber);
         if (car && car.serviceHistory) {
@@ -4523,6 +4587,7 @@ if (document.readyState === 'loading') {
     };
 
     window.deleteService = function(id) {
+      if (!hasActionPermission('manage_car_fleet')) return alert('Nincs jogosultságod a járműadatok módosításához!');
       if (confirm('Biztosan törölni szeretnéd ezt a szervíz bejegyzést?')) {
         window.serviceData = window.serviceData.filter(s => s.id !== id);
         localStorage.setItem('serviceHistoryData', JSON.stringify(window.serviceData));
@@ -4956,6 +5021,7 @@ window.closeAssignmentModal = function() {
 
 // 2. Megbízás mentése Firestore-ba
 window.saveAssignment = async function(e) {
+  if (!hasActionPermission('manage_assignments')) return alert('Nincs jogosultságod a megbízások módosításához!');
   e.preventDefault();
 
   const assignmentId = document.getElementById('assignmentId').value;
@@ -5088,9 +5154,9 @@ let selectedAssignmentMonthDate = new Date(new Date().getFullYear(), new Date().
           </div>
           <div class="flex items-center gap-1.5 flex-wrap justify-end">
             ${statusBadge}
-            <button onclick="window.editAssignmentModal('${item.id}')" class="bg-amber-600/80 hover:bg-amber-500 text-white px-2 py-1 rounded text-[10px] font-bold border border-amber-400/40">✏️ Szerkeszt</button>
+            ${hasActionPermission('manage_assignments') ? `<button onclick="window.editAssignmentModal('${item.id}')" class="bg-amber-600/80 hover:bg-amber-500 text-white px-2 py-1 rounded text-[10px] font-bold border border-amber-400/40">✏️ Szerkeszt</button>` : ''}
             <button onclick="window.downloadAssignmentPDF('${item.id}')" class="bg-slate-800 hover:bg-slate-700 text-amber-300 px-2 py-1 rounded text-[10px] font-bold border border-slate-700">📄 PDF</button>
-            <button onclick="window.deleteAssignment('${item.id}')" class="bg-red-900/40 hover:bg-red-800 text-red-300 px-2 py-1 rounded text-[10px] font-bold border border-red-800">🗑️</button>
+            ${hasActionPermission('manage_assignments') ? `<button onclick="window.deleteAssignment('${item.id}')" class="bg-red-900/40 hover:bg-red-800 text-red-300 px-2 py-1 rounded text-[10px] font-bold border border-red-800">🗑️</button>` : ''}
           </div>
         </div>
 
@@ -5124,6 +5190,7 @@ let selectedAssignmentMonthDate = new Date(new Date().getFullYear(), new Date().
   }).join('');
 }
     window.editAssignmentModal = function(id) {
+  if (!hasActionPermission('manage_assignments')) return alert('Nincs jogosultságod a megbízások szerkesztéséhez!');
       const item = allAssignments.find(a => a.id === id);
       if (!item) return alert("A megbízás nem található!");
 
@@ -5158,6 +5225,7 @@ let selectedAssignmentMonthDate = new Date(new Date().getFullYear(), new Date().
     };
 
 window.deleteAssignment = async function(id) {
+  if (!hasActionPermission('manage_assignments')) return alert('Nincs jogosultságod a megbízások törléséhez!');
   if (confirm("Biztosan törölni szeretnéd ezt a megbízást?")) {
     await deleteDoc(doc(db, "assignments", id));
   }
