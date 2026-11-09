@@ -1519,6 +1519,7 @@ window.changeClosedShiftsMonth = function(direction) {
         listenToShifts();
         listenToAnnouncements();
         listenToAdminWall();
+        listenToAssignments();
         loadSosPhoneNumbers();
         } catch (err) {
           console.error("Hitelesítés utáni profilbetöltési hiba:", err);
@@ -5515,8 +5516,7 @@ doc.autoTable({
   doc.save(`Megbizolevel_${docNumber}.pdf`);
 };
 
-// Automatikus indítás a Firestore hallgatóhoz
-listenToAssignments();
+// Az assignments figyelő csak sikeres bejelentkezés után indul.
   </script>
 <!-- SOFŐR ÚT SZERKESZTŐ POPUP MODAL (A SCRIPT TAG-EN KÍVÜL) -->
 <div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-2 sm:p-4" id="driverEditTripModal">
