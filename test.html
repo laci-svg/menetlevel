@@ -1539,6 +1539,19 @@ window.changeClosedShiftsMonth = function(direction) {
       }
     });
 
+    // A listener hibáját megjelenítjük, de nem szakítjuk meg a bejelentkezett felületet.
+    function reportFirestoreListenerError(source, error) {
+      console.error(`[Firestore figyelő: ${source}]`, error);
+      let banner = document.getElementById('firestoreListenerErrorBanner');
+      if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'firestoreListenerErrorBanner';
+        banner.style.cssText = 'position:fixed;z-index:99999;left:12px;right:12px;bottom:12px;max-width:900px;margin:0 auto;padding:12px 14px;border:1px solid #b45309;border-radius:12px;background:#451a03;color:#ffedd5;font:12px/1.5 system-ui,sans-serif;box-shadow:0 8px 30px #0008;';
+        document.body.appendChild(banner);
+      }
+      banner.textContent = `Adatbetöltési hiba (${source}): ${error?.code || ''} ${error?.message || error || ''}. A bejelentkezés ettől még sikeres lehet; a hiányzó adat hozzáférését a Firestore Rules szabályozza.`;
+    }
+
     function listenToGlobalSettings() {
       onSnapshot(doc(db, "settings", "global"), (docSnap) => {
         if (docSnap.exists()) {
@@ -1550,7 +1563,7 @@ window.changeClosedShiftsMonth = function(direction) {
         if (input) input.value = globalSettings.vignetteAlertDays || 4;
         
         if (isAdminMode) renderCombinedAlerts();
-      });
+      }, (error) => reportFirestoreListenerError("settings/global", error));
     }
 
     window.updateGlobalVignetteAlertDays = async function(val) {
@@ -1562,7 +1575,7 @@ window.changeClosedShiftsMonth = function(direction) {
       onSnapshot(collection(db, "admin_wall"), (snapshot) => {
         allAdminWallPosts = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
         if (isAdminMode) renderAdminWallPosts();
-      });
+      }, (error) => reportFirestoreListenerError("admin_wall", error));
     }
 
     window.saveAdminWallPost = async function(e) {
@@ -1667,7 +1680,7 @@ window.changeClosedShiftsMonth = function(direction) {
         if (isAdminMode) {
           renderAdminAnnouncements();
         }
-      });
+      }, (error) => reportFirestoreListenerError("announcements", error));
     }
 
     function checkDriverUnreadAnnouncements() {
@@ -1921,7 +1934,7 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
           renderShiftHoursCard();
           renderAdminStats();
         }
-      });
+      }, (error) => reportFirestoreListenerError("shifts", error));
     }
 
     function renderDriverStats() {
@@ -2181,6 +2194,7 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
           renderSuperAdminPermissionsPanel();
         }
       }, (error) => {
+        reportFirestoreListenerError("users", error);
         console.error("Felhasználói lista betöltési hiba:", error);
         const container = document.getElementById('userPermissionsListContainer');
         const badge = document.getElementById('badge_superAdminSection');
@@ -2228,7 +2242,7 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
         renderLiveCarKm();
         renderDriverCarSelection();
         if (isAdminMode) renderCombinedAlerts();
-      });
+      }, (error) => reportFirestoreListenerError("cars", error));
     }
 
     window.setMassHUAnnualVignettes = async function() {
@@ -2843,7 +2857,7 @@ window.saveCarEditModal = async function() {
           populatePdfDriverDropdown();
           renderAdminStats();
         }
-      });
+      }, (error) => reportFirestoreListenerError("trips", error));
     }
 
     window.renderRoleUI = function() {
@@ -4329,7 +4343,7 @@ function initAdminSosListener() {
       });
 
       listElem.innerHTML = html;
-    });
+    }, (error) => reportFirestoreListenerError("sos_alerts", error));
 }
 
 // SOS Riasztás lezárása az Admin által
@@ -5025,7 +5039,7 @@ function listenToAssignments() {
       renderAdminAssignments();
     }
     renderDriverAssignments();
-  });
+  }, (error) => reportFirestoreListenerError("assignments", error));
 }
 
 let selectedAssignmentMonthDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
