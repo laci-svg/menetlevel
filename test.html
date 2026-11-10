@@ -1127,7 +1127,6 @@ window.changeClosedShiftsMonth = function(direction) {
   if (typeof window.renderMonthlyDriverSelector === 'function') window.renderMonthlyDriverSelector();
 };
 
-    const ADMIN_PIN = "1234";
     const MASTER_SUPER_ADMIN_EMAIL = "zwickl@kn.hu";
 
     const ALL_ADMIN_CARDS = [
@@ -1152,17 +1151,26 @@ window.changeClosedShiftsMonth = function(direction) {
       { id: "edit_trip", label: "✏️ Utak szerkesztése (Km / Típus / Címek)" },
       { id: "delete_trip", label: "🗑️ Utak törlése" },
       { id: "delete_shift", label: "❌ Teljes műszak törlése" },
-      { id: "release_car", label: "🔓 Autó felszabadítása & törlése" },
+      { id: "release_car", label: "🔓 Autó felszabadítása" },
+      { id: "delete_car", label: "🗑️ Autó törlése" },
       { id: "manage_car_fleet", label: "🚗 Járműadatok, szerviz és felszereltség szerkesztése" },
-      { id: "manage_vehicle_reports", label: "🚨 Járműállapot-bejelentések elintézése / törlése" },
-      { id: "manage_assignments", label: "📋 Megbízások létrehozása, szerkesztése és törlése" },
-      { id: "manage_announcements", label: "📢 Sofőrközlemények küldése és törlése" },
-      { id: "manage_overtime", label: "⏰ Havi túlórák módosítása és törlése" },
+      { id: "resolve_vehicle_reports", label: "🚨 Járműállapot-bejelentés elintézése" },
+      { id: "delete_vehicle_reports", label: "🗑️ Járműállapot-bejelentés törlése" },
+      { id: "create_assignment", label: "📋 Megbízás létrehozása" },
+      { id: "edit_assignment", label: "✏️ Megbízás szerkesztése" },
+      { id: "delete_assignment", label: "🗑️ Megbízás törlése" },
+      { id: "toggle_assignment_visibility", label: "🙈 Megbízás elrejtése / megjelenítése" },
+      { id: "create_announcement", label: "📢 Sofőrközlemény létrehozása" },
+      { id: "delete_announcement", label: "🗑️ Sofőrközlemény törlése" },
+      { id: "edit_overtime", label: "⏰ Havi túlóra módosítása" },
+      { id: "delete_overtime", label: "🗑️ Havi túlóra törlése" },
       { id: "manage_sos_settings", label: "🆘 SOS telefonszámok beállítása" },
       { id: "manage_sos_alerts", label: "🚨 SOS riasztások lezárása" },
       { id: "manage_driver_settings", label: "👤 Sofőr egyedi háttér és beállítások módosítása" },
       { id: "edit_admin_wall_other", label: "✏️ Mások admin üzenőfal bejegyzéseinek szerkesztése" },
-      { id: "delete_admin_wall", label: "🗑️ Admin üzenőfal bejegyzések törlése" }
+      { id: "delete_admin_wall", label: "🗑️ Admin üzenőfal bejegyzések törlése" },
+      { id: "download_pdf", label: "📄 PDF-letöltés (admin exportok)" },
+      { id: "download_zip", label: "🗜️ ZIP-letöltés" }
     ];
 
     let currentUser = null;
@@ -1389,9 +1397,7 @@ window.changeClosedShiftsMonth = function(direction) {
     function hasActionPermission(actionId) {
       const userEmail = (currentUser?.email || auth.currentUser?.email || '').toLowerCase();
       if (userEmail === MASTER_SUPER_ADMIN_EMAIL.toLowerCase() || currentUserData?.isSuperAdmin === true) return true;
-      // Régi admin profilnál (mező még nincs elmentve) megtartjuk a korábbi hozzáférést.
-      // Ha a mező már létezik és üres tömb, az szándékosan nulla műveleti jogosultságot jelent.
-      if (currentUserData?.role === 'admin' && !Array.isArray(currentUserData.actionPermissions)) return true;
+      // Szigorú alapértelmezés: hiányzó vagy hibás jogosultsági mező = nincs engedély.
       return Array.isArray(currentUserData?.actionPermissions) && currentUserData.actionPermissions.includes(actionId);
     }
 
@@ -1433,40 +1439,20 @@ window.changeClosedShiftsMonth = function(direction) {
 
     window.toggleAdminViewPrompt = function() {
       if (!isAdminMode) {
-        const inputPin = prompt("Add meg az Admin PIN kódot:");
-        if (inputPin === null) return;
-
-        if (inputPin === ADMIN_PIN) {
-          const userEmail = (currentUser?.email || auth.currentUser?.email || '').toLowerCase();
-          const isMasterSuperAdmin = (userEmail === MASTER_SUPER_ADMIN_EMAIL.toLowerCase());
-          const isSuperAdmin = (currentUserData?.isSuperAdmin === true || isMasterSuperAdmin);
-          const hasAdminRole = (currentUserData?.role === 'admin' || isSuperAdmin);
-
-          if (isMasterSuperAdmin || hasAdminRole) {
-            isAdminMode = true;
-            if (isMasterSuperAdmin && currentUser?.uid) {
-              currentUserData = currentUserData || {};
-              currentUserData.isSuperAdmin = true;
-              currentUserData.role = 'admin';
-              currentUserData.adminCards = ALL_ADMIN_CARDS.map(c => c.id);
-              currentUserData.actionPermissions = ALL_ACTION_PERMISSIONS.map(a => a.id);
-              setDoc(doc(db, "users", currentUser.uid), currentUserData, { merge: true });
-            }
-            if (typeof window.renderRoleUI === 'function') {
-              window.renderRoleUI();
-            }
-          } else {
-            alert("Hiba: A fiókodhoz az Admin jogosultság nincs engedélyezve!");
-          }
-        } else {
-          alert("Hibás PIN kód!");
+        const userEmail = (currentUser?.email || auth.currentUser?.email || '').toLowerCase();
+        const isMasterSuperAdmin = userEmail === MASTER_SUPER_ADMIN_EMAIL.toLowerCase();
+        const isSuperAdmin = currentUserData?.isSuperAdmin === true || isMasterSuperAdmin;
+        const hasAdminRole = currentUserData?.role === 'admin' || isSuperAdmin;
+        if (!hasAdminRole) return alert("A fiókodhoz nincs adminisztrátori jogosultság rendelve!");
+        isAdminMode = true;
+        if (isMasterSuperAdmin && currentUser?.uid) {
+          currentUserData = { ...(currentUserData || {}), isSuperAdmin: true, role: 'admin', adminCards: ALL_ADMIN_CARDS.map(c => c.id), actionPermissions: ALL_ACTION_PERMISSIONS.map(a => a.id) };
+          setDoc(doc(db, "users", currentUser.uid), currentUserData, { merge: true }).catch(err => console.error('Főadmin profil mentési hiba:', err));
         }
       } else {
         isAdminMode = false;
-        if (typeof window.renderRoleUI === 'function') {
-          window.renderRoleUI();
-        }
       }
+      if (typeof window.renderRoleUI === 'function') window.renderRoleUI();
     };
     
     function applyAdminState() {
@@ -1518,7 +1504,7 @@ window.changeClosedShiftsMonth = function(direction) {
       ALL_ADMIN_CARDS.forEach(card => {
         const el = document.getElementById(card.elId);
         if (el) {
-          if (isSuperAdmin || currentUserData?.adminCards === undefined || allowedCards.includes(card.id)) {
+          if (isSuperAdmin || (Array.isArray(currentUserData?.adminCards) && allowedCards.includes(card.id))) {
             el.classList.remove('hidden');
           } else {
             el.classList.add('hidden');
@@ -1556,8 +1542,8 @@ window.changeClosedShiftsMonth = function(direction) {
             email: user.email, 
             role: isMaster ? 'admin' : 'sofor', 
             isSuperAdmin: isMaster,
-            adminCards: ALL_ADMIN_CARDS.map(c => c.id),
-            actionPermissions: ALL_ACTION_PERMISSIONS.map(a => a.id),
+            adminCards: isMaster ? ALL_ADMIN_CARDS.map(c => c.id) : [],
+            actionPermissions: isMaster ? ALL_ACTION_PERMISSIONS.map(a => a.id) : [],
             customBg: '',
             vacationDaysQuota: 20,
             isInactive: false
@@ -1826,7 +1812,7 @@ window.changeClosedShiftsMonth = function(direction) {
     };
 
     window.sendAnnouncement = async function(e) {
-  if (!hasActionPermission('manage_announcements')) return alert('Nincs jogosultságod közlemények küldéséhez!');
+  if (!hasActionPermission('create_announcement')) return alert('Nincs jogosultságod közlemények küldéséhez!');
       e.preventDefault();
       const title = document.getElementById('announcementTitle').value.trim();
       const message = document.getElementById('announcementMessage').value.trim();
@@ -1891,7 +1877,7 @@ function renderAdminAnnouncements() {
           '<h5 class="text-xs font-bold text-sky-400">' + a.title + '</h5>' +
           '<span class="text-[10px] text-slate-500 font-mono">📅 ' + a.createdAt + ' • 🎯 ' + targetText + '</span>' +
         '</div>' +
-        (hasActionPermission('manage_announcements') ? '<button onclick="window.deleteAnnouncement(\'' + a.id + '\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-300 px-2 py-1 rounded border border-red-800 transition">Törlés</button>' : '') +
+        (hasActionPermission('create_announcement') ? '<button onclick="window.deleteAnnouncement(\'' + a.id + '\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-300 px-2 py-1 rounded border border-red-800 transition">Törlés</button>' : '') +
       '</div>' +
       '<p class="text-xs text-slate-300 bg-slate-900/80 p-2 rounded-lg border border-slate-800/80 whitespace-pre-line">' + a.message + '</p>' +
       '<div class="text-[10px] text-emerald-400 font-semibold mt-1">' +
@@ -1956,7 +1942,7 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
 });
 
     window.deleteAnnouncement = async function(id) {
-  if (!hasActionPermission('manage_announcements')) return alert('Nincs jogosultságod közlemények törléséhez!');
+  if (!hasActionPermission('delete_announcement')) return alert('Nincs jogosultságod közlemények törléséhez!');
       if (confirm("Biztosan törlöd ezt az üzenetet az admin felületről és az archívumokból?")) {
         await deleteDoc(doc(db, "announcements", id));
       }
@@ -2879,7 +2865,7 @@ window.saveCarEditModal = async function() {
     };
 
     window.deleteCar = async function(carId) {
-      if (!hasActionPermission('release_car')) return alert("Nincs jogosultságod az autó törléséhez!");
+      if (!hasActionPermission('delete_car')) return alert("Nincs jogosultságod az autó törléséhez!");
       if (confirm("Biztosan törlöd ezt az autót a rendszerből?")) {
         await deleteDoc(doc(db, "cars", carId));
       }
@@ -3239,7 +3225,7 @@ window.saveCarEditModal = async function() {
     };
 
     window.adminEditShiftOvertime = async function(shiftId) {
-  if (!hasActionPermission('manage_overtime')) return alert('Nincs jogosultságod a túlórák módosításához!');
+  if (!hasActionPermission('edit_overtime')) return alert('Nincs jogosultságod a túlórák módosításához!');
       const shift = allShifts.find(s => s.id === shiftId);
       if (!shift) return;
       const newHrsStr = prompt("Túlóra órák módosítása:", shift.overtimeHours || 0);
@@ -3251,7 +3237,7 @@ window.saveCarEditModal = async function() {
     };
 
     window.adminDeleteShiftOvertime = async function(shiftId) {
-  if (!hasActionPermission('manage_overtime')) return alert('Nincs jogosultságod a túlórák törléséhez!');
+  if (!hasActionPermission('delete_overtime')) return alert('Nincs jogosultságod a túlórák törléséhez!');
       if (confirm("Biztosan törlöd a túlórát erről a műszakról?")) {
         await updateDoc(doc(db, "shifts", shiftId), { overtimeHours: 0 });
         alert("Túlóra törölve!");
@@ -3345,7 +3331,7 @@ window.renderAdminVehicleReports = async function() {
           <div class="flex flex-wrap justify-between items-start gap-2"><div><span class="font-bold text-white text-sm">${escapeHtml(rep.plateNumber || 'Ismeretlen jármű')}</span><span class="text-[10px] text-slate-400 ml-2">${timingText}</span><div class="mt-1">${previousDriverHtml}</div></div><span class="text-[10px] font-mono text-slate-400">${escapeHtml(timeLabel)}</span></div>
           <div class="flex flex-wrap gap-1 text-[10px] font-bold">${tags.join(' ')}</div>
           <div class="text-slate-300 bg-slate-900 p-2 rounded border border-slate-800/80 whitespace-pre-wrap">${escapeHtml(rep.description || 'Nincs részletes leírás.')}</div>
-          <div class="flex flex-wrap justify-between items-center gap-2 pt-1 border-t border-slate-800/60"><span class="text-[10px] text-slate-400">Bejelentő: <b>${escapeHtml(rep.driverName || 'Ismeretlen')}</b></span>${hasActionPermission('manage_vehicle_reports') ? `<button onclick="window.deleteVehicleReport('${escapeHtml(id)}')" class="px-2 py-1 bg-emerald-950 hover:bg-emerald-900 text-emerald-300 text-[10px] font-bold rounded border border-emerald-700 transition">✅ Elintézve / Törlés</button>` : ''}</div>
+          <div class="flex flex-wrap justify-between items-center gap-2 pt-1 border-t border-slate-800/60"><span class="text-[10px] text-slate-400">Bejelentő: <b>${escapeHtml(rep.driverName || 'Ismeretlen')}</b></span>${hasActionPermission('delete_vehicle_reports') ? `<button onclick="window.deleteVehicleReport('${escapeHtml(id)}')" class="px-2 py-1 bg-emerald-950 hover:bg-emerald-900 text-emerald-300 text-[10px] font-bold rounded border border-emerald-700 transition">✅ Elintézve / Törlés</button>` : ''}</div>
         </div>`;
       }).join('');
       return `<details class="border border-amber-500/20 bg-slate-950/70 rounded-xl overflow-hidden" open><summary class="flex items-center justify-between gap-2 p-3 cursor-pointer hover:bg-slate-900"><span class="text-xs font-bold text-amber-200">📅 ${dayLabel}</span><span class="text-[10px] font-mono text-amber-300">${dayReports.length} bejelentés</span></summary><div class="p-2 border-t border-slate-800 space-y-2">${reportCards}</div></details>`;
@@ -3359,7 +3345,7 @@ window.renderAdminVehicleReports = async function() {
 };
 
 window.deleteVehicleReport = async function(reportId) {
-  if (!hasActionPermission('manage_vehicle_reports')) return alert("Nincs jogosultságod a járműállapot-bejelentések kezeléséhez!");
+  if (!hasActionPermission('delete_vehicle_reports')) return alert("Nincs jogosultságod a járműállapot-bejelentések törléséhez!");
   if (!confirm("Biztosan elintézettnek jelölöd és törlöd ezt a bejelentést?")) return;
   try {
     await deleteDoc(doc(db, "vehicleReports", reportId));
@@ -3535,6 +3521,7 @@ window.deleteVehicleReport = async function(reportId) {
 
 // === INNENTŐL ILLESZD BE (új 3454. sortól) ===
 window.downloadAllOverlimitPDFsZip = async function() {
+  if (!hasActionPermission('download_zip')) return alert('Nincs jogosultságod ZIP-letöltéshez!');
   if (typeof JSZip === 'undefined') {
     return alert("A ZIP készítő könyvtár nem töltődött be. Kérlek frissítsd az oldalt!");
   }
@@ -3918,7 +3905,7 @@ window.downloadAllOverlimitPDFsZip = async function() {
         const name = getUsernameFromEmail(u.email || '');
 
         const cardCheckboxesHtml = ALL_ADMIN_CARDS.map(card => {
-          const isChecked = (isMaster || (u.adminCards === undefined ? true : userCards.includes(card.id))) ? 'checked' : '';
+          const isChecked = (isMaster || userCards.includes(card.id)) ? 'checked' : '';
           const isDisabled = (isMaster || isInactive) ? 'disabled' : '';
           return '<label class="inline-flex items-center gap-1.5 bg-slate-900 px-2 py-1 rounded border border-slate-800 text-[11px] text-slate-300 cursor-pointer">' +
             '<input type="checkbox" ' + isChecked + ' ' + isDisabled + ' onchange="window.toggleUserCardPermission(\'' + u.id + '\', \'' + card.id + '\', this.checked)" class="rounded bg-slate-800 border-slate-700 text-amber-500">' +
@@ -3927,7 +3914,7 @@ window.downloadAllOverlimitPDFsZip = async function() {
         }).join('');
 
         const actionCheckboxesHtml = ALL_ACTION_PERMISSIONS.map(act => {
-          const isChecked = (isMaster || (u.actionPermissions === undefined ? true : userActions.includes(act.id))) ? 'checked' : '';
+          const isChecked = (isMaster || userActions.includes(act.id)) ? 'checked' : '';
           const isDisabled = (isMaster || isInactive) ? 'disabled' : '';
           return '<label class="inline-flex items-center gap-1.5 bg-slate-900 px-2 py-1 rounded border border-red-900/40 text-[11px] text-red-200 cursor-pointer">' +
             '<input type="checkbox" ' + isChecked + ' ' + isDisabled + ' onchange="window.toggleUserActionPermission(\'' + u.id + '\', \'' + act.id + '\', this.checked)" class="rounded bg-slate-800 border-slate-700 text-red-500">' +
@@ -4002,8 +3989,8 @@ window.downloadAllOverlimitPDFsZip = async function() {
       if (!u || u.email.toLowerCase() === MASTER_SUPER_ADMIN_EMAIL.toLowerCase()) return;
       await updateDoc(doc(db, "users", userId), {
         role: makeAdmin ? 'admin' : 'sofor',
-        adminCards: makeAdmin ? (u.adminCards || ALL_ADMIN_CARDS.map(c => c.id)) : [],
-        actionPermissions: makeAdmin ? (u.actionPermissions || ALL_ACTION_PERMISSIONS.map(a => a.id)) : []
+        adminCards: makeAdmin ? (Array.isArray(u.adminCards) ? u.adminCards : []) : [],
+        actionPermissions: makeAdmin ? (Array.isArray(u.actionPermissions) ? u.actionPermissions : []) : []
       });
     };
 
@@ -4035,9 +4022,7 @@ window.downloadAllOverlimitPDFsZip = async function() {
     window.toggleUserCardPermission = async function(userId, cardId, isChecked) {
       const u = allUsers.find(x => x.id === userId);
       if (!u) return;
-      const currentCards = u.adminCards === undefined
-        ? ALL_ADMIN_CARDS.map(c => c.id)
-        : [...(u.adminCards || [])];
+      const currentCards = Array.isArray(u.adminCards) ? [...u.adminCards] : [];
       const nextCards = isChecked
         ? [...new Set([...currentCards, cardId])]
         : currentCards.filter(id => id !== cardId);
@@ -4047,9 +4032,7 @@ window.downloadAllOverlimitPDFsZip = async function() {
     window.toggleUserActionPermission = async function(userId, actionId, isChecked) {
       const u = allUsers.find(x => x.id === userId);
       if (!u) return;
-      const currentActions = u.actionPermissions === undefined
-        ? ALL_ACTION_PERMISSIONS.map(a => a.id)
-        : [...(u.actionPermissions || [])];
+      const currentActions = Array.isArray(u.actionPermissions) ? [...u.actionPermissions] : [];
       const nextActions = isChecked
         ? [...new Set([...currentActions, actionId])]
         : currentActions.filter(id => id !== actionId);
@@ -4657,6 +4640,7 @@ if (document.readyState === 'loading') {
     };
 
     window.downloadServiceHistoryPDF = function() {
+      if (!hasActionPermission('download_pdf')) return alert('Nincs jogosultságod PDF-letöltéshez!');
       if (!currentHistoryCar) return;
 
       const { jsPDF } = window.jspdf;
@@ -4690,6 +4674,7 @@ if (document.readyState === 'loading') {
     };
 
     window.exportShiftPDF = function(shiftId, pdfType = 'all') {
+      if (!hasActionPermission('download_pdf')) return alert('Nincs jogosultságod PDF-letöltéshez!');
       try {
         if (!window.jspdf || !window.jspdf.jsPDF) {
           return alert("A PDF-készítő könyvtár nem töltődött be. Frissítsd az oldalt, majd próbáld újra.");
@@ -4792,6 +4777,7 @@ if (document.readyState === 'loading') {
     }
 
     window.downloadAllWorkMileagePDFsZip = async function() {
+      if (!hasActionPermission('download_zip')) return alert('Nincs jogosultságod ZIP-letöltéshez!');
       if (typeof JSZip === 'undefined') {
         return alert("A ZIP-készítő könyvtár nem töltődött be. Ellenőrizd az internetkapcsolatot, majd frissítsd az oldalt!");
       }
@@ -4912,6 +4898,7 @@ if (document.readyState === 'loading') {
 
     // Havi, sofőrönkénti összesítő: egy PDF tartalmazza az adott hónap összes munka- és privát útját.
     window.downloadMonthlyDriverCombinedMileageZip = async function() {
+      if (!hasActionPermission('download_zip')) return alert('Nincs jogosultságod ZIP-letöltéshez!');
       if (typeof JSZip === 'undefined') return alert("A ZIP-készítő könyvtár nem töltődött be. Frissítsd az oldalt!");
       if (!window.jspdf || !window.jspdf.jsPDF || typeof generatePDFForTrips !== 'function') return alert("A PDF-készítő könyvtár nem töltődött be.");
 
@@ -5082,10 +5069,11 @@ window.closeAssignmentModal = function() {
 
 // 2. Megbízás mentése Firestore-ba
 window.saveAssignment = async function(e) {
-  if (!hasActionPermission('manage_assignments')) return alert('Nincs jogosultságod a megbízások módosításához!');
-  e.preventDefault();
-
+    e.preventDefault();
   const assignmentId = document.getElementById('assignmentId').value;
+  const requiredPermission = assignmentId ? 'edit_assignment' : 'create_assignment';
+  if (!hasActionPermission(requiredPermission)) return alert('Nincs jogosultságod ehhez a megbízási művelethez!');
+
   const driverId = document.getElementById('assignDriverSelect').value;
   const driverObj = allUsers.find(u => u.id === driverId);
   const carPlate = document.getElementById('assignCarSelect').value;
@@ -5245,10 +5233,10 @@ window.toggleAllAssignmentMonths = function() {
           <div class="flex items-center gap-1.5 flex-wrap justify-end">
             ${item.hiddenFromDrivers === true ? `<span class="bg-slate-800 text-slate-300 border border-slate-600 px-2 py-1 rounded text-[10px] font-bold">🙈 Elrejtve a sofőr elől</span>` : ''}
             ${statusBadge}
-            ${hasActionPermission('manage_assignments') ? `<label class="inline-flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1 rounded text-[10px] font-bold border border-slate-600 cursor-pointer"><input type="checkbox" ${item.hiddenFromDrivers === true ? 'checked' : ''} onchange="window.toggleAssignmentVisibility('${item.id}', this.checked)" class="accent-emerald-500"> Sofőr elől elrejt</label>` : ''}
-            ${hasActionPermission('manage_assignments') ? `<button onclick="window.editAssignmentModal('${item.id}')" class="bg-amber-600/80 hover:bg-amber-500 text-white px-2 py-1 rounded text-[10px] font-bold border border-amber-400/40">✏️ Szerkeszt</button>` : ''}
-            <button onclick="window.downloadAssignmentPDF('${item.id}')" class="bg-slate-800 hover:bg-slate-700 text-amber-300 px-2 py-1 rounded text-[10px] font-bold border border-slate-700">📄 PDF</button>
-            ${hasActionPermission('manage_assignments') ? `<button onclick="window.deleteAssignment('${item.id}')" class="bg-red-900/40 hover:bg-red-800 text-red-300 px-2 py-1 rounded text-[10px] font-bold border border-red-800">🗑️</button>` : ''}
+            ${hasActionPermission('toggle_assignment_visibility') ? `<label class="inline-flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1 rounded text-[10px] font-bold border border-slate-600 cursor-pointer"><input type="checkbox" ${item.hiddenFromDrivers === true ? 'checked' : ''} onchange="window.toggleAssignmentVisibility('${item.id}', this.checked)" class="accent-emerald-500"> Sofőr elől elrejt</label>` : ''}
+            ${hasActionPermission('edit_assignment') ? `<button onclick="window.editAssignmentModal('${item.id}')" class="bg-amber-600/80 hover:bg-amber-500 text-white px-2 py-1 rounded text-[10px] font-bold border border-amber-400/40">✏️ Szerkeszt</button>` : ''}
+            ${hasActionPermission('download_pdf') ? `<button onclick="window.downloadAssignmentPDF('${item.id}')" class="bg-slate-800 hover:bg-slate-700 text-amber-300 px-2 py-1 rounded text-[10px] font-bold border border-slate-700">📄 PDF</button>` : ''}
+            ${hasActionPermission('delete_assignment') ? `<button onclick="window.deleteAssignment('${item.id}')" class="bg-red-900/40 hover:bg-red-800 text-red-300 px-2 py-1 rounded text-[10px] font-bold border border-red-800">🗑️</button>` : ''}
           </div>
         </div>
 
@@ -5282,7 +5270,7 @@ window.toggleAllAssignmentMonths = function() {
   }).join('');
 }
     window.editAssignmentModal = function(id) {
-  if (!hasActionPermission('manage_assignments')) return alert('Nincs jogosultságod a megbízások szerkesztéséhez!');
+  if (!hasActionPermission('edit_assignment')) return alert('Nincs jogosultságod a megbízások szerkesztéséhez!');
       const item = allAssignments.find(a => a.id === id);
       if (!item) return alert("A megbízás nem található!");
 
@@ -5317,7 +5305,7 @@ window.toggleAllAssignmentMonths = function() {
     };
 
 window.toggleAssignmentVisibility = async function(id, shouldHide) {
-  if (!hasActionPermission('manage_assignments')) return alert('Nincs jogosultságod a megbízások módosításához!');
+  if (!hasActionPermission('toggle_assignment_visibility')) return alert('Nincs jogosultságod a megbízások láthatóságának módosításához!');
   const item = allAssignments.find(a => a.id === id);
   if (!item) return alert('A megbízás nem található!');
   try {
@@ -5335,7 +5323,7 @@ window.toggleAssignmentVisibility = async function(id, shouldHide) {
 };
 
 window.deleteAssignment = async function(id) {
-  if (!hasActionPermission('manage_assignments')) return alert('Nincs jogosultságod a megbízások törléséhez!');
+  if (!hasActionPermission('delete_assignment')) return alert('Nincs jogosultságod a megbízások törléséhez!');
   if (!confirm("Biztosan törölni szeretnéd ezt a megbízást? A sofőr felületéről is eltűnik.")) return;
   try {
     // A Firestore törlését megvárjuk, majd az admin kliens helyi listájából is
