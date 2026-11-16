@@ -118,6 +118,7 @@
 </div>
 </div>
 <div class="flex items-center gap-2">
+<button class="bg-slate-800 border border-slate-700 text-sky-300 hover:bg-slate-700 px-2.5 py-2 rounded-xl text-xs font-semibold transition" type="button" onclick="window.openDriverCompanyInfo()" title="Céges információk">ℹ️ Információ</button>
 <button class="bg-amber-500/20 border border-amber-500/40 text-amber-400 hover:bg-amber-500/30 px-3 py-2 rounded-xl text-xs font-semibold transition" id="toggleAdminBtn" onclick="toggleAdminViewPrompt()">
           👑 Admin
         </button>
@@ -172,6 +173,15 @@
 <button class="bg-red-600 hover:bg-red-500 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-md transition flex items-center gap-1.5" onclick="window.saveSosPhoneNumbers()">
 <span>💾</span> Számok Mentése
             </button>
+</div>
+<div class="border-t border-slate-800 pt-3 space-y-2">
+  <h4 class="text-xs font-bold text-sky-300">ℹ️ Sofőröknek megjelenő céges adatok</h4>
+  <input id="companyInfoName" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg p-2 text-xs" placeholder="Cég pontos neve">
+  <input id="companyInfoAddress" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg p-2 text-xs" placeholder="Székhely / cím">
+  <input id="companyInfoTax" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg p-2 text-xs" placeholder="Adószám">
+  <input id="companyInfoBreakdown" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg p-2 text-xs" placeholder="Autómentő / assistance telefonszám">
+  <textarea id="companyInfoExtra" rows="2" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg p-2 text-xs" placeholder="Egyéb fontos tudnivalók"></textarea>
+  <button type="button" onclick="window.saveCompanyInfo()" class="bg-sky-700 hover:bg-sky-600 text-white font-bold text-xs px-3 py-2 rounded-lg">💾 Céges adatok mentése</button>
 </div>
 </div>
 </div><div class="admin-card bg-slate-900/90 border border-teal-500/40 rounded-xl overflow-hidden shadow-md" id="card_admin_wall">
@@ -1149,6 +1159,7 @@ window.changeClosedShiftsMonth = function(direction) {
 
     const ALL_ACTION_PERMISSIONS = [
       { id: "edit_trip", label: "✏️ Utak szerkesztése (Km / Típus / Címek)" },
+      { id: "edit_shift_times", label: "🕒 Műszak kezdési / zárási idő javítása" },
       { id: "delete_trip", label: "🗑️ Utak törlése" },
       { id: "delete_shift", label: "❌ Teljes műszak törlése" },
       { id: "release_car", label: "🔓 Autó felszabadítása" },
@@ -1294,6 +1305,36 @@ window.changeClosedShiftsMonth = function(direction) {
       document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click', confirmDriverAnnouncement);
     });
 
+    const adminNewEntryMemory = {};
+    function updateAdminNewEntryBadge(cardKey, entries) {
+      const storageKey = 'adminNewEntriesSeen_' + (currentUser?.uid || 'admin') + '_' + cardKey;
+      const ids = (entries || []).map(x => String(x.id)).filter(Boolean);
+      const savedRaw = localStorage.getItem(storageKey);
+      if (savedRaw === null) { localStorage.setItem(storageKey, JSON.stringify(ids)); adminNewEntryMemory[cardKey] = ids; }
+      else {
+        const seen = new Set(JSON.parse(savedRaw || '[]'));
+        const unseen = ids.filter(id => !seen.has(id));
+        adminNewEntryMemory[cardKey] = ids;
+        let badge = document.getElementById('newEntryBadge_' + cardKey);
+        const cardDomId = cardKey === 'vehicleReports' ? 'vehicle_reports' : cardKey;
+        const header = document.querySelector('#card_' + cardDomId + ' .p-3\\.5 > div:first-child');
+        if (!badge && header) { badge=document.createElement('span'); badge.id='newEntryBadge_' + cardKey; badge.className='hidden text-[10px] bg-red-600 text-white px-1.5 py-0.5 rounded-full font-black'; header.appendChild(badge); }
+        const contentId = cardKey === 'vehicleReports' ? 'content_card_vehicle_reports' : (cardKey === 'overlimit' ? 'content_card_overlimit' : 'content_card_overtime');
+        const content = document.getElementById(contentId);
+        if (content && !content.classList.contains('hidden')) {
+          localStorage.setItem(storageKey, JSON.stringify(ids));
+          if (badge) { badge.textContent=''; badge.classList.add('hidden'); }
+        } else if (badge) { badge.textContent = unseen.length ? '+' + unseen.length : ''; badge.classList.toggle('hidden', unseen.length===0); }
+      }
+    }
+    function markAdminNewEntriesSeen(cardKey) {
+      const storageKey = 'adminNewEntriesSeen_' + (currentUser?.uid || 'admin') + '_' + cardKey;
+      const ids = adminNewEntryMemory[cardKey] || [];
+      localStorage.setItem(storageKey, JSON.stringify(ids));
+      const badge = document.getElementById('newEntryBadge_' + cardKey);
+      if (badge) { badge.textContent=''; badge.classList.add('hidden'); }
+    }
+
     window.toggleCardAccordion = function(cardId) {
       const content = document.getElementById('content_' + cardId);
       const arrow = document.getElementById('arrow_' + cardId);
@@ -1301,6 +1342,9 @@ window.changeClosedShiftsMonth = function(direction) {
 
       const isHidden = content.classList.contains('hidden');
       if (isHidden) {
+        if (cardId === 'card_overtime') markAdminNewEntriesSeen('overtime');
+        if (cardId === 'card_overlimit') markAdminNewEntriesSeen('overlimit');
+        if (cardId === 'card_vehicle_reports') markAdminNewEntriesSeen('vehicleReports');
         content.classList.remove('hidden');
         arrow.textContent = '▲';
         cardStates[cardId] = true;
@@ -1601,6 +1645,21 @@ window.changeClosedShiftsMonth = function(direction) {
       banner.textContent = `Adatbetöltési hiba (${source}): ${error?.code || ''} ${error?.message || error || ''}. A bejelentkezés ettől még sikeres lehet; a hiányzó adat hozzáférését a Firestore Rules szabályozza.`;
     }
 
+    window.openDriverCompanyInfo = function() {
+      const info = globalSettings.companyInfo || {};
+      const rows = [['Cég neve', info.name], ['Cím / székhely', info.address], ['Adószám', info.tax], ['Autómentő / assistance', info.breakdown], ['Egyéb tudnivalók', info.extra]];
+      const content = document.getElementById('driverCompanyInfoContent');
+      if (content) content.innerHTML = rows.filter(r => String(r[1] || '').trim()).map(r => '<div class="bg-slate-950 border border-slate-800 rounded-lg p-3"><div class="text-[10px] uppercase tracking-wide text-slate-500 font-bold">' + escapeHtml(r[0]) + '</div><div class="text-sm text-slate-100 whitespace-pre-line mt-1">' + escapeHtml(r[1]) + '</div></div>').join('') || '<p class="text-xs text-slate-400">A céges információkat még nem töltötték fel.</p>';
+      document.getElementById('driverCompanyInfoModal')?.classList.remove('hidden');
+    };
+    window.closeDriverCompanyInfo = function() { document.getElementById('driverCompanyInfoModal')?.classList.add('hidden'); };
+    window.saveCompanyInfo = async function() {
+      if (!hasActionPermission('manage_sos_settings')) return alert('Nincs jogosultságod a céges adatok módosításához!');
+      const companyInfo = { name: document.getElementById('companyInfoName').value.trim(), address: document.getElementById('companyInfoAddress').value.trim(), tax: document.getElementById('companyInfoTax').value.trim(), breakdown: document.getElementById('companyInfoBreakdown').value.trim(), extra: document.getElementById('companyInfoExtra').value.trim() };
+      try { await setDoc(doc(db, 'settings', 'global'), { companyInfo }, { merge: true }); alert('A céges információk mentve.'); }
+      catch (err) { console.error('Céges adatok mentése:', err); alert('Nem sikerült menteni a céges adatokat: ' + (err?.message || err)); }
+    };
+
     function listenToGlobalSettings() {
       onSnapshot(doc(db, "settings", "global"), (docSnap) => {
         if (docSnap.exists()) {
@@ -1610,6 +1669,8 @@ window.changeClosedShiftsMonth = function(direction) {
         }
         const input = document.getElementById('globalVignetteAlertDaysInput');
         if (input) input.value = globalSettings.vignetteAlertDays || 4;
+        const ci = globalSettings.companyInfo || {};
+        [['companyInfoName','name'],['companyInfoAddress','address'],['companyInfoTax','tax'],['companyInfoBreakdown','breakdown'],['companyInfoExtra','extra']].forEach(([id,key]) => { const el=document.getElementById(id); if(el && document.activeElement!==el) el.value=ci[key]||''; });
         
         if (isAdminMode) renderCombinedAlerts();
       }, (error) => reportFirestoreListenerError("settings/global", error));
@@ -2328,6 +2389,19 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
       alert("🇭🇺 Magyar éves matricák sikeresen kiosztva az összes autóra!");
     };
 
+    window.dismissCarWarning = async function(carId, warningKey) {
+      if (!hasActionPermission('manage_car_fleet')) return alert('Nincs jogosultságod a járműfigyelmeztetések kezeléséhez!');
+      const car = (window.allCars || allCars).find(c => String(c.id) === String(carId));
+      if (!car || !warningKey) return;
+      try {
+        const keys = Array.isArray(car.dismissedAlerts) ? car.dismissedAlerts : [];
+        if (!keys.includes(warningKey)) await updateDoc(doc(db, 'cars', carId), { dismissedAlerts: arrayUnion(warningKey) });
+      } catch (err) {
+        console.error('Figyelmeztetés elrejtési hiba:', err);
+        alert('A figyelmeztetést nem sikerült elrejteni: ' + (err?.message || err));
+      }
+    };
+
     function renderCombinedAlerts() {
       const oilContainer = document.getElementById('oilServiceAlertsContainer');
       const motVigContainer = document.getElementById('motVignetteAlertsContainer');
@@ -2353,8 +2427,9 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
 
         const nextOilKm = lastOilKm + period;
         const remainingKm = nextOilKm - lastKm;
+        const oilDismissKey = 'oil:' + nextOilKm;
 
-        if (remainingKm <= alertThreshold) {
+        if (remainingKm <= alertThreshold && !(car.dismissedAlerts || []).includes(oilDismissKey)) {
           oilAlertsCount++;
           totalAlertsCount++;
           const isOverdue = remainingKm <= 0;
@@ -2367,6 +2442,7 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
             '<div class="text-right">' +
               '<span class="text-xs font-mono font-bold ' + (isOverdue ? 'text-red-400' : 'text-orange-400') + '">' + (isOverdue ? 'TÚLLÉPVE (' + Math.abs(remainingKm) + ' km)' : remainingKm + ' km maradt') + '</span>' +
               '<button onclick="window.resetCarOilChange(\'' + car.id + '\')" class="block text-[9px] bg-orange-950 hover:bg-orange-900 text-orange-200 px-1.5 py-0.5 rounded border border-orange-700 mt-1 font-semibold ml-auto">🛢️ Csere elvégezve</button>' +
+              '<button onclick="window.dismissCarWarning(\'' + car.id + '\', \'oil:' + nextOilKm + '\')" class="block text-[9px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700 mt-1 ml-auto">Figyelmeztetés elrejtése</button>' +
             '</div>' +
           '</div>';
         }
@@ -2379,7 +2455,7 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
       let motVigCount = 0;
 
       allCars.forEach(car => {
-        if (car.motExpiry) {
+        if (car.motExpiry && !(car.dismissedAlerts || []).includes('mot:' + car.motExpiry)) {
           const motDate = new Date(car.motExpiry);
           const diffTime = motDate - today;
           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -2394,13 +2470,15 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
                 '<span class="font-bold text-slate-100">' + car.plateNumber + '</span> <span class="text-[10px] bg-amber-950 text-amber-300 px-1.5 py-0.2 rounded border border-amber-800">📋 Műszaki</span>' +
                 '<div class="text-[10px] text-slate-400">Lejárat: ' + car.motExpiry + '</div>' +
               '</div>' +
-              '<span class="text-xs font-mono font-bold ' + (isExpired ? 'text-red-400' : 'text-amber-400') + '">' + (isExpired ? 'LEJÁRT (' + Math.abs(diffDays) + ' napja)' : diffDays + ' nap maradt') + '</span>' +
+              '<div class="text-right"><span class="text-xs font-mono font-bold ' + (isExpired ? 'text-red-400' : 'text-amber-400') + '">' + (isExpired ? 'LEJÁRT (' + Math.abs(diffDays) + ' napja)' : diffDays + ' nap maradt') + '</span>' +
+              '<button onclick="window.dismissCarWarning(\'' + car.id + '\', \'mot:' + car.motExpiry + '\')" class="block text-[9px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700 mt-1 ml-auto">Figyelmeztetés elrejtése</button></div>' +
             '</div>';
           }
         }
 
         (car.vignettes || []).forEach(v => {
-          if (v.endDate) {
+          const vignetteDismissKey = 'vignette:' + (v.country || '') + ':' + (v.endDate || '');
+          if (v.endDate && !(car.dismissedAlerts || []).includes(vignetteDismissKey)) {
             const endDate = new Date(v.endDate);
             const diffTime = endDate - today;
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -2415,7 +2493,8 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
                   '<span class="font-bold text-slate-100">' + car.plateNumber + '</span> <span class="text-[10px] bg-amber-950 text-amber-300 px-1.5 py-0.2 rounded border border-amber-800 font-bold">' + v.country + ' Matrica</span>' +
                   '<div class="text-[10px] text-slate-400">Érvényes: ' + v.endDate + '-ig</div>' +
                 '</div>' +
-                '<span class="text-xs font-mono font-bold ' + (isExpired ? 'text-red-400' : 'text-amber-400') + '">' + (isExpired ? 'LEJÁRT (' + Math.abs(diffDays) + ' napja)' : diffDays + ' nap maradt') + '</span>' +
+                '<div class="text-right"><span class="text-xs font-mono font-bold ' + (isExpired ? 'text-red-400' : 'text-amber-400') + '">' + (isExpired ? 'LEJÁRT (' + Math.abs(diffDays) + ' napja)' : diffDays + ' nap maradt') + '</span>' +
+                '<button onclick="window.dismissCarWarning(\'' + car.id + '\', \'vignette:' + (v.country || '') + ':' + v.endDate + '\')" class="block text-[9px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700 mt-1 ml-auto">Figyelmeztetés elrejtése</button></div>' +
               '</div>';
             }
           }
@@ -2429,7 +2508,8 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
       let dateServiceCount = 0;
 
       allCars.forEach(car => {
-        if (car.nextServiceDate) {
+        const dateServiceDismissKey = 'dateService:' + car.nextServiceDate + ':' + (car.nextServiceText || '');
+        if (car.nextServiceDate && !(car.dismissedAlerts || []).includes(dateServiceDismissKey)) {
           const sDate = new Date(car.nextServiceDate);
           sDate.setHours(0, 0, 0, 0);
           const diffTime = sDate - today;
@@ -2448,7 +2528,7 @@ document.getElementById('modalAnnouncementConfirmBtn')?.addEventListener('click'
               '</div>' +
               '<div class="flex items-center gap-2">' +
                 '<span class="text-xs font-mono font-bold ' + (isExpired ? 'text-red-400' : 'text-amber-400') + '">' + (isExpired ? 'ESEDÉKES!' : diffDays + ' nap maradt') + '</span>' +
-                '<button onclick="window.clearCarDateService(\'' + car.id + '\')" class="text-[10px] bg-red-950/80 hover:bg-red-800 text-red-200 p-1 px-1.5 rounded border border-red-800 transition" title="Emlékeztető törlése">🗑️</button>' +
+                '<button onclick="window.dismissCarWarning(\'' + car.id + '\', \'dateService:' + car.nextServiceDate + ':' + (car.nextServiceText || '') + '\')" class="text-[9px] bg-slate-800 hover:bg-slate-700 text-slate-300 p-1 px-1.5 rounded border border-slate-700 transition" title="Figyelmeztetés elrejtése">Elrejtés</button>' +
               '</div>' +
             '</div>';
           }
@@ -3111,13 +3191,12 @@ window.saveCarEditModal = async function() {
       return shift.startDate || shift.date || shift.startedAtDate || shift.createdAt?.toDate?.()?.toISOString?.().slice(0,10) || '';
     }
     function shiftMinutes(shift) {
-      const toMinutes = (value) => { const m = String(value || '').match(/(\d{1,2}):(\d{2})/); return m ? Number(m[1])*60+Number(m[2]) : null; };
-      const start = toMinutes(shift.startTime);
-      const end = toMinutes(shift.endTime);
-      if (start !== null && end !== null) return Math.max(0, (end < start ? end + 1440 : end) - start);
-      const startDateTime = shift.startedAt?.toDate ? shift.startedAt.toDate() : (shift.startedAt ? new Date(shift.startedAt) : null);
-      const endDateTime = shift.endedAt?.toDate ? shift.endedAt.toDate() : (shift.endedAt ? new Date(shift.endedAt) : null);
+      const startDateTime = shift.startedAt?.toDate ? shift.startedAt.toDate() : (shift.startedAt ? new Date(shift.startedAt) : (shift.startDate && shift.startTime ? new Date(shift.startDate + 'T' + shift.startTime + ':00') : null));
+      const endDateTime = shift.endedAt?.toDate ? shift.endedAt.toDate() : (shift.endedAt ? new Date(shift.endedAt) : (shift.endDate && shift.endTime ? new Date(shift.endDate + 'T' + shift.endTime + ':00') : null));
       if (startDateTime && endDateTime && !isNaN(startDateTime) && !isNaN(endDateTime)) return Math.max(0, Math.round((endDateTime-startDateTime)/60000));
+      const toMinutes = (value) => { const m = String(value || '').match(/(\d{1,2}):(\d{2})/); return m ? Number(m[1])*60+Number(m[2]) : null; };
+      const start = toMinutes(shift.startTime), end = toMinutes(shift.endTime);
+      if (start !== null && end !== null) return Math.max(0, (end < start ? end + 1440 : end) - start);
       return 0;
     }
     function minutesLabel(minutes) { return Math.floor(minutes/60) + ':' + String(minutes%60).padStart(2,'0'); }
@@ -3169,6 +3248,7 @@ window.saveCarEditModal = async function() {
         return (allMonthsView.overtime || shiftDate.startsWith(monthStr)) && Number(s.overtimeHours) > 0;
       });
 
+      updateAdminNewEntryBadge('overtime', (window.allShifts || allShifts).filter(s => Number(s.overtimeHours) > 0));
       const driverOvertimeMap = {};
       let totalOvertimeInMonth = 0;
 
@@ -3202,6 +3282,7 @@ window.saveCarEditModal = async function() {
             '</div>' +
             '<div class="flex items-center gap-2">' +
               '<span class="font-mono font-bold text-indigo-400 bg-indigo-950/80 px-2 py-0.5 rounded border border-indigo-800/80">' + s.overtimeHours + ' óra</span>' +
+              '<button onclick="window.exportShiftPDF(\'' + s.id + '\', \'all\')" class="text-[10px] bg-amber-700 hover:bg-amber-600 text-white p-1 px-1.5 rounded border border-amber-600" title="Teljes menetlevél letöltése">📄 Teljes PDF</button>' +
               '<button onclick="window.adminEditShiftOvertime(\'' + s.id + '\')" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-200 p-1 px-1.5 rounded border border-slate-700">✏️</button>' +
               '<button onclick="window.adminDeleteShiftOvertime(\'' + s.id + '\')" class="text-[10px] bg-red-900/40 hover:bg-red-800 text-red-300 p-1 px-1.5 rounded border border-red-700">🗑️</button>' +
             '</div>' +
@@ -3297,6 +3378,7 @@ window.renderAdminVehicleReports = async function() {
     const snapshot = await getDocs(q);
     const badge = document.getElementById('badge_vehicle_reports');
     if (badge) badge.textContent = `${snapshot.size} bejelentés`;
+    updateAdminNewEntryBadge('vehicleReports', snapshot.docs.map(d => ({id:d.id})));
 
     if (snapshot.empty) {
       container.innerHTML = `<p class="text-xs text-slate-500 italic text-center py-4">${allMonthsView.vehicleReports ? "Nincs rögzített bejelentés." : "Nincs bejelentés ebben a hónapban (" + escapeHtml(formatReportMonthLabel(currentReportMonth)) + ")."}</p>`;
@@ -3623,6 +3705,84 @@ window.downloadAllOverlimitPDFsZip = async function() {
  document.body.removeChild(a);
     };
 
+    window.openAdminInsertTripModal = function(shiftId, beforeTripId) {
+      if (!hasActionPermission('edit_trip')) return alert('Nincs jogosultságod új út beszúrásához!');
+      const shift = (window.allShifts || allShifts).find(x => String(x.id) === String(shiftId));
+      if (!shift) return alert('A műszak nem található.');
+      const modal = document.getElementById('adminInsertTripModal');
+      if (!modal) return alert('A beszúró ablak nem található.');
+      document.getElementById('adminInsertShiftId').value = shiftId;
+      document.getElementById('adminInsertBeforeTripId').value = beforeTripId || '';
+      document.getElementById('adminInsertTripDate').value = shift.startDate || new Date().toISOString().slice(0,10);
+      document.getElementById('adminInsertTripTime').value = '';
+      document.getElementById('adminInsertTripType').value = 'work';
+      document.getElementById('adminInsertStartLoc').value = '';
+      document.getElementById('adminInsertEndLoc').value = '';
+      document.getElementById('adminInsertStartKm').value = '';
+      document.getElementById('adminInsertEndKm').value = '';
+      document.getElementById('adminInsertPassengers').value = '0';
+      document.getElementById('adminInsertTripPosition').textContent = beforeTripId ? 'A kiválasztott cím elé kerül. A sorrendet a kézzel megadott kilométeróra-állások alapján rendezi a rendszer.' : 'A műszak végére szánt új cím. A kilométereket kézzel add meg.';
+      modal.classList.remove('hidden');
+    };
+    window.closeAdminInsertTripModal = function() { document.getElementById('adminInsertTripModal')?.classList.add('hidden'); };
+    window.saveAdminInsertedTrip = async function() {
+      if (!hasActionPermission('edit_trip')) return alert('Nincs jogosultságod új út beszúrásához!');
+      const shiftId = document.getElementById('adminInsertShiftId').value;
+      const shift = (window.allShifts || allShifts).find(x => String(x.id) === String(shiftId));
+      const startKmRaw = document.getElementById('adminInsertStartKm').value;
+      const endKmRaw = document.getElementById('adminInsertEndKm').value;
+      const startKm = Number(startKmRaw), endKm = Number(endKmRaw);
+      if (!shift) return alert('A műszak nem található.');
+      if (startKmRaw === '' || endKmRaw === '' || !Number.isFinite(startKm) || !Number.isFinite(endKm) || endKm < startKm) return alert('Add meg helyesen mindkét kilométeróra-állást! A záró km nem lehet kisebb az indulónál.');
+      const startLocation = document.getElementById('adminInsertStartLoc').value.trim();
+      const endLocation = document.getElementById('adminInsertEndLoc').value.trim();
+      if (!startLocation || !endLocation) return alert('Add meg az indulási és érkezési címet is!');
+      const tripData = {
+        shiftId, date: document.getElementById('adminInsertTripDate').value || shift.startDate || new Date().toISOString().slice(0,10),
+        time: document.getElementById('adminInsertTripTime').value || '', type: document.getElementById('adminInsertTripType').value,
+        isRural: false, startLocation, endLocation, startKm, endKm, workKm: endKm-startKm,
+        passengerCount: Number(document.getElementById('adminInsertPassengers').value) || 0,
+        driverUid: shift.driverUid || '', driverEmail: shift.driverEmail || '', carPlate: shift.carPlate || 'Nincs megadva',
+        insertedByAdmin: true, insertedAt: new Date().toISOString()
+      };
+      try {
+        await addDoc(collection(db, 'trips'), tripData);
+        window.closeAdminInsertTripModal();
+        alert('Az új cím sikeresen bekerült a műszakba. A többi cím kilométeradata nem változott.');
+      } catch (err) { console.error('Új cím beszúrási hiba:', err); alert('Nem sikerült menteni az új címet: ' + (err?.message || err)); }
+    };
+
+    window.adminEditShiftTimes = async function(shiftId) {
+      if (!hasActionPermission('edit_shift_times')) return alert('Nincs jogosultságod a műszakidők javításához!');
+      const shift = (window.allShifts || allShifts).find(x => String(x.id) === String(shiftId));
+      if (!shift) return alert('A műszak nem található.');
+      const startDate = prompt('Műszak kezdő dátuma (ÉÉÉÉ-HH-NN):', shift.startDate || '');
+      if (startDate === null) return;
+      const startTime = prompt('Műszak kezdő időpontja (ÓÓ:PP):', shift.startTime || '');
+      if (startTime === null) return;
+      const endDate = prompt('Műszak záró dátuma (ÉÉÉÉ-HH-NN):', shift.endDate || (shift.status === 'active' ? new Date().toISOString().slice(0,10) : shift.startDate || ''));
+      if (endDate === null) return;
+      const endTime = prompt('Műszak záró időpontja (ÓÓ:PP):', shift.endTime || (shift.status === 'active' ? new Date().toLocaleTimeString('hu-HU',{hour:'2-digit',minute:'2-digit'}) : ''));
+      if (endTime === null) return;
+      const validDate = v => /^\d{4}-\d{2}-\d{2}$/.test(v);
+      const validTime = v => /^([01]?\d|2[0-3]):[0-5]\d$/.test(v);
+      if (!validDate(startDate) || !validDate(endDate) || !validTime(startTime) || !validTime(endTime)) return alert('Hibás dátum vagy időformátum. Használd: ÉÉÉÉ-HH-NN és ÓÓ:PP.');
+      const startMs = Date.parse(startDate + 'T' + startTime + ':00');
+      const endMs = Date.parse(endDate + 'T' + endTime + ':00');
+      if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs < startMs) return alert('A műszak záró időpontja nem lehet korábbi a kezdésnél.');
+      if (!confirm('Mentsem a javított műszakidőket? ' + startDate + ' ' + startTime + ' – ' + endDate + ' ' + endTime + (shift.status === 'active' ? '\nA jelenleg élő műszak lezárásra kerül.' : ''))) return;
+      try {
+        await updateDoc(doc(db, 'shifts', shiftId), { startDate, startTime, endDate, endTime, startedAt: new Date(startMs).toISOString(), endedAt: new Date(endMs).toISOString(), status: 'closed', timeCorrectedAt: new Date().toISOString(), timeCorrectedBy: currentUser?.uid || '' });
+        if (shift.status === 'active') {
+          const car = (window.allCars || allCars).find(c => String(c.id) === String(shift.carId) || String(c.plateNumber || '').trim().toUpperCase() === String(shift.carPlate || '').trim().toUpperCase());
+          const shiftTrips = (window.allTrips || allTrips).filter(t => String(t.shiftId) === String(shiftId));
+          const lastTrip = sortTripsByKmAscending(shiftTrips).slice(-1)[0];
+          if (car) await updateDoc(doc(db, 'cars', car.id), { currentDriverUid: deleteField(), currentDriverEmail: deleteField(), ...(lastTrip ? { lastKm: Number(lastTrip.endKm || car.lastKm || 0), lastLocation: lastTrip.endLocation || car.lastLocation || '' } : {}) });
+        }
+        alert('A műszak ideje javítva, a műszak lezárva.');
+      } catch (err) { console.error('Műszakidő javítási hiba:', err); alert('Nem sikerült javítani a műszak idejét: ' + (err?.message || err)); }
+    };
+
     window.adminEditTripPrompt = function(tripId) {
       // A sima prompt helyett megnyitjuk a teljes szerkesztő modalt
       if (typeof window.editDriverTripModalOpen === 'function') {
@@ -3745,6 +3905,7 @@ window.downloadAllOverlimitPDFsZip = async function() {
   });
   
   const activeShifts = allShifts.filter(s => s.status === 'active');
+  updateAdminNewEntryBadge('overlimit', (window.allShifts || allShifts).filter(s => !dismissedOverlimits.includes(s.id) && allTrips.filter(t => t.shiftId === s.id && t.type === 'work').reduce((sum,t)=>sum+Number(t.workKm||0),0) >= 250));
 
   if (badgeClosed) badgeClosed.textContent = closedShifts.length + " műszak (" + monthNames[month] + ")";
   if (badgeActive) badgeActive.textContent = activeShifts.length + " élő műszak";
@@ -3756,9 +3917,10 @@ window.downloadAllOverlimitPDFsZip = async function() {
     let shiftTrips = sortTripsByKmAscending(allTrips.filter(t => t.shiftId === shift.id));
     const totalKm = shiftTrips.reduce((sum, t) => sum + Number(t.workKm || 0), 0);
 
-    const tripsHtml = shiftTrips.map((t, idx) => {
+    let tripsHtml = shiftTrips.map((t, idx) => {
       const isPriv = (t.type === 'private' || t.type === 'privat');
       return '<div class="border-b border-slate-800/50 pb-1.5 space-y-0.5 text-[11px]">' +
+        (canEditTrip ? '<button onclick="window.openAdminInsertTripModal(\'' + shift.id + '\', \'' + t.id + '\')" class="text-[9px] text-emerald-300 border border-emerald-800/70 bg-emerald-950/30 px-2 py-0.5 rounded mb-1">＋ Új cím beszúrása ide</button>' : '') +
         '<div class="flex justify-between items-center">' +
           '<span>' + (idx+1) + '. ' + t.startLocation + ' &rarr; ' + t.endLocation + (isPriv ? ' <span class="text-[9px] text-amber-400 bg-amber-950 px-1 rounded font-bold">Privát</span>' : '') +
           (t.isRural ? ' <span class="text-[9px] text-emerald-300 bg-emerald-950 px-1 rounded font-bold">Vidéki</span>' : '') + '</span>' +
@@ -3773,6 +3935,7 @@ window.downloadAllOverlimitPDFsZip = async function() {
         '</div>' +
       '</div>';
     }).join('') || '<p class="text-[11px] text-slate-500 italic text-center">Nincs út rögzítve.</p>';
+    if (canEditTrip) tripsHtml += '<button onclick="window.openAdminInsertTripModal(\'' + shift.id + '\', \'\')" class="w-full text-[10px] text-emerald-300 border border-dashed border-emerald-800 bg-emerald-950/20 p-2 rounded-lg">＋ Új cím beszúrása a műszak végére</button>';
     
     return '<details class="group border border-emerald-500/40 bg-slate-950 rounded-xl overflow-hidden">' +
       '<summary class="flex items-center justify-between p-3 cursor-pointer hover:bg-slate-800/50 transition select-none">' +
@@ -3782,7 +3945,8 @@ window.downloadAllOverlimitPDFsZip = async function() {
         '</div>' +
         '<span class="text-xs font-mono font-bold text-orange-400">' + totalKm + ' km</span>' +
       '</summary>' +
-      '<div class="p-2 border-t border-slate-800 bg-slate-900/60 space-y-2">' + tripsHtml + '</div>' +
+      '<div class="p-2 border-t border-slate-800 bg-slate-900/60 space-y-2">' +
+        (hasActionPermission('edit_shift_times') ? '<button onclick="window.adminEditShiftTimes(\'' + shift.id + '\')" class="text-[10px] bg-amber-900/40 border border-amber-700 text-amber-200 px-2 py-1 rounded">🕒 Műszakidő javítása / lezárása</button>' : '') + tripsHtml + '</div>' +
     '</details>';
   }).join('') || '<p class="text-xs text-slate-500 text-center p-3">Nincs élő műszak.</p>';
 
@@ -3825,7 +3989,7 @@ window.downloadAllOverlimitPDFsZip = async function() {
 
         const rowsHtml = shiftTrips.map((t, tIdx) => {
           const isPriv = (t.type === 'private' || t.type === 'privat');
-          return '<tr class="' + (isPriv ? 'bg-amber-950/40 text-amber-200' : '') + '">' +
+          return (canEditTrip ? '<tr><td colspan="6" class="py-0.5"><button onclick="window.openAdminInsertTripModal(\'' + shift.id + '\', \'' + t.id + '\')" class="text-[9px] text-emerald-300 border border-emerald-900 bg-emerald-950/20 px-2 py-0.5 rounded">＋ Új cím beszúrása ide</button></td></tr>' : '') + '<tr class="' + (isPriv ? 'bg-amber-950/40 text-amber-200' : '') + '">' +
             '<td class="p-1 font-bold text-slate-500">' + (tIdx + 1) + '.</td>' +
             '<td class="p-1 font-mono text-slate-400">' + (t.time || '') + '</td>' +
             '<td class="p-1">' + (t.startLocation || '') + ' &rarr; ' + (t.endLocation || '') + (isPriv ? ' <span class="text-[9px] text-amber-300">Privát</span>' : '') + (t.isRural ? ' <span class="text-[9px] text-emerald-300 font-bold">Vidéki</span>' : '') + '</td>' +
@@ -3852,10 +4016,11 @@ window.downloadAllOverlimitPDFsZip = async function() {
               '<span class="text-xs font-mono font-bold text-slate-300 mr-1">' + totalCombinedKm + ' km</span>' +
               '<button onclick="window.exportShiftPDF(\'' + shift.id + '\', \'work\')" class="text-[9px] bg-emerald-700 text-white px-2 py-1 rounded hover:bg-emerald-600">Munka PDF</button>' +
               '<button onclick="window.exportShiftPDF(\'' + shift.id + '\', \'all\')" class="text-[9px] bg-amber-600 text-white px-2 py-1 rounded hover:bg-amber-500">Összes PDF</button>' +
+              (hasActionPermission('edit_shift_times') ? '<button onclick="window.adminEditShiftTimes(\'' + shift.id + '\')" class="text-[9px] bg-slate-700 text-amber-200 px-2 py-1 rounded" title="Műszakidő javítása">🕒 Idő</button>' : '') +
               (canDeleteShift ? '<button onclick="window.deleteShift(\'' + shift.id + '\')" class="text-[9px] bg-red-900/50 text-red-300 px-1.5 py-1 rounded hover:bg-red-800">🗑️</button>' : '') +
             '</div>' +
           '</summary>' +
-          '<div class="mt-2 pt-2 border-t border-slate-800 bg-slate-900/60 rounded p-2"><table class="w-full text-left text-xs"><tbody class="divide-y divide-slate-800/50">' + rowsHtml + '</tbody></table></div>' +
+          '<div class="mt-2 pt-2 border-t border-slate-800 bg-slate-900/60 rounded p-2"><table class="w-full text-left text-xs"><tbody class="divide-y divide-slate-800/50">' + rowsHtml + '</tbody></table>' + (canEditTrip ? '<button onclick="window.openAdminInsertTripModal(\'' + shift.id + '\', \'\')" class="mt-2 w-full text-[10px] text-emerald-300 border border-dashed border-emerald-800 bg-emerald-950/20 p-2 rounded-lg">＋ Új cím beszúrása a műszak végére</button>' : '') + '</div>' +
         '</details>';
       }).join('');
 
@@ -5992,5 +6157,48 @@ doc.autoTable({
     </form>
   </div>
 </div>
+<div id="adminInsertTripModal" class="fixed inset-0 z-[100] hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-3">
+  <div class="w-full max-w-lg bg-slate-900 border border-emerald-500/50 rounded-2xl p-4 space-y-3 shadow-2xl max-h-[92vh] overflow-y-auto">
+    <div class="flex items-center justify-between border-b border-slate-800 pb-2"><h3 class="text-sm font-bold text-emerald-300">➕ Új cím beszúrása a műszakba</h3><button type="button" onclick="window.closeAdminInsertTripModal()" class="text-slate-400">✕</button></div>
+    <input id="adminInsertShiftId" type="hidden"><input id="adminInsertBeforeTripId" type="hidden">
+    <p id="adminInsertTripPosition" class="text-[11px] text-slate-400"></p>
+    <div class="grid grid-cols-2 gap-2">
+      <label class="text-[11px] text-slate-300">Dátum<input id="adminInsertTripDate" type="date" class="w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white"></label>
+      <label class="text-[11px] text-slate-300">Időpont<input id="adminInsertTripTime" type="time" class="w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white"></label>
+    </div>
+    <label class="block text-[11px] text-slate-300">Út típusa<select id="adminInsertTripType" class="w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white"><option value="work">Munkaút</option><option value="private">Privát út</option></select></label>
+    <div class="grid grid-cols-2 gap-2"><label class="text-[11px] text-slate-300">Indulási cím<input id="adminInsertStartLoc" class="w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white"></label><label class="text-[11px] text-slate-300">Érkezési cím<input id="adminInsertEndLoc" class="w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white"></label></div>
+    <div class="grid grid-cols-2 gap-2"><label class="text-[11px] text-slate-300">Induló km<input id="adminInsertStartKm" type="number" min="0" step="1" class="w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white" placeholder="Kézi megadás"></label><label class="text-[11px] text-slate-300">Záró km<input id="adminInsertEndKm" type="number" min="0" step="1" class="w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white" placeholder="Kézi megadás"></label></div>
+    <label class="block text-[11px] text-slate-300">Utasok száma<input id="adminInsertPassengers" type="number" min="0" value="0" class="w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white"></label>
+    <p class="text-[10px] text-amber-300">A kilométereket te adod meg. A rendszer nem módosítja automatikusan a többi cím km-adatait.</p>
+    <div class="flex gap-2"><button type="button" onclick="window.closeAdminInsertTripModal()" class="flex-1 bg-slate-800 text-slate-300 p-2 rounded-lg text-xs">Mégse</button><button type="button" onclick="window.saveAdminInsertedTrip()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold p-2 rounded-lg text-xs">Új cím mentése</button></div>
+  </div>
+</div>
+<div id="driverCompanyInfoModal" class="fixed inset-0 z-[110] hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"><div class="w-full max-w-md bg-slate-900 border border-sky-500/50 rounded-2xl p-5 space-y-3 shadow-2xl"><div class="flex justify-between items-center border-b border-slate-800 pb-2"><h3 class="font-bold text-sky-300">ℹ️ Céges információk</h3><button type="button" onclick="window.closeDriverCompanyInfo()" class="text-slate-400">✕</button></div><div id="driverCompanyInfoContent" class="space-y-2 text-sm text-slate-200"></div><button type="button" onclick="window.closeDriverCompanyInfo()" class="w-full bg-slate-800 text-slate-200 rounded-lg p-2 text-xs">Bezárás</button></div></div>
+<style>
+#adminNoticeboardTop{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;margin:0 0 1rem}
+#adminNoticeboardTop .admin-card{margin:0!important;min-width:0}
+#adminNoticeboardTop .admin-card > .p-3\.5{cursor:default}
+#adminNoticeboardTop .admin-card [id^="content_card_"]{display:block!important;max-height:360px}
+#adminNoticeboardTop .admin-card [id^="arrow_card_"]{display:none}
+#adminNoticeboardMobileTabs{display:none}
+@media(max-width:768px){#adminNoticeboardTop{display:block}#adminNoticeboardMobileTabs{display:flex;gap:.5rem;margin-bottom:.5rem}#adminNoticeboardTop .admin-card{display:none}#adminNoticeboardTop .admin-card.mobile-active{display:block}#adminNoticeboardTop .admin-card [id^="content_card_"]{max-height:42vh}}
+</style>
+<script>
+(function(){
+  function setup(){
+    const wall=document.getElementById('card_admin_wall'), alerts=document.getElementById('card_combined_alerts'), columns=document.getElementById('adminCardColumns');
+    if(!wall||!alerts||!columns||document.getElementById('adminNoticeboardTop')) return;
+    const top=document.createElement('div'); top.id='adminNoticeboardTop';
+    const tabs=document.createElement('div'); tabs.id='adminNoticeboardMobileTabs';
+    tabs.innerHTML='<button type="button" data-target="card_admin_wall" class="flex-1 bg-teal-900 text-teal-100 rounded-lg p-2 text-xs font-bold">📌 Üzenőfal</button><button type="button" data-target="card_combined_alerts" class="flex-1 bg-amber-900 text-amber-100 rounded-lg p-2 text-xs font-bold">⚠️ Figyelmeztetések</button>';
+    columns.parentNode.insertBefore(top,columns); top.parentNode.insertBefore(tabs,top);
+    top.appendChild(wall); top.appendChild(alerts);
+    [wall,alerts].forEach(card=>{const content=card.querySelector('[id^="content_card_"]');const arrow=card.querySelector('[id^="arrow_card_"]');if(content)content.classList.remove('hidden');if(arrow)arrow.textContent='';card.classList.toggle('mobile-active',card===wall);});
+    tabs.querySelectorAll('button').forEach(btn=>btn.addEventListener('click',()=>{[wall,alerts].forEach(c=>c.classList.toggle('mobile-active',c.id===btn.dataset.target));}));
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup);else setup();
+})();
+</script>
 </body>
 </html>
